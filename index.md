@@ -32,7 +32,7 @@ As a beginner in research, I have great enthusiasm and interest in various field
 <br /> 
  <a href="https://arxiv.org/abs/2112.12533" target="_blank">[arXiv]</a>
  [<a href="https://github.com/G-U-N/PyCIL">Code</a>]
- [<a href="/assets/uploads/poster.pdf">Poster</a>]
+ [<a href="https://box.nju.edu.cn/f/ee4cb7b69778459488be/">Poster</a>]
  [<a href="https://zhuanlan.zhihu.com/p/490308909">中文解读</a>]
 <img alt="stars" src="https://img.shields.io/github/stars/G-U-N/PyCIL?style=social" />
 <br />
