@@ -2,47 +2,32 @@
 layout: homepage
 ---
 
-## About Me
+## Short Biography
 
-I am a Ph.D. student at ...
+I am a junior undergraduate at [Nanjing University](https://www.nju.edu.cn/en/main.psp) (NJU), majoring in computer science and artificial intelligence. I was honored to be able to join [LAMDA](https://www.lamda.nju.edu.cn/MainPage.ashx) to do research in machine learning, especially lifelong learning, under the guidance of  Professor [Han-Jia Ye](http://www.lamda.nju.edu.cn/yehj/) and Dr. [Da-Wei Zhou](http://www.lamda.nju.edu.cn/zhoudw/) in 2021 Fall.  
 
 ## Research Interests
 
-- **Computer Vision:** image recognition, image generation, video captioning
-- **Machine Learning:** meta-learning, incremental learning, transfer learning
+As a beginner in research, I have great enthusiasm and interest in various fields and am willing to be exposed to new knowledge and challenges.  I am currently working on [lifelong learning](https://en.wikipedia.org/wiki/Lifelong_learning), especially class-incremental learning, which aims to enable neural networks to learn novel classes while maintaining discrimination ability for old classes. I am also interested in [computer vision](https://en.wikipedia.org/wiki/Computer_vision) and building [intelligent agent](https://en.wikipedia.org/wiki/Intelligent_agent) systems.
 
 ## News
 
-- **[Feb. 2020]** Our paper about incremental learning is accepted to CVPR 2020.
-- **[Feb. 2020]** We will host the ACM Multimedia Asia 2020 conference in Singapore!
-- **[Sept. 2019]** Our paper about few-shot learning is accepted to NeurIPS 2019.
-- **[Mar. 2019]** Our paper about few-shot learning is accepted to CVPR 2019.
+- **[Apr. 2022]** One paper about class-incremental learning is uploaded to [arXiv](https://arxiv.org/abs/2204.04662).
+- **[Mar. 2022]** One paper about [few-shot class-incremental learning](https://arxiv.org/abs/2203.06953) is accepted to [CVPR 2022](http://cvpr2022.thecvf.com/).
+- **[Dec. 2021]** A Chinese survey of class-incremental learning is submitted to [CJC](http://cjc.ict.ac.cn/).
+- **[Dec. 2021]** A [toolbox](https://github.com/G-U-N/PyCIL) for class-incremental learning is released ([technical report](https://arxiv.org/abs/2112.12533)).
+- **[Jun. 2021]** I join [LAMDA](https://www.lamda.nju.edu.cn/MainPage.ashx).
 
 ## Publications
 
-- **Mnemonics Training: Multi-Class Incremental Learning without Forgetting**
-  <br>
-  **Yaoyao Liu**, Yuting Su, An-An Liu, Bernt Schiele, Qianru Sun
-  <br>
-  IEEE Conference on Computer Vision and Pattern Recognition. **CVPR 2020**.
-  <br>
-  [[PDF](https://arxiv.org/pdf/2002.10211.pdf)] [[Code](https://github.com/yaoyao-liu/mnemonics)] <strong><i style="color:#e74d3c">Oral Presentation</i></strong>
+### Technical Report
 
-- **Learning to Self-Train for Semi-Supervised Few-Shot Classification**
-  <br>
-  Xinzhe Li, Qianru Sun, **Yaoyao Liu**, Shibao Zheng, Qin Zhou, Tat-Seng Chua, Bernt Schiele
-  <br>
-  33rd Conference on Neural Information Processing Systems. **NeurIPS 2019**.
-  <br>
-  [[PDF](http://papers.nips.cc/paper/9216-learning-to-self-train-for-semi-supervised-few-shot-classification.pdf)] [[Code](https://github.com/xinzheli1217/learning-to-self-train)]
+![img](\assets\img\pycil.png)
 
-- **Meta-Transfer Learning for Few-Shot Learning**
-  <br>
-  Qianru Sun\*, **Yaoyao Liu\***, Tat-Seng Chua, Bernt Schiele
-  <br>
-  IEEE Conference on Computer Vision and Pattern Recognition. **CVPR 2019**.
-  <br>
-  [[PDF](http://openaccess.thecvf.com/content_CVPR_2019/papers/Sun_Meta-Transfer_Learning_for_Few-Shot_Learning_CVPR_2019_paper.pdf)] [[Code](https://github.com/yaoyao-liu/meta-transfer-learning)] [[Project](https://mtl.yyliu.net/)]
+**PyCIL: A Python Toolbox for Class-Incremental Learning**
+Da-Wei Zhou, **Fu-Yun Wang**, Han-Jia Ye, De-Chuan Zhan
+*arXiv:2112.12533 2021.*
+[[arXiv\]](https://arxiv.org/abs/2112.12533) [[Code](https://github.com/G-U-N/PyCIL)] [[中文解读](https://zhuanlan.zhihu.com/p/490308909)] ![img](https://img.shields.io/github/stars/G-U-N/PyCIL?style=social)
 
 ## Services
 
