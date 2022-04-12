@@ -32,12 +32,13 @@ As a beginner in research, I have great enthusiasm and interest in various field
 <br /> 
  <a href="https://arxiv.org/abs/2112.12533" target="_blank">[arXiv]</a>
  [<a href="https://github.com/G-U-N/PyCIL">Code</a>]
- [<a href="/assets/uploads/poster">poster</a>]
+ [<a href="/assets/uploads/poster.pdf">Poster</a>]
  [<a href="https://zhuanlan.zhihu.com/p/490308909">中文解读</a>]
 <img src="https://img.shields.io/github/stars/G-U-N/PyCIL?style=social" />
 <br />
 </p>
 </div>
+
 
 
 ### Preprints
@@ -69,15 +70,28 @@ Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De
 <br />
 <em>IEEE Conference on Computer Vision and Pattern Recognition. <strong><i style="color:#1e90ff">CVPR 2022</i></strong>.</em>
 <br /> 
-[<a href="./file/CVPR22/CVPR22.pdf" target="_blank">Paper</a>] 
-[<a href="./file/CVPR22/CVPR22_supp.pdf" target="_blank">Supplementary</a>]
+[<a href="http://www.lamda.nju.edu.cn/zhoudw/file/CVPR22/CVPR22.pdf" target="_blank">Paper</a>] 
+[<a href="http://www.lamda.nju.edu.cn/zhoudw/file/CVPR22/CVPR22_supp.pdf" target="_blank">Supplementary</a>]
 [<a href="https://arxiv.org/abs/2203.06953" target="_blank">arXiv</a>]
-[<a href="./file/CVPR22/CVPR22_project.html" target="_blank">Project Page</a>]
+[<a href="http://www.lamda.nju.edu.cn/zhoudw/file/CVPR22/CVPR22_project.html" target="_blank">Project Page</a>]
 [<a href="https://github.com/zhoudw-zdw/CVPR22-Fact" target="_blank">Code</a>]
 <!-- <strong><i style="color:#e74d3c">Oral Presentation</i></strong> -->
 </p>
  <br />
 </div>
+## Selected Honors
+
+- **[2022]** [Tencent Oxpecker Research Talent Program](https://www.withzz.com/project/detail/155), the only undergraduate admitted to this program.
+
+- **[2021]**  National Scholarship awarded by the China Ministry of Education, the highest honor in China.
+- **[2020, 2021]**  Nanjing University Outstanding Student Award.
+- **[2020]** Nanjing University People Scholarship.
+- **[2020]** Nanjing University De-Wang Scholarship.
+- **[2021]** The first prize of [the College Students Computer Design Contest, China](http://jsjds.ruc.edu.cn/).
 
 
-## Services
+
+## Correspondence
+
+Email: wangfuyun [at] smail.nju.edu.cn
+Address: National Key Laboratory for Novel Software Technology, Nanjing University, Xianlin Campus Mailbox 603, 163 Xianlin Avenue, Qixia District, Nanjing 210023, China
