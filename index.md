@@ -82,7 +82,6 @@ Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De
 ## Selected Honors
 
 - **[2022]** [Tencent Oxpecker Research Talent Program](https://www.withzz.com/project/detail/155), the only undergraduate admitted to this program.
-
 - **[2021]**  National Scholarship awarded by the China Ministry of Education, the highest honor in China.
 - **[2020, 2021]**  Nanjing University Outstanding Student Award.
 - **[2020]** Nanjing University People Scholarship.
@@ -94,4 +93,5 @@ Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De
 ## Correspondence
 
 Email: wangfuyun [at] smail.nju.edu.cn
+<br />
 Address: National Key Laboratory for Novel Software Technology, Nanjing University, Xianlin Campus Mailbox 603, 163 Xianlin Avenue, Qixia District, Nanjing 210023, China
