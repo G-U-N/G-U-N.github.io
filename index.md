@@ -23,7 +23,7 @@ As a beginner in research, I have great enthusiasm and interest in various field
 ### Technical Report
 
 <div class="paper">
-  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img src="assets/img/pycil.png" height="110" style="box-shadow:2px 2px 6px #888888"/></div>
+  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img alt="pycil" src="assets/img/pycil.png" height="110" style="box-shadow:2px 2px 6px #888888"/></div>
 <p><strong>PyCIL: A Python Toolbox for Class-Incremental Learning</strong>
 <br />
     Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, De-Chuan Zhan
@@ -34,7 +34,7 @@ As a beginner in research, I have great enthusiasm and interest in various field
  [<a href="https://github.com/G-U-N/PyCIL">Code</a>]
  [<a href="/assets/uploads/poster.pdf">Poster</a>]
  [<a href="https://zhuanlan.zhihu.com/p/490308909">中文解读</a>]
-<img src="https://img.shields.io/github/stars/G-U-N/PyCIL?style=social" />
+<img alt="stars" src="https://img.shields.io/github/stars/G-U-N/PyCIL?style=social" />
 <br />
 </p>
 </div>
@@ -43,7 +43,7 @@ As a beginner in research, I have great enthusiasm and interest in various field
 ### Preprints
 
 <div class="paper">
-  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img src="assets/img/foster.jpg" height="110" style="box-shadow:2px 2px 6px #888888" />
+  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img alt="foster" src="assets/img/foster.jpg" height="110" style="box-shadow:2px 2px 6px #888888" />
   </div>
 <p><strong>FOSTER: Feature Boosting and Compression for
 Class-Incremental Learning</strong>
@@ -61,7 +61,7 @@ Class-Incremental Learning</strong>
 ### Conference Paper
 
 <div class="paper">
-  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img src="assets/img/fact.jpg" width="300" style="box-shadow:2px 2px 6px #888888" /></div>
+  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img alt="fact" src="assets/img/fact.jpg" width="300" style="box-shadow:2px 2px 6px #888888" /></div>
 <p><strong>Forward Compatible Few-Shot Class-Incremental Learning</strong>
 <br />
 Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De-Chuan Zhan
