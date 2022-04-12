@@ -4,7 +4,7 @@ layout: homepage
 
 ## Short Biography
 
-I am a junior undergraduate at [Nanjing University](https://www.nju.edu.cn/en/main.psp) (NJU), majoring in computer science and artificial intelligence. I was honored to be able to join [LAMDA](https://www.lamda.nju.edu.cn/MainPage.ashx) to do research in machine learning, especially lifelong learning, under the guidance of  Professor [Han-Jia Ye](http://www.lamda.nju.edu.cn/yehj/) and Dr. [Da-Wei Zhou](http://www.lamda.nju.edu.cn/zhoudw/) in 2021 Fall.  
+I am a junior undergraduate at [Nanjing University](https://www.nju.edu.cn/en/main.psp) (NJU), majoring in computer science and artificial intelligence. I was honored to be able to join [LAMDA](https://www.lamda.nju.edu.cn/MainPage.ashx) to do research in machine learning, especially lifelong learning, under the guidance of  Professor [Han-Jia Ye](http://www.lamda.nju.edu.cn/yehj/) and Dr. [Da-Wei Zhou](http://www.lamda.nju.edu.cn/zhoudw/) in 2021 Fall.  Currently, I am looking for a 2023 Fall Ph.D. position.
 
 ## Research Interests
 
@@ -22,14 +22,62 @@ As a beginner in research, I have great enthusiasm and interest in various field
 
 ### Technical Report
 
-![img](\assets\img\pycil.png)
+<div class="paper">
+  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img src="assets/img/pycil.png" height="110" style="box-shadow:2px 2px 6px #888888"/></div>
+<p><strong>PyCIL: A Python Toolbox for Class-Incremental Learning</strong>
+<br />
+    Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, De-Chuan Zhan
+<br />
+<em>arXiv:2112.12533 2021.</em>
+<br /> 
+ <a href="https://arxiv.org/abs/2112.12533" target="_blank">[arXiv]</a>
+ [<a href="https://github.com/G-U-N/PyCIL">Code</a>]
+ [<a href="/assets/uploads/poster">poster</a>]
+ [<a href="https://zhuanlan.zhihu.com/p/490308909">中文解读</a>]
+<img src="https://img.shields.io/github/stars/G-U-N/PyCIL?style=social" />
+<br />
+</p>
+</div>
 
-**PyCIL: A Python Toolbox for Class-Incremental Learning**
-Da-Wei Zhou, **Fu-Yun Wang**, Han-Jia Ye, De-Chuan Zhan
-*arXiv:2112.12533 2021.*
-[[arXiv\]](https://arxiv.org/abs/2112.12533) [[Code](https://github.com/G-U-N/PyCIL)] [[中文解读](https://zhuanlan.zhihu.com/p/490308909)] ![img](https://img.shields.io/github/stars/G-U-N/PyCIL?style=social)
+
+### Preprints
+
+
+<div class="paper">
+  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img src="assets/img/foster.jpg" height="110" style="box-shadow:2px 2px 6px #888888" />
+  </div>
+<p><strong>FOSTER: Feature Boosting and Compression for
+Class-Incremental Learning</strong>
+<br />
+<strong>Fu-Yun Wang</strong>, Da-Wei Zhou, Han-Jia Ye, De-Chuan Zhan
+<br />
+<em>arXiv:2204.04662. 2022. </em>
+<br /> 
+ <a href="https://arxiv.org/abs/2204.04662" target="_blank">[arXiv]</a>
+<br />
+</p>
+ <br />
+</div>
+
+### Conference Paper
+
+<div class="paper">
+  <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img src="assets/img/fact.jpg" width="300" style="box-shadow:2px 2px 6px #888888" /></div>
+<p><strong>Forward Compatible Few-Shot Class-Incremental Learning</strong>
+<br />
+Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De-Chuan Zhan
+<br />
+<em>IEEE Conference on Computer Vision and Pattern Recognition. <strong><i style="color:#1e90ff">CVPR 2022</i></strong>.</em>
+<br /> 
+[<a href="./file/CVPR22/CVPR22.pdf" target="_blank">Paper</a>] 
+[<a href="./file/CVPR22/CVPR22_supp.pdf" target="_blank">Supplementary</a>]
+[<a href="https://arxiv.org/abs/2203.06953" target="_blank">arXiv</a>]
+[<a href="./file/CVPR22/CVPR22_project.html" target="_blank">Project Page</a>]
+[<a href="https://github.com/zhoudw-zdw/CVPR22-Fact" target="_blank">Code</a>]
+<!-- <strong><i style="color:#e74d3c">Oral Presentation</i></strong> -->
+</p>
+ <br />
+</div>
+
 
 ## Services
-
-- Conference Reviewers: NeurIPS 2020, CVPR 2020.
-- Journal Reviewers: T-PAMI, IJCV.
