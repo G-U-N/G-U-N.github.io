@@ -39,10 +39,8 @@ As a beginner in research, I have great enthusiasm and interest in various field
 </p>
 </div>
 
-
-
+<br />
 ### Preprints
-
 
 <div class="paper">
   <div class="teaser" style="float:left;width:28%;margin: 5px 10px 10px 0;"><img src="assets/img/foster.jpg" height="110" style="box-shadow:2px 2px 6px #888888" />
