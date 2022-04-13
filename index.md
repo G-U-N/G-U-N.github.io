@@ -4,7 +4,7 @@ layout: homepage
 
 ## Short Biography
 
-I am a junior undergraduate at [Nanjing University](https://www.nju.edu.cn/en/main.psp) (NJU), majoring in computer science and artificial intelligence. I was honored to be able to join [LAMDA](https://www.lamda.nju.edu.cn/MainPage.ashx) to do research in machine learning, especially lifelong learning, under the guidance of  Professor [Han-Jia Ye](http://www.lamda.nju.edu.cn/yehj/) and Dr. [Da-Wei Zhou](http://www.lamda.nju.edu.cn/zhoudw/) in 2021 Fall.  Currently, I am looking for a 2023 Fall Ph.D. position.
+I am a junior undergraduate at [Nanjing University](https://www.nju.edu.cn/en/main.psp) (NJU), majoring in computer science and artificial intelligence. So far, my GPA is 4.59/5.00, ranking 2/88. I was honored to be able to join [LAMDA](https://www.lamda.nju.edu.cn/MainPage.ashx) to do research in machine learning, especially lifelong learning, under the guidance of  Professor [Han-Jia Ye](http://www.lamda.nju.edu.cn/yehj/) and Dr. [Da-Wei Zhou](http://www.lamda.nju.edu.cn/zhoudw/) in 2021 Fall.  Currently, I am looking for a 2023 Fall Ph.D. position.
 
 ## Research Interests
 
