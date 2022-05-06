@@ -81,6 +81,7 @@ Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De
 
 - **[2022]** [Tencent Oxpecker Research Talent Program](https://www.withzz.com/project/detail/155), the only undergraduate admitted to this program.
 - **[2021]**  National Scholarship awarded by the China Ministry of Education, the highest honor in China.
+- **[2022]**  Meritorious Winner Prize in the [2022 National Mathematical Contest in Modeling](http://www.immchallenge.org/mcm/index.html).
 - **[2020, 2021]**  Nanjing University Outstanding Student Award.
 - **[2020]** Nanjing University People Scholarship.
 - **[2020]** Nanjing University De-Wang Scholarship.
