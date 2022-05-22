@@ -12,6 +12,8 @@ As a beginner in research, I have great enthusiasm and interest in various field
 
 ## News
 
+- **[May. 2022]** I finished [a  PyTorch Tutorial to Class-Incremental Learning](https://github.com/G-U-N/a-PyTorch-Tutorial-to-Class-Incremental-Learning).
+
 - **[Apr. 2022]** One paper about class-incremental learning is uploaded to [arXiv](https://arxiv.org/abs/2204.04662).
 - **[Mar. 2022]** One paper about [few-shot class-incremental learning](https://arxiv.org/abs/2203.06953) is accepted to [CVPR 2022](http://cvpr2022.thecvf.com/).
 - **[Dec. 2021]** A Chinese survey of class-incremental learning is submitted to [CJC](http://cjc.ict.ac.cn/).
