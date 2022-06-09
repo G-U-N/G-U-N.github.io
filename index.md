@@ -13,7 +13,6 @@ As a beginner in research, I have great enthusiasm and interest in various field
 ## News
 
 - **[May. 2022]** I finished [a  PyTorch Tutorial to Class-Incremental Learning](https://github.com/G-U-N/a-PyTorch-Tutorial-to-Class-Incremental-Learning).
-
 - **[Apr. 2022]** One paper about class-incremental learning is uploaded to [arXiv](https://arxiv.org/abs/2204.04662).
 - **[Mar. 2022]** One paper about [few-shot class-incremental learning](https://arxiv.org/abs/2203.06953) is accepted to [CVPR 2022](http://cvpr2022.thecvf.com/).
 - **[Dec. 2021]** A Chinese survey of class-incremental learning is submitted to [CJC](http://cjc.ict.ac.cn/).
@@ -89,7 +88,10 @@ Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De
 - **[2020]** Nanjing University De-Wang Scholarship.
 - **[2021]** The first prize of [the College Students Computer Design Contest, China](http://jsjds.ruc.edu.cn/).
 
-
+## Talks&Notes
+- [a  PyTorch Tutorial to Class-Incremental Learning](https://github.com/G-U-N/a-PyTorch-Tutorial-to-Class-Incremental-Learning)
+- [Bayesian Online Meta-Learning](https://box.nju.edu.cn/f/127e3c7e49b9448581e3/)
+- [an Introduction to Machine Learning Theory](https://box.nju.edu.cn/f/a109daa457fb4a1fac6a/)
 
 ## Correspondence
 
