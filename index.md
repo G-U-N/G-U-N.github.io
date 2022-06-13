@@ -89,7 +89,7 @@ Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De
 - **[2021]** The first prize of [the College Students Computer Design Contest, China](http://jsjds.ruc.edu.cn/).
 
 ## Talks&Notes
-- [a  PyTorch Tutorial to Class-Incremental Learning](https://github.com/G-U-N/a-PyTorch-Tutorial-to-Class-Incremental-Learning)
+- [a  PyTorch Tutorial to Class-Incremental Learning](https://github.com/G-U-N/a-PyTorch-Tutorial-to-Class-Incremental-Learning)<img alt="stars" src="https://img.shields.io/github/stars/G-U-N/a-PyTorch-Tutorial-to-Class-Incremental-Learning?style=social" />
 - [Bayesian Online Meta-Learning](https://box.nju.edu.cn/f/127e3c7e49b9448581e3/)
 - [an Introduction to Machine Learning Theory](https://box.nju.edu.cn/f/a109daa457fb4a1fac6a/)
 
