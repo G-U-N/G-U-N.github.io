@@ -12,8 +12,8 @@ As a beginner in research, I have great enthusiasm and interest in various field
 
 ## News
 
+- **[Jul. 2022]** One paper about [class-incremental learning]((https://arxiv.org/abs/2204.04662)) is accepted to [ECCV 2022](https://eccv2022.ecva.net/).
 - **[May. 2022]** I finished [a  PyTorch Tutorial to Class-Incremental Learning](https://github.com/G-U-N/a-PyTorch-Tutorial-to-Class-Incremental-Learning).
-- **[Apr. 2022]** One paper about class-incremental learning is uploaded to [arXiv](https://arxiv.org/abs/2204.04662).
 - **[Mar. 2022]** One paper about [few-shot class-incremental learning](https://arxiv.org/abs/2203.06953) is accepted to [CVPR 2022](http://cvpr2022.thecvf.com/).
 - **[Dec. 2021]** A Chinese survey of class-incremental learning is submitted to [CJC](http://cjc.ict.ac.cn/).
 - **[Dec. 2021]** A [toolbox](https://github.com/G-U-N/PyCIL) for class-incremental learning is released ([technical report](https://arxiv.org/abs/2112.12533)).
@@ -80,7 +80,7 @@ Da-Wei Zhou, <strong>Fu-Yun Wang</strong>, Han-Jia Ye, Liang Ma, Shiliang Pu, De
 </div>
 ## Selected Honors
 
-- **[2022]** [Tencent Oxpecker Research Talent Program](https://www.withzz.com/project/detail/155), the only undergraduate admitted to this program.
+- **[2022]** [Tencent Rhino-Bird Research Elite Program](https://www.withzz.com/project/detail/155), the only undergraduate admitted to this program.
 - **[2021]**  National Scholarship awarded by the China Ministry of Education, the highest honor in China.
 - **[2022]**  Meritorious Winner Prize in the [2022 National Mathematical Contest in Modeling](http://www.immchallenge.org/mcm/index.html).
 - **[2020, 2021]**  Nanjing University Outstanding Student Award.
