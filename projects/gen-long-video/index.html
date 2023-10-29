@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Meta tags for social media banners, these should be filled in appropriatly as they are your "business card" -->
+  <!-- Replace the content tag with appropriate information -->
+  <meta name="description" content="DESCRIPTION META TAG">
+  <meta property="og:title" content="Gen-L-Video: Multi-Text to Long Video Generation Via Temporal Path Co-denoising"/>
+  <meta property="og:description" content="Gen-L-Video: Multi-Text to Long Video Generation Via Temporal Path Co-denoising"/>
+  <meta property="og:url" content="https://gen-long-video.github.io/"/>
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X630-->
+  <meta property="og:image" content="static/images/framework.png" />
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+
+
+  <meta name="twitter:title" content="TWITTER BANNER TITLE META TAG">
+  <meta name="twitter:description" content="TWITTER BANNER DESCRIPTION META TAG">
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X600-->
+  <meta name="twitter:image" content="static/images/your_twitter_banner_image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- Keywords for your paper to be indexed by-->
+  <meta name="keywords" content="KEYWORDS SHOULD BE PLACED HERE">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+  <title>Gen-L-Video</title>
+  <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+  rel="stylesheet">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+  href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/comic-mono@0.0.1/index.css">
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script src="static/js/bulma-carousel.min.js"></script>
+  <script src="static/js/bulma-slider.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lozad/dist/lozad.min.js"></script>
+  <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+	    tex2jax: {
+	        inlineMath: [['$','$'], ['\\(','\\)']],
+	        processEscapes: true
+	    }
+	});
+    </script>
+
+  <script src="static/js/index.js"></script>
+  
+</head>
+<body>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="xtitle is-1 publication-title">
+              <span style="font-weight: 600;color: #eb002a">Gen-L-Video:</span>
+            Multi-Text to Long Video Generation via Temporal Co-Denoising</h1>
+          </br> 
+
+
+          <div class="is-size-5 publication-authors">
+            <!-- Paper authors -->
+            <span class="author-block">
+              <a href="https://g-u-n.github.io/" target="_blank">Fu-Yun Wang</a><sup>4,1,2</sup></span>
+              <span class="author-block">
+                <a href="https://github.com/winshot-thu" target="_blank">Wenshuo Chen</a><sup>5</sup></span>
+                <span class="author-block">
+                  <a href="https://songguanglu.github.io/" target="_blank">Guanglu Song</a><sup>3</sup>
+                </span>
+                <span class="author-block">
+                  <a href="https://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a><sup>4</sup>
+                </span>
+                <span class="author-block">
+                  <a href="https://liuyu.us" target="_blank">Yu Liu</a><sup>1</sup>
+                </span>
+                <span class="author-block">
+                  <a href="https://www.ee.cuhk.edu.hk/~hsli/" target="_blank">Hongsheng Li</a><sup>2</sup>
+                </span>
+
+                </div>
+              
+            </br>
+                <div class="is-size-5 publication-authors">
+                  <span class="author-block">
+                  <sup>1</sup> Shanghai AI laboratory &nbsp;&nbsp;&nbsp;
+                  <sup>2</sup> MMLab, CUHK &nbsp;&nbsp;&nbsp;
+                  <sup>3</sup> SenseTime Research &nbsp;&nbsp;&nbsp; 
+                  <sup>4</sup> Nanjing University &nbsp;&nbsp;&nbsp; 
+                  <sup>5</sup> Tsinghua University </span>
+                  <!-- <span class="eql-cntrb"><small><br><sup>*</sup>Corresponding Author</small></span> -->
+                </div>
+
+                <div class="column has-text-centered">
+                  <div class="publication-links">
+                    
+                     <!-- ArXiv abstract Link -->
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2305.18264" target="_blank"
+                  class="external-link ">
+                  <span class="icon">
+                    <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+
+                <!-- Github link -->
+                <span class="link-block">
+                  <a href="https://github.com/G-U-N/Gen-L-Video" target="_blank"
+                  class="external-link ">
+                  <span class="icon">
+                    <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="https://github.com/G-U-N/Gen-L-Video" target="_blank"
+                class="external-link ">
+                <span class="icon">
+                  <i class="fab fa-youtube"></i>
+                </span>
+                <span>Video</span>
+              </a>
+            </span>
+            <span class="link-block">
+              <a href="https://github.com/G-U-N/Gen-L-Video"  target="_blank"
+                 class="external-link">
+                <span class="icon">
+                  <img src="./static/images/hf_black.png">
+                </span>
+                <span>Demo</span>
+                </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero">
+  <p class="trdl">TL;DR: A <i><b>universal</b></i> methodology that extends short video diffusion models for efficient <i><b>multi-text conditioned long video</b></i>  generation and editing.</p>
+  <div class="is-max-desktop">
+    <div class="marquee-wrapper">
+        <div class="marquee-block">
+          <div class="marquee-inner to-left">
+            <span>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                  <!-- Your video file here -->
+                  <source src="static/vids/iron-man-lay.mp4"
+                  type="video/mp4">
+                sorry, your browser does not support HTML5 Videos.
+                </video>
+                <p class="text-white"> Iron man is laying. Super long, <c>400+ frames</c>. </p>
+              </div>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                  <source src="static/vids/surf-skiing-mix.mp4"
+                    type="video/mp4">
+                  sorry, your browser does not support HTML5 Videos.  
+                  </video>
+                <p class="text-white"> Video with smooth <c>semantic changes</c>. </p>
+              </div>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                <source src="static/vids/dog-in-the-sun.mp4"
+                  type="video/mp4">
+                sorry, your browser does not support HTML5 Videos.
+                </video>
+                <p class="text-white"> Dog in the sun. <c>Layout control</c>. </p>
+              </div>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                <source src="static/vids/girl-surfing.mp4"
+                  type="video/mp4">
+                sorry, your browser does not support HTML5 Videos.
+                </video>
+                <p class="text-white"> <c>Animation</c> girl surfing. </p>
+              </div>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                  <source src="static/vids/car-turn-glv-beach.mp4"
+                    type="video/mp4">
+                  sorry, your browser does not support HTML5 Videos.
+                  </video>
+                <p class="text-white"> A car running on the beach. <c>Tuning-free</c>. </p>
+              </div>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                  <source src="static/vids/vangogh-tennis.mp4"
+                    type="video/mp4">
+                  sorry, your browser does not support HTML5 Videos.
+                  </video>
+                <p class="text-white">Van Gogh <c>Style</c> Painting.</p>
+              </div>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                  <source src="static/vids/hike-moon.mp4"
+                    type="video/mp4">
+                  sorry, your browser does not support HTML5 Videos.
+                  </video>
+                <p class="text-white">A girl is walking on the moon. <c> Imagination</c>.</p>
+              </div>
+              <!-- <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                  <source src="static/vids/hike-sea.mp4"
+                    type="video/mp4">
+                  sorry, your browser does not support HTML5 Videos.
+                  </video>
+                <p class="text-white"> White Fox ➜ <c> Gray Wolf </c> </p>
+              </div>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                  <source src="static/vids/hike-forest.mp4"
+                    type="video/mp4">
+                  sorry, your browser does not support HTML5 Videos.
+                  </video>
+                <p class="text-white"> White Fox ➜ <c> Gray Wolf </c> </p>
+              </div>
+              <div class="marquee-item">
+                <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" autoplay muted loop playsinline height="100%">
+                  <source src="static/vids/demon-slayer-girl.mp4"
+                    type="video/mp4">
+                  sorry, your browser does not support HTML5 Videos.
+                  </video>
+                <p class="text-white">Cat ➜ <c> Black Cat, Grass </c> </p> -->
+              </div>
+            </span>
+        </div>
+    </div>
+  </section>
+
+<!-- Paper abstract -->
+<section class="section hero is-light">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+Leveraging large-scale image-text datasets and advancements in diffusion models, text-driven generative models have made remarkable strides in the field of image generation and editing.
+This study explores the potential of extending this text-based image strategy to the generation and editing of videos. Current methodologies, while innovative, are often confined to extremely short videos (typically less than 24 frames) and are limited to a single text condition. 
+These constraints significantly limit their application given that real-world videos usually consist of multiple segments, each bearing different semantic information. To address this, we introduce a novel paradigm named as <i style="color: #eb002a">Gen-L-Video</i> capable of generating and editing videos comprising hundreds of frames with diverse semantic segments, all while preserving content consistency, even under the confines of limited GPU resources. 
+We have implemented three mainstream text-driven video generation and editing methodologies and extended them to accommodate longer videos imbued with a variety of semantic segments with our proposed paradigm. Our experimental outcomes reveal that our approach significantly broadens the generative and editing capabilities of video diffusion models, offering new possibilities for future research and applications.
+</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End paper abstract -->
+
+
+
+<!-- Paper abstract -->
+<section class="section hero">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column">
+        <h2 class="title is-4">Mainstream Diffusion Methods for Video Generation and Editing</h2>
+        <!-- <div class="content has-text-justified"> -->
+          <!-- <img src="static/images/pipeline.gif" /> -->
+        <!-- </div> -->
+        <p class="content has-text-justified">
+         <b>Pretrained Text-to-Video (t2v)</b>: This involves training the diffusion model on a large-scale text-video paired dataset such as WebVid-10M. Typically, a temporal interaction module, like Temporal Attention, is added to the denoising model, fostering inter-frame information interaction to ensure frame consistency.
+         <br/><br/>
+         <b>Tuning-free Text-to-Video (tuning-free t2v)</b>: This utilizes the pre-trained Text-to-Image model to generate and edit video frame-by-frame, while applying additional controls to maintain consistency across frames (for instance, copying and modifying the attention map, sparse casual attention etc.). 
+        <br/><br/>
+         <b> One-shot Tuning Text-to-Video (one-shot tuning t2v)</b>: By fine-tuning the pretrained text-to-image generation model using a single video instance, it's possible to generate videos with similar motions but different contents. Despite the extra training cost, one-shot tuning-based methods often offer more editing flexibility compared to tuning-free based methods.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End paper abstract -->
+
+<!-- Paper abstract -->
+<section class="section hero">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column">
+        <h2 class="title is-3">Gen-L-Video via Temporal Path Co-denoising</h2>
+        <div class="content has-text-justified">
+          <img src="static/images/ldvm.png" />
+           <!-- <iframe src="static/pdfs/lvdm.pdf" -->
+ <!-- width="800px" height="2400px"></iframe> -->
+        </div>
+        <p class="content has-text-justified">
+          Unlike previous methods, we do not construct or train a long-video generator directly. Instead, we view a video as a collection of short video clips, each possessing independent semantic information. 
+          Hence, the generation of a long video can be seen as a concatenation of multiple short videos. While instead of simplistic division  we perceive long videos as short video clips with <i style="color: #eb002a">temporal overlapping</i>.
+          We demonstrate that under certain conditions, the denoising path of a long video can be approximated by joint denoising of overlapping short videos in temporal domain. In particular, as depicted in the above figure,
+          the noisy long video is initially mapped into multiple noisy short video clips via a designated function. Subsequently, existing off-the-shelf short video diffusion models can be employed to denoise these clips under the guidance of various text conditions. 
+          These denoised short videos are then merged and inverted back to a less noisy original long video. 
+          <i style="color: #eb002a">Essentially</i>, this procedure establishes an abstract long video generator and editor without necessitating any additional training, enabling the generation and editing of videos of any length using established short video generation and editing methodologies.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End paper abstract -->
+
+<!-- Image carousel -->
+<section class="section hero is-light">
+  <div class="hero-body" style="min-height: 600px;">
+    <div class="container">
+      <h2 class="title is-3">Multi-Text Conditioned Long Video</h2>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.81;" poster="" id="video1"  class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/demon-slayer-source.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white"> Source Video of Demon Slayer </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video2" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/demon-slayer-girl.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Boy ➜ <c>  Girl </c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video3" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/demon-slayer-cute.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white"> Boy ➜ <c> Cute Girl, Shirt </c> </p>
+      </div>
+  </div>
+</div>
+</div>
+</section>
+<!-- End image carousel -->
+
+
+<!-- Image carousel -->
+<section class="section hero">
+  <div class="hero-body" style="min-height: 1100px;">
+    <div class="container">
+      <h2 class="title is-3">Long Videos with Smooth Semantic Changes</h2>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = .8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/boat-walk-mix.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 18px;" > A man is boating, village ➜ <c> A man is walking by, city, sunset </c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-snow-mix.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > A jeep car is running on the snow, sunny ➜ <c> A jeep car is running on the snow, night</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-beach-mix.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > A jeep car is running on the beach, sunny ➜ <c> A jeep car is running on the beach, night</c> </p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = .8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/lion-cat-mix.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > Lion, grass, rainy ➜ <c> Cat, grass, Sun</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/skiing-fly-mix.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" >Iron man is skiing in the snow➜ <c> Iron man is flying in the sky</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/surf-skiing-mix.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > A man is surfing in the sea ➜ <c> A man is skiing in the snow</c> </p>
+      </div>
+  </div>
+</div>
+</div>
+</section>
+
+
+<section class="section hero is-light">
+  <div class="hero-body" style="min-height: 2200px;">
+    <div class="container">
+      <h2 class="title is-3">Editing Anything in Video</h2>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/man-surfing-source.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Source Video of Man Surfing </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/man-surfing-mask.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Mask of Man </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/man-surfing-ironman.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Man ➜ <c>Iron Man</c> </p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/man-surfing-seg.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">SAM Segmentation Map </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/man-surfing-control.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Control Map </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/man-surfing-batman.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Man ➜ <c>Bat Man</c> </p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/eating-pizza-source.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Source Video of Eating Pizza </c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/eating-pizza-mask.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Mask of Pizza</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/eating-pizza-cake.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Pizza ➜ <c>Cake</c> </p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.5;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/girl-glass-source.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Source Video of Girl in Water</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/girl-glass-mask.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Mask of Sunglasses</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/girl-glass-pink.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Sunglasses ➜ <c>Pink Sunglasses</c> </p>
+      </div>
+  </div>
+</div>
+</div>
+</section>
+
+<!-- Image carousel -->
+<section class="section hero">
+  <div class="hero-body" style="min-height: 1700px;">
+    <div class="container">
+      <h2 class="title is-3">Controllable Video</h2>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = .8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/tennis-pose.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 18px;" >  Pose Control Video </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/woman-tennis.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > A man is playing tennis ➜ <c> A woman is playing tennis</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/boy-tennis.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > A man is playing tennis ➜ <c> A cute boy is playing tennis</c></p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = .8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/fire-tennis.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" >A man is playing tennis ➜ <c> A man is running in the fire</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/iron-man-tennis.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" >A man is playing tennis➜ <c> Iron man is fighting in the snow</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/vangogh-tennis.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > A man is palying ➜ <c> A Van Gogh style painting of a man dancing</c> </p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 1.6;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/cat-in-the-sun-depth.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" >Depth Control Video</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/tiger-in-the-sun.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" >Cat in the sun ➜ <c> Realistic tiger in the sun </c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/girl-in-the-sun.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > Cat in the sun ➜ <c> Cute girl in the sun </c> </p>
+      </div>
+  </div>
+</div>
+</div>
+</section>
+
+
+<section class="section hero is-light">
+  <div class="hero-body" style="min-height: 1100px;">
+    <div class="container">
+      <h2 class="title is-3">Gen-L-Video  VS🔥 Isolated Short Video Generation</h2>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline width="100%">
+          <source src="static/vids/ride-horse-iso-1.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white">Astronaut riding a horse.</p>
+        <p class="text-white">Isolated Generation. <c>Bad</c>.</p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline width="100%">
+          <source src="static/vids/ride-horse-1.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <p class="text-white">Astronaut riding a horse.</p>
+          <p class="text-white">Gen-L-Video. <c>Good</c>.</p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline width="100%">
+          <source src="static/vids/ride-horse-2.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <p class="text-white">Astronaut riding a horse.</p>
+          <p class="text-white">Gen-L-Video. <c>Good</c>.</p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline width="100%">
+          <source src="static/vids/ride-horse-iso-2.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <p class="text-white">Astronaut riding a horse, Painting.</p>
+          <p class="text-white">Isolated Generation. <c>Bad</c>.</p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline width="100%">
+          <source src="static/vids/ride-horse-3.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <p class="text-white">Astronaut riding a horse, Painting.</p>
+          <p class="text-white">Gen-L-Video. <c>Good</c>.</p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline width="100%">
+          <source src="static/vids/ride-horse-4.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <p class="text-white">Astronaut riding a horse, Painting.</p>
+          <p class="text-white">Gen-L-Video. <c>Good</c>.</p>
+      </div>
+  </div>
+</div>
+</div>
+</section>
+
+
+<section class="section hero">
+  <div class="hero-body">
+    <div class="container">
+      <h2 class="title is-3">More Results</h2>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline width="100%">
+          <source src="static/vids/hike.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white"> Hiking </p>
+      </div>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/tower.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white"> Tower </p>
+      </div>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/road-driving.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white"> Road Driving </p>
+      </div>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/cow.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white"> Cow Walking </p>
+      </div>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/rain.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white"> Raining </p>
+      </div>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/surf-skiing.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white"> Skiing/Surfing </p>
+      </div>
+  </div>
+</div>
+</div>
+</section>
+
+
+<!-- Image carousel -->
+<section class="section hero is-light">
+  <div class="hero-body" style="min-height: 1700px;">
+    <div class="container">
+      <h2 class="title is-3">Ablations with Tuning-Free Text-to-Video</h2>
+      <div class="custom-text" style="font-size: 24px; font-weight: bold; color: gray;">Gen-L-Video with bi-directional cross-frame attention <p style="color:red">Win!</p></div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = .8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-glv-snow.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 18px;" > Road ➜ <c> Snow </c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = .8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-glv-beach.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > Road ➜ <c> Beach</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-glv-red.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > Jeep car ➜ <c> Red car</c> </p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="custom-text" style="font-size: 24px; font-weight: bold; color: gray;">Gen-L-Video with sparse casual attention</div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-sparse-snow.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 18px;" >Road ➜ <c> Snow </c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-sparse-beach.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" >Road ➜ <c> Beach</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-sparse-red.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > Jeep car ➜ <c> Red car</c> </p>
+      </div>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <br/><br/>
+      <div class="custom-text" style="font-size: 24px; font-weight: bold; color: gray;">Gen-L-Video Isolated <p style="color:red">Worst!</p></div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-iso-snow.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 18px;" > Road ➜ <c> Snow </c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-iso-beach.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" >Road ➜ <c> Beach</c> </p>
+      </div>
+      <div class="marquee-item">
+        <video onloadstart="this.playbackRate = 0.8;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/vids/car-turn-iso-red.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <p class="text-white" style="font-size: 16px;" > Jeep car ➜ <c> Red car</c> </p>
+      </div>
+  </div>
+</div>
+</div>
+</section>
+
+
+<!-- <section class="section hero">
+  <div class="hero-body">
+    <div class="container">
+      <h2 class="title is-3"> Comparsions </h2>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/videos/20_car_posche_concat_result.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+        <d>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ours&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tune-A-Video&nbsp;&nbsp;&nbsp;&nbsp;Frame SDEdit&nbsp;&nbsp;&nbsp;&nbsp;Frame Null-Inv&nbsp;&nbsp;&nbsp;&nbsp;NLA + Null-Inv     </d>
+        <p class="text-white">Cat ➜ <c>Posche Car<sup>*</sup></c> </p>
+      </div>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/videos/21_car_watercolor_concat_result.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <d>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ours&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tune-A-Video&nbsp;&nbsp;&nbsp;&nbsp;Frame SDEdit&nbsp;&nbsp;&nbsp;&nbsp;Frame Null-Inv&nbsp;&nbsp;&nbsp;&nbsp;NLA + Null-Inv     </d>
+        <p class="text-white"><c> + Watercolor Painting </c> </p>
+      </div>
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/videos/22_swan_concat_result.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <d>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ours&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tune-A-Video&nbsp;&nbsp;&nbsp;&nbsp;Frame SDEdit&nbsp;&nbsp;&nbsp;&nbsp;Frame Null-Inv&nbsp;&nbsp;&nbsp;&nbsp;NLA + Null-Inv     </d>
+        <p class="text-white">Swan ➜ <c> Swarovski Swan </c> </p>
+      </div>
+      
+      <div class="marquee-item s-larger">
+        <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/videos/24_flamingo_concat_result.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <d>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ours&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tune-A-Video&nbsp;&nbsp;&nbsp;&nbsp;Frame SDEdit&nbsp;&nbsp;&nbsp;&nbsp;Frame Null-Inv&nbsp;&nbsp;&nbsp;&nbsp;NLA + Null-Inv     </d>
+        <p class="text-white">Swan ➜ <c>Pink flamingo<sup>*</sup></c> </p>
+      </div>
+      <div class="marquee-item s-larger-4">
+        <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/videos/25_surf_unkio_concat_result.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <d>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ours&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tune-A-Video&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Frame SDEdit&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Frame Null-Inv </d>
+        <p class="text-white"> <c> + Ukiyo-e Style </c> </p>
+      </div>
+     
+      <div class="marquee-item s-larger-4">
+        <video onloadstart="this.playbackRate = 0.75;" poster="" id="video1" class="lozad" autoplay muted loop playsinline height="100%">
+          <source src="static/videos/27_train_shinkai_concat_result.mp4"
+            type="video/mp4">
+          sorry, your browser does not support HTML5 Videos.
+          </video>
+          <d>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ours&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tune-A-Video&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Frame SDEdit&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Frame Null-Inv </d>
+        <p class="text-white"> <c> + Makoto Shinkai Style </c> </p>
+      </div>
+  </div>
+</div>
+</div>
+</section> -->
+
+
+
+
+<!--BibTex citation -->
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <h2 class="title">BibTeX</h2>
+      <pre><code>@misc{wang2023genlvideo,
+        title={Gen-L-Video: Multi-Text to Long Video Generation via Temporal Co-Denoising}, 
+        author={Fu-Yun Wang and Wenshuo Chen and Guanglu Song and Han-Jia Ye and Yu Liu and Hongsheng Li},
+        year={2023},
+        eprint={2305.18264},
+        archivePrefix={arXiv},
+        primaryClass={cs.CV}
+  }
+  </code></pre>
+    </div>
+</section>
+<!--End BibTex citation -->
+
+
+<section class="section">
+  <div class="hero-body">
+    <div class="container is-max-desktop content">
+    <h2 class="title">Explanation</h2>
+    <small>1. For better visualization, we only show the edited word in this page. Please check our paper and code for the whole source prompt. </small> <br/>
+    <small>2. Most of the results are directly edited from <a href="https://github.com/vinthony/deep-blind-watermark-removal">Stable diffusion v1.4</a>, while some are based on <a href="https://huggingface.co/andite/anything-v4.0">Anything-v4</a> .<br/>
+    <small>3. Our method <c>Gen-L-Video</c> is a unifying paradigm that extends short video diffusion models for powerful multi-text conditioned long video generation and editing. </small>
+    </div>
+  </section>
+
+  <footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            This page was built using the <a href="https://github.com/vinthony/project-page-template">modification version</a> of <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a> from <a href="https://github.com/vinthony">vinthony</a>.
+            You are free to borrow this website. We just ask that you link back to this page in the footer. <br> This website is licensed under a <a rel="license"  href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<!-- Statcounter tracking code -->
+  
+<!-- You can add a tracker to track page visits by creating an account at statcounter.com -->
+
+    <!-- End of Statcounter Code -->
+
+  </body>
+  </html>
