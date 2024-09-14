@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="Negative Preference Optimization">
+  <meta name="keywords" content="Diffusion Model, Preference Optimization, RLHF, DPO">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+  <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y5ZVQZ7NHC"></script> -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+  <!-- <link rel="icon" href="./static/images/favicon.svg"> -->
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="static/js_slide/fontawesome.all.min.js"></script>
+  <script src="static/js_slide/bulma-carousel.min.js"></script>
+  <script src="static/js_slide/bulma-slider.min.js"></script>
+  <script src="static/js_slide/index.js"></script>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script src="static/js/bulma-carousel.min.js"></script>
+  <script src="static/js/bulma-slider.min.js"></script>
+  <script src="static/js/index.js"></script>
+
+  <!-- Vendor Stylesheets -->
+  <!--=================js==========================-->
+  <link rel="stylesheet" href="static/css/tab_gallery.css">
+  <link rel="stylesheet" href="static/css/juxtapose.css">
+  <link rel="stylesheet" href="static/css/image_card_fader.css">
+  <link rel="stylesheet" href="static/css/image_card_slider.css">
+</head>
+<body>
+
+
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title"><span style="color:#5e5ed2; font-weight: bold; font-style: italic"><strong>NPO</strong></span> : Negative Preference Optimization for Better Preference Aligned Generation </h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://g-u-n.github.io/">Fu-Yun Wang</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://keqiangsun.github.io/">Keqiang Sun</a><sup>1</sup>,</span>
+              <span class="author-block">
+                <a href="https://www.ee.cuhk.edu.hk/~hsli/">Yunhao Shui</a><sup>2</sup>
+            <span class="author-block">
+              <a href="https://www.ee.cuhk.edu.hk/~hsli/">Hongsheng Li</a><sup>1</sup>
+            </div>
+            <br>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block"><sup>1</sup>MMLab, CUHK</span>
+            <span class="author-block"><sup>2</sup>Fudan University</span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- PDF Link. -->
+              <span class="link-block">
+                <a href="https://arxiv.org/pdf/2405.18407"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2405.18407"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+              <!-- Video Link. -->
+              <span class="link-block">
+                <a href="https://www.youtube.com/watch?v=B4ieLnS4MTY"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                  </span>
+                  <span>Video</span>
+                </a>
+              </span>
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://github.com/G-U-N/Phased-Consistency-Model"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                  </a>
+              </span>  
+              <!-- huggingface Link. -->
+              <span class="link-block">
+                <a href="https://huggingface.co/spaces/radames/Phased-Consistency-Model-PCM"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span>Huggingface Demo</span>
+                  </a>
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--=================Teasers==========================-->
+<section class="hero is-small">
+  <div class="hero-body">
+    <div class="container is-max-desktop has-text-centered">
+      <div class="tab_container">
+        <div id="juxtapose-embed" data-startingposition="30%" data-animate="true" class="juxtapose"
+          style="height: 512px; width: 512px;">
+        </div>
+        <div>
+          <div id="juxtapose-hidden"></div>
+        </div>
+        <!-- Image text -->
+        <div id="imgtext"></div>
+      </div>
+
+      <!-- The grid: four columns -->
+      <div class="tab_row">
+        <div class="tab_column">
+          <img src="freeu_img_vid/t2i/ours1.png" onclick="tab_gallery_click('1');">
+        </div>
+        <div class="tab_column">
+          <img src="freeu_img_vid/t2i/ours2.png" onclick="tab_gallery_click('2');">
+        </div>
+        <div class="tab_column">
+          <img src="freeu_img_vid/t2i/ours3.png" onclick="tab_gallery_click('3');">
+        </div>
+        <div class="tab_column">
+          <img src="freeu_img_vid/t2i/ours4.png" onclick="tab_gallery_click('4');">
+        </div>
+        <div class="tab_column">
+          <img src="freeu_img_vid/t2i/ours5.png" onclick="tab_gallery_click('5');">
+        </div>
+        <div class="tab_column">
+          <img src="freeu_img_vid/t2i/ours6.png" onclick="tab_gallery_click('6');">
+        </div>
+        <div class="tab_column">
+          <img src="freeu_img_vid/t2i/ours7.png" onclick="tab_gallery_click('7');">
+        </div>
+        <div class="tab_column">
+          <img src="freeu_img_vid/t2i/ours8.png" onclick="tab_gallery_click('8');">
+        </div>
+      </div>
+      <div class="content has-text-justified">
+        <p>
+          We propose Negative Preference Optimization (NPO), a versatile, plug-and-play strategy for better preference aligned generation for diffusion models. 
+         NPO can be combined seamlessly with existing models and methods for better performance. 
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!--=================Abstract==========================-->
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Motivation</h2>
+        <div class="content has-text-justified">
+          <p>
+            Diffusion models have made substantial advances in image generation, yet models trained on large, unfiltered datasets often yield outputs misaligned with human preferences. 
+            Numerous methods have already been proposed to fine-tune pre-trained diffusion models, achieving notable improvements in aligning generated outputs with human preferences. 
+            However, we point out that existing preference alignment methods neglect the critical role of handling unconditional/negative-conditional  outputs, leading to a diminished capacity to avoid generating undesirable outcomes. 
+            This oversight limits the efficacy of classifier-free guidance (CFG), which relies on the contrast between conditional generation and unconditional/negative-conditional generation to optimize output quality. 
+            In response, we propose a straightforward but versatily effective approach that involves training a model specifically attuned to negative preferences. 
+            This method does not require new training strategies or datasets but rather involves minor modifications to existing techniques. 
+            Our approach integrates seamlessly with models such as SD15, SDXL, video diffusion models, and models that have undergone preference optimization, consistently enhancing their ability to produce more human preferences aligned outputs.
+          </div>
+    </div>
+  </div>
+</section>
+
+<!--/ Framework. -->
+<section class="section" style="margin-top:-120px;">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+        <div class="section-title has-text-centered" >
+          <h2 class="title is-3 is-centered">Summarative Figure</h2>
+        </div>
+        <div class="columns is-centered has-text-centered">
+          <div class="column">
+            <div class="publication-img">
+              <img id="architecture" src="freeu_img_vid/motivation.png" style="width:800px; margin-top:10px;margin-bottom:10px;"/>
+            </div>
+          </div>
+        </div>
+        <p>
+          No new training strategies, reward models, or datasets are needed. Previous methods can be adapted to NPO with minor modifications. Please refer to our paper for our crucial observation and insight for NPO.     </p>
+    </div>
+  </div>
+</section>
+
+
+
+
+<section class="section" style="background-color: #f1f1f1;">
+  <div class="container" style="margin-top:30px;">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">T2I Comparison</h2>
+              <img src="freeu_img_vid/t2i/t2i.png" alt="Puppet." />
+      </div>
+    </div>
+  </div>  
+</section>
+
+
+<section class="section">
+  <div class="container" style="margin-top:30px;">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">T2V Comparison</h2>
+              <img src="freeu_img_vid/t2i/t2v.png" alt="Puppet." />
+      </div>
+    </div>
+  </div>  
+</section>
+
+
+  
+<section class="section" style="background-color: #f1f1f1;">
+  <div class="container" style="margin-top:30px;">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Customized Diffusion Comparison</h2>
+              <img src="freeu_img_vid/t2i/personalized.png" alt="Puppet." />
+      </div>
+    </div>
+  </div>  
+</section>
+
+<section class="section">
+  <div class="container" style="margin-top:30px;">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">T2I Quantitative Results</h2>
+              <img src="freeu_img_vid/exp/t2i.png" alt="Puppet." />
+      </div>
+    </div>
+  </div>  
+</section>
+
+<section class="section" style="background-color: #f1f1f1;">
+  <div class="container" style="margin-top:30px;">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">T2V Quantitative Results</h2>
+              <img src="freeu_img_vid/exp/t2v.png" alt="Puppet." />
+      </div>
+    </div>
+  </div>  
+</section>
+
+<section class="section">
+  <div class="container" style="margin-top:30px;">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Ablation Results</h2>
+              <img src="freeu_img_vid/exp/ablation.png" alt="Puppet." />
+      </div>
+    </div>
+  </div>  
+</section>
+
+
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@article{wang2024npo,
+  author    = {Fu-Yun Wang, Keqiang Sun, Hongsheng Li},
+  title     = {NPO: Negative Preference Optimization for Better Preference Aligned Generation of Diffusion Models},
+  year      = {2024},
+}</code></pre>
+  </div>
+</section>
+
+  
+<footer class="footer">
+  <div class="container">
+    <div class="content has-text-centered">
+    </div>
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            This website is licensed under a <a rel="license"
+                                                href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Image Slider Javascripts -->
+<!--=================Functions==========================-->
+<script src="static/js/juxtapose.js"></script>
+
+<script>
+  var slider;
+  let origImages = [
+    { "src": "freeu_img_vid/t2i/origin1.png", "label": "w/o NPO", },
+    { "src": "freeu_img_vid/t2i/ours1.png", "label": "w/ NPO", }
+  ];
+
+  let origOptions = {
+    "makeResponsive": true,
+    "showLabels": true,
+    "mode": "horizontal",
+    "showCredits": true,
+    "animate": true,
+    "startingPosition": "50"
+  };
+
+  const juxtaposeSelector = "#juxtapose-embed";
+  const transientSelector = "#juxtapose-hidden";
+
+  
+  function tab_gallery_click(name) {
+    // Get the expanded image
+    let inputImage = {
+      label: "w/o NPO",
+    };
+    let outputImage = {
+      label: "w/ NPO",
+    };
+
+    inputImage.src = "freeu_img_vid/t2i/".concat("origin",name, ".png")
+    outputImage.src = "freeu_img_vid/t2i/".concat("ours",name, ".png")
+
+    let images = [inputImage, outputImage];
+    let options = slider.options;
+    options.callback = function (obj) {
+      var newNode = document.getElementById(obj.selector.substring(1));
+      var oldNode = document.getElementById(juxtaposeSelector.substring(1));
+      console.log(obj.selector.substring(1));
+      console.log(newNode.children[0]);
+      oldNode.replaceChild(newNode.children[0], oldNode.children[0]);
+      //newNode.removeChild(newNode.children[0]);
+
+    };
+
+    slider = new juxtapose.JXSlider(transientSelector, images, options);
+  };
+
+  (function () {
+    slider = new juxtapose.JXSlider(
+      juxtaposeSelector, origImages, origOptions);
+    //document.getElementById("left-button").onclick = replaceLeft;
+    //document.getElementById("right-button").onclick = replaceRight;
+  })();
+  // Get the image text
+  var imgText = document.getElementById("imgtext");
+  // Use the same src in the expanded image as the image being clicked on from the grid
+  // expandImg.src = imgs.src;
+  // Use the value of the alt attribute of the clickable image as text inside the expanded image
+  imgText.innerHTML = name;
+  // Show the container element (hidden with CSS)
+  // expandImg.parentElement.style.display = "block";
+
+  $(".flip-card").click(function () {
+    console.log("fading in")
+    div_back = $(this).children().children()[1]
+    div_front = $(this).children().children()[0]
+    // console.log($(this).children("div.flip-card-back"))
+    console.log(div_back)
+    $(div_front).addClass("out");
+    $(div_front).removeClass("in");
+
+    $(div_back).addClass("in");
+    $(div_back).removeClass("out");
+
+  });
+
+  $(".flip-card").mouseleave(function () {
+    console.log("fading in")
+    div_back = $(this).children().children()[1]
+    div_front = $(this).children().children()[0]
+    // console.log($(this).children("div.flip-card-back"))
+    console.log(div_back)
+    $(div_front).addClass("in");
+    $(div_front).removeClass("out");
+
+    $(div_back).addClass("out");
+    $(div_back).removeClass("in");
+
+  });
+</script>
+
+
+</body>
+</html>
+
+
