@@ -7,467 +7,997 @@
         rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="assets/css/style.css" />
     <title> Fu-Yun Wang </title>
+    <style>
+        /* CSS for collapsible sections */
+        .collapsible-header {
+            cursor: pointer;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .collapsible-content {
+            display: none; /* Hidden by default */
+            overflow: hidden;
+            border: 1px solid #eee;
+            border-top: none;
+            padding: 10px;
+        }
+        .collapsible-header::after {
+            content: '\02795'; /* Plus sign */
+            font-size: 13px;
+            color: #777;
+            float: right;
+            margin-left: 5px;
+        }
+        .collapsible-header.active::after {
+            content: '\2796'; /* Minus sign */
+        }
+        .company-logo {
+            width: 80px; /* Adjust as needed */
+            height: auto;
+            vertical-align: middle;
+            margin-right: 15px;
+        }
+        .internship-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .research-summary-image {
+            width: 100%;
+            max-width: 900px; /* Adjust as needed */
+            height: auto;
+            margin: 20px auto;
+            display: block;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        /* D3.js Tree Styles */
+        .link {
+            fill: none;
+            stroke: #555;
+            stroke-opacity: 0.4;
+            stroke-width: 1.5px;
+        }
+
+        .node circle {
+            cursor: pointer;
+        }
+
+        .node text {
+            cursor: pointer;
+        }
+
+        .node--internal circle {
+            fill: #555;
+        }
+
+        .node--leaf circle {
+            fill: #999;
+        }
+
+        .node text {
+            font-family: 'Lato', sans-serif;
+            font-size: 12px;
+            fill: #000;
+        }
+
+        .node text[style*="1e90ff"] { /* Style for links */
+            fill: #1e90ff;
+        }
+        #research-summary .collapsible-content {
+            display: block; /* Show the collapsible content by default */
+        }
+
+        #research-summary .collapsible-header::after {
+            content: '\2796'; /* Minus sign for the header */
+        }
+
+        #research-summary .collapsible-header {
+            background-color: #e0e0e0; /* Optional: slight visual distinction for active state */
+        }
+    </style>
 </head>
 
 <body>
     <div style="width:1000px;margin: 0px auto;">
         <header id="header" width="400px" style="display:flex;justify-content: space-around;">
             <a href="#profile-intro">Home</a>
+            <a href="#research-summary">Research</a>
+            <a href="#experience">Experience</a>
+            <a href="#education">Education</a>
+            <a href="#selected-publications">Publications</a>
             <a href="#talks">Talks</a>
-            <a href="#preprint">Preprint</a>
-            <a href="#publication">Publication</a>
-            <!-- <a href="#projects">Projects</a> -->
+            <a href="#awards">Awards</a>
+            <a href="#services">Services</a>
         </header>
+
         <div id="profile">
             <div id="profile-pic">
-                <img src="assets/images/profile2.jpg" />
+                <img src="assets/images/profile.jpg" alt="Fu-Yun Wang's Profile Picture"/>
             </div>
             <div id="profile-intro">
-                <div id="profile-name">Fu-Yun Wang</div>
-                <div id="profile-email">fywang@link.cuhk.edu.hk</div>
+                <div id="profile-name">Fu-Yun Wang
+                </div>
+                <div style="text-align: center;">
+                    <img src="assets/images/sign.png" style="vertical-align: middle; height: 50px; width: auto;">
+                </div>
+                <!-- <div id="profile-email">fywang@link.cuhk.edu.hk; fywang0126@gmail.com</div> -->
                 <p>
-                    Fu-Yun Wang (Pronounced as "Foo-Yoon Wahng" IPA: [fu˧˥ yn˧˥ wɑŋ]) is a second-year Ph.D. student at <a href="https://mmlab.ie.cuhk.edu.hk/people.html">MMLab@CUHK</a>, supervised by Professor  <a href="https://www.ee.cuhk.edu.hk/~xgwang/">Xiaogang Wang</a> and Professor <a href="https://www.ee.cuhk.edu.hk/~hsli/">Hongsheng Li</a>. 
+                    Fu-Yun Wang (Pronounced as "Foo-Yoon Wahng" IPA: [fu˧˥ yn˧˥ wɑŋ]) is a second-year Ph.D. Candidate of <a href="https://mmlab.ie.cuhk.edu.hk/people.html">MMLab@CUHK</a>.  
                 </p>
                 <p>
-                    Prior to this, he obtained his B.Eng. from Nanjing University in 2023 with first-class honor, supervised by Professor <a herf="https://www.lamda.nju.edu.cn/yehj/"> Han-Jia Ye </a> and Dr.  <a herf="https://www.lamda.nju.edu.cn/zhoudw/"> Da-Wei Zhou</a> in the <a href="https://www.lamda.nju.edu.cn/MainPage.ashx">LAMDA Group</a>.
+                    My research interests now focus on scalable post-training techniques for diffusion models and unified multimodal models. 
+                </p>                   
+                <p style="color: red;">
+                    I plan to enter the job market in 2027 and am open to overseas opportunities in industrial generative AI jobs, and postdoctoral roles. Feel free to contact me early to discuss potential collaborations.
                 </p>
-                <p>
-                    Currently, he works on diffusion acceleration. He is also interested in building innovative generative vision applications. He works closely with Dr. <a href="https://drinkingcoder.github.io/">Zhaoyang Huang</a>. 
-                </p>
+                <!-- <p>
+                    I plan to enter the job market in 2027 and am open to overseas opportunities in industrial generative AI research, quantitative trading, and postdoctoral roles. Feel free to contact me early to discuss potential collaborations.
+                </p> -->
                 
                 <div>
-                    <a href="https://github.com/g-u-n">
+                    <a href="https://github.com/g-u-n" target="_blank">
                         Github
                     </a>
                     /
-                    <a href="https://scholar.google.com/citations?user=R15m3J4AAAAJ">
+                    <a href="https://scholar.google.com/citations?user=R15m3J4AAAAJ" target="_blank">
                         Google Scholar
+                    </a>
+                    /
+                    <a href="mailto:fywang@link.cuhk.edu.hk">
+                    Email
+                    </a>
+                    /
+                    <a href="https://www.xiaohongshu.com/user/profile/6436e0a9000000001400f7e1">
+                    RedNote
+                    </a>
+                    /
+                    <a href="https://huggingface.co/wangfuyun">
+                    HF-Space 🤗
                     </a>
                 </div>
             </div>
             <div style="clear: both;"></div>
         </div>
 
+        <div class="divider"></div>
+
+        <!-- <div class="section" id="research-summary">
+            <h1>Research Overview</h1>
+            <p>Here's a visual summary of my research interests and contributions.</p>
+
+            <img src="assets/images/research_summary.jpg" alt="Research Work Summary" class="research-summary-image">
+            <div style="clear: both;"></div>
+        </div> -->
+        <div class="section" id="research-summary">
+            <h1>Research Summary</h1>
+            <p>Below is an interactive tree diagram categorizing my research work by direction. Click nodes to expand/collapse, and click paper titles to visit links.</p>
+            <div class="collapsible-header">
+                <h3>Research Directions</h3>
+            </div>
+            <div class="collapsible-content">
+                <svg id="treeDiagram" width="1000" height="600" overflow="auto"></svg>
+            </div>
+            <div style="clear: both;"></div>
+        </div>
+        
+        <div class="divider"></div>
+
+        <div class="section" id="experience">
+            <h1>Internship Experience</h1>
+            <div class="internship-item">
+                <img src="assets/images/tencent_logo.png" alt="Tencent Logo" class="company-logo">
+                <div>
+                    <h3>Tencent AI Lab</h3>
+                    <p><strong> Research Intern </strong> | 2022.6 - 2022.12</p>
+                    <p>Worked on Class-Incremental Learning.</p>
+                    <p>Supervised by: <a href="#">Dr. Liu Liu</a> </p>
+                    <p>Collaborated with  <a href="#">Dr. Yatao Bian</a> for instruction and discussions</p> 
+                </div>
+            </div>
+            <div class="internship-item">
+                <img src="assets/images/avolution_logo.png" alt="Tencent Logo" class="company-logo">
+                <div>
+                    <h3>Avolution AI (Accquired by MiniMax)</h3>
+                    <p><strong> Research Collaboration </strong> | 2023.10 - 2024.10</p>
+                    <p>Worked on Video Diffusion Models, Diffusion Distillation.</p>
+                    <p>Supervised by: <a href="#">Dr. Zhaoyang Huang</a></p>
+                    <p>Collaborated with <a href="#">Dr. Xiaoyu Shi</a> and <a href="#">Weikang Bian</a> for instruction and discussions</p>
+                </div>
+            </div>
+            <div class="internship-item">
+                <img src="assets/images/deepmind_logo.jpeg" alt="Google Logo" class="company-logo">
+                <div>
+                    <h3>Google DeepMind</h3>
+                    <p><strong> Research Intern </strong> | 2025.2 - 2025.5</p>
+                    <p>Focused on Diffusion Distillation, Reinforcement Learning.</p>
+                    <p>Supervised by: <a href="#">Dr. Long Zhao</a>,  <a href="#">Dr. Ting Liu</a>,  <a href="#">Dr. Hao Zhou</a> and <a href="#">Dr. LiangZhe Yuan</a>  </p>
+        <p>
+            Collaborated with 
+            <span id="collaborators-short"><a href="#">Prof. Bohyung Han</a>, <a href="#">Prof. Boqing Gong</a></span>
+            <span id="collaborators-full" style="display: none;">
+                <a href="#">Prof. Bohyung Han</a>, <a href="#">Prof. Boqing Gong</a>, <a href="#">Prof. Ming-Hsuan Yang</a>, <a href="#">Dr. Yukun Zhu</a>
+            </span>
+            for instruction and discussions.
+            <button id="toggle-collaborators" onclick="toggleCollaborators()">Show more</button>
+        </p>
+                </div>
+            </div>
+            <div class="internship-item">
+                <img src="assets/images/reve_logo.png" alt="Reve Logo" class="company-logo">
+                <div>
+                    <h3>Reve Art</h3>
+                    <p><strong> Research Intern </strong> | 2025.6 - Present</p>
+                    <p>Focused on Multimodal Language Models, Diffusion Moldes, Reinforcement Learning.</p>
+                    <p>Supervised by: <a href="#">Dr. Han Zhang</a></p>
+                </div>
+            </div>
+            <div style="clear: both;"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- <div class="section" id="education">
+            <h1>Education</h1>
+            <div>
+                <h3>The Chinese University of Hong Kong (CUHK)</h3>
+                <p><strong>Ph.D. in Engineering</strong> | 2023 - Present</p>
+                 <p> Supervisor: Professor <a href="https://www.ee.cuhk.edu.hk/~hsli/" target="_blank">Hongsheng Li</a> and Professor <a href="https://www.ee.cuhk.edu.hk/~xgwang/" target="_blank">Xiaogang Wang</a></p>
+            </div>
+            <div style="margin-top: 15px;">
+                <h3>Nanjing University</h3>
+                <p><strong>B.Eng. in Artificial Intelligence (RANK 2/88) </strong> | 2019 - 2023</p>
+                <p>Supervisor: Professor <a href="https://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a> and Dr. <a href="https://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou</a> (LAMDA Group)</p>
+            </div>
+            <div style="clear: both;"></div>
+        </div> -->
+
+    <div class="section" id="education">
+        <h1>Education</h1>
+
+        <div class="internship-item">
+            <img src="assets/images/cuhk_logo.gif" alt="CUHK Logo" class="company-logo">
+            <div>
+                <h3>The Chinese University of Hong Kong (CUHK)</h3>
+                <p><strong>Ph.D. in Engineering</strong> | 2023 - Present</p>
+                <p>Supervisor: Professor <a href="https://www.ee.cuhk.edu.hk/~hsli/" target="_blank">Hongsheng Li</a> and Professor <a href="https://www.ee.cuhk.edu.hk/~xgwang/" target="_blank">Xiaogang Wang</a></p>
+            </div>
+        </div>
+
+        <div class="internship-item">
+            <img src="assets/images/nju_logo.png" alt="Nanjing University Logo" class="company-logo">
+            <div>
+                <h3>Nanjing University</h3>
+                <p><strong>B.Eng. in Artificial Intelligence (RANK 2/88)</strong> | 2019 - 2023</p>
+                <p>Supervisor: Professor <a href="https://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a> and Dr. <a href="https://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou</a> (LAMDA Group)</p>
+            </div>
+        </div>
+
+        <div style="clear: both;"></div>
+    </div>
+
+        <div class="divider"></div>
+
+        <div class="section" id="selected-publications">
+            <h1>Selected Publications</h1>
+            <p>Below are some of my selected publications, categorized by theme. For a complete list, please visit my <a href="https://scholar.google.com/citations?user=R15m3J4AAAAJ" target="_blank">Google Scholar profile</a>.</p>
+
+            <div class="collapsible-header">
+                <h3>Diffusion Post-Training: Acceleration & Reinforcement Learning</h3>
+            </div>
+            <div class="collapsible-content">
+                <div>
+                    <a href="https://openreview.net/forum?id=nEDToD1R8M" style="height: 12em;" class="research-thumb">
+                        <img src="assets/images/rd.png" style="margin-bottom:0px;" alt="Rectified Diffusion">
+                    </a>
+                    <a href="https://openreview.net/forum?id=nEDToD1R8M" class="research-proj-title">
+                        Rectified Diffusion: Straightness Is Not Your Need in Rectified Flow
+                    </a>
+                    <p>
+                        <a style="color:#000;" href="https://g-u-n.github.io/" target="_blank"><b>Fu-Yun Wang</b></a>,
+                        <a style="color:#000;" href="https://yangling0818.github.io/" target="_blank">Ling Yang</a>,
+                        <a style="color:#000;" href="https://drinkingcoder.github.io/" target="_blank">Zhaoyang Huang</a>,
+                        <a style="color:#000;" href="https://scholar.google.com/citations?user=33yNvIgAAAAJ&hl=en" target="_blank">Mengdi Wang</a>,
+                        <a style="color:#000;" href="https://scholar.google.com/citations?user=BN2Ze-QAAAAJ&hl=en&oi=ao" target="_blank">Hongsheng Li</a>
+                        <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
+                        <span class="highlight">We conducted an in-depth and meticulous theoretical analysis and empirical validation of flow matching, rectified flow, and the rectification operation. We demonstrated that the rectification operation is also applicable to general diffusion models, and that flow matching is fundamentally no different from the traditional noise addition methods in DDPM. Our <a href="https://zhuanlan.zhihu.com/p/884824542">related blog post on ZHIHU</a> garnered over <b>10k</b> views and approximately <b>400</b> likes.</span><br>
+                        <a href="https://arxiv.org/abs/2410.07303" target="_blank">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="https://github.com/G-U-N/Rectified-Diffusion?tab=readme-ov-file" target="_blank">GitHub</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="assets/slides/poster_rd.pdf" target="_blank">Poster</a> 
+                    </p>
+                </div>
+                <br>
+                <div>
+                    <a href="https://g-u-n.github.io/projects/pcm/" style="height: 14em;" class="research-thumb">
+                        <img src="assets/images/pcm.jpeg" style=" margin-bottom:0px;" alt="Phased Consistency Model">
+                    </a>
+                    <a href="https://g-u-n.github.io/projects/pcm/" class="research-proj-title">
+                       Phased Consistency Model
+                    </a>
+                    <p>
+                        <a style="color:#000;" href="https://g-u-n.github.io/" target="_blank"><b>Fu-Yun Wang</b></a>,
+                        <a style="color:#000;" target="_blank">Zhaoyang Huang</a>,
+                        <a style="color:#000;" target="_blank">Alexander William Bergman</a>,
+                        <a style="color:#000;" target="_blank">Dazhong Shen</a>,
+                        <a style="color:#000;" target="_blank">Peng Gao</a>,
+                        <a style="color:#000;" target="_blank">Michael Lingelbach</a>,
+                        <a style="color:#000;" target="_blank">Keqiang Sun</a>,
+                        <a style="color:#000;" target="_blank">Weikang Bian</a>,
+                        <a style="color:#000;" target="_blank">Guanglu Song</a>,
+                        <a style="color:#000;" target="_blank">Yu Liu</a>,
+                        <a style="color:#000;" target="_blank">Xiaogang Wang</a>,
+                        <a style="color:#000;" target="_blank">Hongsheng Li</a>
+                        <br><em>Conference on Neural Information Processing Systems.<strong><i style="color:#1e90ff"> NeurIPS 2024</i></strong>.</em><br>
+                        <span class="highlight">We validated and enhanced the effectiveness of consistency models for text-to-image and text-to-video generation. Our method has been adopted by the <a href="https://github.com/hao-ai-lab/FastVideo" target="_blank">FastVideo</a> project, successfully accelerating SoTA video diffusion models including <a href="https://github.com/Tencent-Hunyuan/HunyuanVideo" target="_blank">HunyuanVideo</a> and <a href="https://huggingface.co/Wan-AI/Wan2.1-T2V-14B" target="_blank">WAN</a>.</span><br>                        <a href="https://g-u-n.github.io/projects/pcm/" target="_blank">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="https://github.com/G-U-N/Phased-Consistency-Model" target="_blank">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="https://g-u-n.github.io/assets/slides/pcm.pdf" target="_blank">Paper</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="assets/slides/pcm-poster.pdf" target="_blank">Poster</a> 
+                    </p>
+                </div>
+                <br>
+                <!-- <div>
+                    <a href="https://openreview.net/forum?id=ZkFMe3OPfw" style="height: 10em;" class="research-thumb">
+                        <img src="assets/images/instaportrait.png" style="margin-bottom:0px;" alt="InstantPortrait">
+                    </a>
+                    <a href="https://openreview.net/forum?id=ZkFMe3OPfw" class="research-proj-title">
+                        InstantPortrait: One-Step Portrait Editing via Diffusion Multi-Objective Distillation
+                    </a>
+                    <p>
+                        <a style="color:#000;" href="https://scholar.google.com/citations?user=VyNxC-MAAAAJ&hl=en">Zhixin Lai</a>,
+                        <a style="color:#000;" href="https://scholar.google.com/citations?user=AJ7qJDEAAAAJ&hl=en">Keqiang Sun</a>,
+                        <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
+                        <a style="color:#000;" href="https://openreview.net/profile?id=~Dhritiman_Sagar1">Dhritiman Sagar</a>,
+                        <a style="color:#000;" href="https://openreview.net/profile?id=~Erli_Ding1">Erli Ding</a>
+                        <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
+                        <span class="highlight">We developed an <b>industrial-level real-time portrait editor</b> using diffusion multi-objective distillation, enabling efficient and high-quality portrait editing in a single step.</span><br>
+                        <a href="https://openreview.net/forum?id=ZkFMe3OPfw" target="_blank">Paper</a>
+                    </p>
+                </div> -->
+                <br>
+                <div>
+                    <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" style="height: 12em;" class="research-thumb">
+                        <img src="assets/images/npo.png" style="margin-bottom:0px;" alt="Diffusion-NPO">
+                    </a>
+                    <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" class="research-proj-title">
+                        Diffusion-NPO: Negative Preference Optimization for Better Preference Aligned Generation of Diffusion Models
+                    </a>
+                    <p>
+                        <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
+                        <a style="color:#000;">Yunhao Shui</a>,
+                        <a style="color:#000;" href="https://scholar.google.com/citations?user=4jvU6FIAAAAJ&hl=en">Jingtan Piao</a>,
+                        <a style="color:#000;" href="https://scholar.google.com/citations?user=AJ7qJDEAAAAJ&hl=en">Keqiang Sun</a>,
+                        <a style="color:#000;" href="https://scholar.google.com/citations?user=BN2Ze-QAAAAJ&hl=en&oi=ao">Hongsheng Li</a>
+                        <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
+                        <span class="highlight">We proposed a general, simple yet effective method for strengthened diffusion preference optimization, improving the alignment of generated outputs with user preferences.</span><br>
+                        <!-- <strong><i style="color:red;">General, simple yet effective idea for strengthened diffusion preference optimization.</i></strong><br> -->
+                        <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" target="_blank">Paper</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="assets/slides/poster_npo.pdf" target="_blank">Poster</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="https://github.com/G-U-N/Diffusion-NPO" target="_blank">Github</a>
+
+                    </p>
+                </div>
+            </div>
+
+            <div class="collapsible-header">
+                <h3>Generative Vision Applications</h3>
+            </div>
+            <div class="collapsible-content">
+                <div>
+                    <a href="https://xiaoyushi97.github.io/Motion-I2V/" style="height: 14em;" class="research-thumb">
+                        <video width="320" height="auto" autoplay loop muted>
+                            <source src="assets/vids/motioni2v.mp4" type="video/mp4">
+                        </video>
+                    </a>
+                    <a href="https://xiaoyushi97.github.io/Motion-I2V/" class="research-proj-title">
+                        Motion-I2V: Consistent and Controllable Image-to-Video Generation with Explicit Motion Modeling
+                    </a>
+                    <p>
+                        <a style="color:#000;">Xiaoyu Shi*</a>,
+                        <a style="color:#000;">Zhaoyang Huang*</a>,
+                        <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang*</b></a>,
+                        <a style="color:#000;">Weikang Bian*</a>,
+                        <a style="color:#000;">Dasong Li</a>,
+                        <a style="color:#000;">Yi Zhang</a>,
+                        <a style="color:#000;">Manyuan Zhang</a>,
+                        <a style="color:#000;">Kachun Cheung</a>,
+                        <a style="color:#000;">Simon See</a>,
+                        <a style="color:#000;">Hongwei Qin</a>,
+                        <a style="color:#000;">Jifeng Dai</a>,
+                        <a style="color:#000;">Hongsheng Li</a>
+                        <br>
+                        <em>Special Interest Group on GRAPHics and Interactive Techniques.<strong><i style="color:#1e90ff">SIGGRAPH 2024</i></strong>.</em><br>
+                        <strong><i style="color:red;">SIGGRAPH 2024 Technical Papers Trailer</i></strong><br>
+                        <a href="https://xiaoyushi97.github.io/Motion-I2V/">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="https://github.com/G-U-N/Motion-I2V">GitHub</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="https://arxiv.org/abs/2401.15977">arXiv</a><br>
+                    </p>
+                </div>
+                <br>
+                <br>
+                <br>
+                <div>
+                    <a href="https://gen-l-2.github.io/" style="height: 12em;" class="research-thumb">
+                        <video width="320" height="160" autoplay loop muted>
+                            <source src="assets/vids/zola.mp4" type="video/mp4">
+                        </video>
+                    </a>
+                    <a href="https://gen-l-2.github.io/" class="research-proj-title">
+                        ZoLA: Zero-Shot Creative Long Animation Generation with Short Video Model
+                    </a>
+                    <p>
+                        <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
+                        <a style="color:#000;">Zhaoyang Huang</a>,
+                        <a style="color:#000;">Qiang Ma</a>,
+                        <a style="color:#000;">Xudong Lu</a>,
+                        <a style="color:#000;">Weikang Bian</a>,
+                        <a style="color:#000;">Yijin Li</a>,
+                        <a style="color:#000;">Yu Liu</a>,
+                        <a style="color:#000;">Hongsheng Li</a>
+
+                        <br><em>European Conference on Computer Vision. <strong><i style="color:#1e90ff">ECCV 2024</i></strong>.</em><br>
+                        <strong><i style="color:red;">ECCV 2024 Oral Presentation</i></strong><br>
+                        <a href="https://gen-l-2.github.io/">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                        <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06174.pdf">Paper</a>
+                    </p>
+                </div>
+            </div>
+
+            
+            <div class="collapsible-header">
+                <h3>Class-Incremental Learning</h3>
+            </div>
+                <div class="collapsible-content">
+                    <div>
+                        <a href="https://g-u-n.github.io/" style="height: 14em;" class="research-thumb">
+                            <img src="assets/images/pycil.png" style=" margin-bottom:0px;" alt="PyCIL">
+                        </a>
+                        <a href="https://g-u-n.github.io/" class="research-proj-title">
+                            PyCIL: A Python Toolbox for Class-Incremental Learning
+                        </a>
+                        <p>
+                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou*</a>,
+                            <a style="color:#000;" href="https://g-u-n.github.io/" target="_blank"><b>Fu-Yun Wang*</b></a>,
+                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a>,
+                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/" target="_blank">De-Chuan Zhan</a>
+                            <br><em>SCIENCE CHINA Information Sciences. <strong><i style="color:#1e90ff">SCIS</i></strong>.</em><br>
+                            PyCIL stands out as a comprehensive and user-friendly Python toolbox for Class-Incremental Learning. Boasting nearly <b>1000</b> stars on GitHub, it is currently the most widely collected CIL toolkit, adopted by researchers worldwide. It provides a standardized framework for implementing and evaluating various CIL algorithms, fostering reproducible research and accelerating advancements in the field. <br>
+                            <a href="https://github.com/G-U-N/PyCIL" target="_blank">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                            <a href="https://arxiv.org/abs/2112.12533" target="_blank">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                            <a href="https://mp.weixin.qq.com/s/A472p7XGZMhAMAR2wyHZJw" target="_blank">Media</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp;<img src="https://img.shields.io/github/stars/G-U-N/PyCIL?style=flat&amp;label=Stars&amp;logo=github&amp;labelColor=f6f6f6&amp;color=9cf&amp;logoColor=020d12" alt="GitHub Stars"/>
+                            <img src="https://img.shields.io/github/forks/G-U-N/PyCIL?style=flat&amp;label=Forks&amp;logo=github&amp;labelColor=f6f6f6&amp;color=9cf&amp;logoColor=020d12" alt="GitHub Forks"/>     <br>           
+                        </p>
+                    </div>
+                    <br>
+                    <br>
+                    <div>
+                        <a href="https://g-u-n.github.io/" style="height: 14em;" class="research-thumb">
+                            <img src="assets/images/foster.jpg" style=" margin-bottom:0px;" alt="FOSTER">
+                        </a>
+                        <a href="https://g-u-n.github.io/" class="research-proj-title">
+                            FOSTER: Feature Boosting and Compression for Class-Incremental Learning
+                        </a>
+                        <p>
+                            <a style="color:#000;" href="https://g-u-n.github.io/" target="_blank"><b>Fu-Yun Wang</b></a>,
+                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou</a>,
+                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a>,
+                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/" target="_blank">De-Chuan Zhan</a>
+                            <br><em>European Conference on Computer Vision. <strong><i style="color:#1e90ff">ECCV 2022</i></strong>.</em><br>
+                            FOSTER introduces a novel approach to Class-Incremental Learning by combining feature boosting and compression strategies. This method effectively mitigates catastrophic forgetting while promoting the learning of new classes, showcasing robust performance in dynamic learning environments.<br>
+                            <a href="https://github.com/G-U-N/ECCV22-FOSTER" target="_blank">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                            <a href="https://arxiv.org/abs/2204.04662" target="_blank">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                            <img src="https://img.shields.io/badge/dynamic/json?style=plastic&amp;labelColor=f6f6f6&amp;color=9cf&amp;style=flat&amp;label=Citations&amp;logo=Google%20Scholar&amp;query=publications%5B1%5D.citations&amp;url=https%3A%2F%2Fcse.bth.se%2F~fer%2Fgooglescholar-api%2Fgooglescholar.php%3Fuser%3DkMNaR-YAAAAJ" alt="Citations">                
+                        </p>
+                    </div>
+                </div>
+            <div style="clear: both;"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section" id="full-publications">
+    <h1>Full Publications</h1>
+    <div class="collapsible-header">
+        <h3>Complete List of Publications</h3>
+    </div>
+    <div class="collapsible-content">
+        <ul>
+            <li>
+                <strong>Unleashing Vecset Diffusion Model for Fast Shape Generation</strong><br>
+                Zeqiang Lai, Yunfei Zhao, Zibo Zhao, Haolin Liu, Fuyun Wang, Huiwen Shi, Xianghui Yang, Qingxiang Lin, Jingwei Huang, Yuhong Liu, Jie Jiang, Chunchao Guo, Xiangyu Yue<br>
+                <em>CVPR 2025 (Highlight)</em>
+            </li>
+            <li>
+                <strong>Stable Consistency Tuning: Understanding and Improving Consistency Models</strong><br>
+                Fu-Yun Wang, Zhengyang Geng, Hongsheng Li<br>
+                <em>ICLR 2025 Workshop (Deep Generative Model in Machine Learning: Theory, Principle and Efficacy)</em><br>
+                <a href="https://arxiv.org/abs/2410.18958">arXiv</a> • <a href="https://github.com/G-U-N/Stable-Consistency-Tuning">GitHub</a>
+            </li>
+            <li>
+                <strong>Rectified Diffusion: Straightness Is Not Your Need in Rectified Flow</strong><br>
+                Fu-Yun Wang, Ling Yang, Zhaoyang Huang, Mengdi Wang, Hongsheng Li<br>
+                <em>ICLR 2025</em><br>
+                <a href="https://arxiv.org/abs/2410.07303">arXiv</a> • <a href="https://github.com/G-U-N/Rectified-Diffusion">GitHub</a> • <a href="assets/slides/poster_rd.pdf">Poster</a>
+            </li>
+            <li>
+                <strong>Diffusion-NPO: Negative Preference Optimization for Better Preference Aligned Generation of Diffusion Models</strong><br>
+                Fu-Yun Wang, Yunhao Shui, Jingtan Piao, Keqiang Sun, Hongsheng Li<br>
+                <em>ICLR 2025</em><br>
+                <a href="https://openreview.net/pdf?id=iJi7nz5Cxc">Paper</a> • <a href="assets/slides/poster_npo.pdf">Poster</a> • <a href="https://github.com/G-U-N/Diffusion-NPO">GitHub</a>
+            </li>
+            <li>
+                <strong>InstantPortrait: One-Step Portrait Editing via Diffusion Multi-Objective Distillation</strong><br>
+                Zhixin Lai, Keqiang Sun, Fu-Yun Wang, Dhritiman Sagar, Erli Ding<br>
+                <em>ICLR 2025</em><br>
+                <a href="https://openreview.net/forum?id=ZkFMe3OPfw">Paper</a>
+            </li>
+            <li>
+                <strong>Phased Consistency Model</strong><br>
+                Fu-Yun Wang, Zhaoyang Huang, Alexander William Bergman, Dazhong Shen, Peng Gao, Michael Lingelbach, Keqiang Sun, Weikang Bian, Guanglu Song, Yu Liu, Xiaogang Wang, Hongsheng Li<br>
+                <em>NeurIPS 2024</em><br>
+                <a href="https://g-u-n.github.io/projects/pcm/">Project Page</a> • <a href="https://github.com/G-U-N/Phased-Consistency-Model">GitHub</a> • <a href="https://g-u-n.github.io/assets/slides/pcm.pdf">Paper</a> • <a href="assets/slides/pcm-poster.pdf">Poster</a>
+            </li>
+            <li>
+                <strong>OSV: One Step is Enough for High-Quality Image to Video Generation</strong><br>
+                Xiaofeng Mao*, Zhengkai Jiang*, Fu-Yun Wang*, Wenbing Zhu, Jiangning Zhang, Hao Chen, Mingmin Chi, Yabiao Wang<br>
+                <em>CVPR 2025</em><br>
+                <a href="https://arxiv.org/pdf/2409.11367">arXiv</a>
+            </li>
+            <li>
+                <strong>GS-DiT: Advancing Video Generation with Pseudo 4D Gaussian Fields through Efficient Dense 3D Point Tracking</strong><br>
+                Weikang Bian, Zhaoyang Huang, Xiaoyu Shi, Yijin Li, Fu-Yun Wang, Hongsheng Li<br>
+                <em>CVPR 2025</em><br>
+                <a href="https://arxiv.org/abs/2501.02690">arXiv</a> • <a href="https://wkbian.github.io/Projects/GS-DiT/">Project Page</a>
+            </li>
+            <li>
+                <strong>AnimateLCM: Computation-Efficient Personalized Style Video Generation without Personalized Video Data</strong><br>
+                Fu-Yun Wang, Zhaoyang Huang, Weikang Bian, Xiaoyu Shi, Keqiang Sun, Guanglu Song, Yu Liu, Hongsheng Li<br>
+                <em>SIGGRAPH Asia 2024 Technical Communications</em><br>
+                <a href="https://animatelcm.github.io">Project Page</a> • <a href="https://github.com/G-U-N/AnimateLCM">GitHub</a> • <a href="https://arxiv.org/abs/2402.00769">arXiv</a>
+            </li>
+            <li>
+                <strong>ZoLA: Zero-Shot Creative Long Animation Generation with Short Video Model</strong><br>
+                Fu-Yun Wang, Zhaoyang Huang, Qiang Ma, Xudong Lu, Weikang Bian, Yijin Li, Yu Liu, Hongsheng Li<br>
+                <em>ECCV 2024 (Oral Presentation)</em><br>
+                <a href="https://gen-l-2.github.io/">Project Page</a> • <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06174.pdf">Paper</a>
+            </li>
+            <li>
+                <strong>Be-Your-Outpainter: Mastering Video Outpainting through Input-Specific Adaptation</strong><br>
+                Fu-Yun Wang, Xiaoshi Wu, Zhaoyang Huang, Xiaoyu Shi, Dazhong Shen, Guanglu Song, Yu Liu, Hongsheng Li<br>
+                <em>ECCV 2024</em><br>
+                <a href="https://be-your-outpainter.github.io/">Project Page</a> • <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06040.pdf">Paper</a> • <a href="https://arxiv.org/abs/2403.13745">arXiv</a> • <a href="https://github.com/G-U-N/Be-Your-Outpainter">GitHub</a>
+            </li>
+            <li>
+                <strong>Motion-I2V: Consistent and Controllable Image-to-Video Generation with Explicit Motion Modeling</strong><br>
+                Xiaoyu Shi*, Zhaoyang Huang*, Fu-Yun Wang*, Weikang Bian*, Dasong Li, Yi Zhang, Manyuan Zhang, Kachun Cheung, Simon See, Hongwei Qin, Jifeng Dai, Hongsheng Li<br>
+                <em>SIGGRAPH 2024</em><br>
+                <a href="https://xiaoyushi97.github.io/Motion-I2V/">Project Page</a> • <a href="https://github.com/G-U-N/Motion-I2V">GitHub</a> • <a href="https://arxiv.org/abs/2401.15977">arXiv</a>
+            </li>
+            <li>
+                <strong>Rethinking the Spatial Inconsistency in Classifier-Free Diffusion Guidance</strong><br>
+                Dazhong Shen, Guanglu Song, Zeyue Xue, Fu-Yun Wang, Yu Liu<br>
+                <em>CVPR 2024</em><br>
+                <a href="https://arxiv.org/abs/2404.05384">arXiv</a> • <a href="https://github.com/SmilesDZgk/S-CFG">GitHub</a>
+            </li>
+            <li>
+                <strong>FOSTER: Feature Boosting and Compression for Class-Incremental Learning</strong><br>
+                Fu-Yun Wang, Da-Wei Zhou, Han-Jia Ye, De-Chuan Zhan<br>
+                <em>ECCV 2022</em><br>
+                <a href="https://github.com/G-U-N/ECCV22-FOSTER">GitHub</a> • <a href="https://arxiv.org/abs/2204.04662">arXiv</a>
+            </li>
+            <li>
+                <strong>BEEF: Bi-Compatible Class-Incremental via Energy-Based Expansion and Fusion</strong><br>
+                Fu-Yun Wang, Da-Wei Zhou, Liu Liu, Han-Jia Ye, Yatao Bian, De-Chuan Zhan, Peilin Zhao<br>
+                <em>ICLR 2023</em><br>
+                <a href="https://github.com/G-U-N/ICLR23-BEEF">GitHub</a> • <a href="https://openreview.net/forum?id=iP77_axu0h3">Paper</a>
+            </li>
+            <li>
+                <strong>FACT: Forward Compatible Few-Shot Class-Incremental Learning</strong><br>
+                Da-Wei Zhou, Fu-Yun Wang, Han-Jia Ye, Liang Ma, Shiliang Pu, De-Chuan Zhan<br>
+                <em>CVPR 2022</em><br>
+                <a href="https://github.com/zhoudw-zdw/CVPR22-Fact">GitHub</a> • <a href="https://arxiv.org/abs/2203.06953">arXiv</a>
+            </li>
+            <li>
+                <strong>PyCIL: A Python Toolbox for Class-Incremental Learning</strong><br>
+                Da-Wei Zhou*, Fu-Yun Wang*, Han-Jia Ye, De-Chuan Zhan<br>
+                <em>SCIENCE CHINA Information Sciences</em><br>
+                <a href="https://github.com/G-U-N/PyCIL">GitHub</a> • <a href="https://arxiv.org/abs/2112.12533">arXiv</a> • <a href="https://mp.weixin.qq.com/s/A472p7XGZMhAMAR2wyHZJw">Media</a>
+            </li>
+            <li>
+                <strong>Diffusion-Sharpening: Fine-tuning Diffusion Models with Denoising Trajectory Sharpening</strong><br>
+                Ye Tian, Ling Yang, Fu-Yun Wang, Xinchen Zhang, Yunhai Tong, Mengdi Wang, Bin Cui<br>
+                <em>Preprint</em>
+            </li>
+            <li>
+                <strong>Lumina-Next: Making Lumina-T2X Stronger and Faster with Next-DiT</strong><br>
+                Le Zhuo, Ruoyi Du, Han Xiao, Yangguang Li, Dongyang Liu, Rongjie Huang, Wenze Liu, Xiangyang Zhu, Fu-Yun Wang, Zhanyu Ma, Xu Luo, Zehan Wang, Kaipeng Zhang, Lirui Zhao, Si Liu, Xiangyu Yue, Wanli Ouyang, Yu Qiao, Hongsheng Li, Peng Gao<br>
+                <em>NeurIPS 2024</em>
+            </li>
+            <li>
+                <strong>Trans4D: Realistic Geometry-Aware Transition for Compositional Text-to-4D Synthesis</strong><br>
+                    Bohan Zeng, Ling Yang, Siyu Li, Jiaming Liu, Zixiang Zhang, Juanxi Tian, Kaixin Zhu, Yongzhen Guo, Fu-Yun Wang, Minkai Xu, Stefano Ermon, Wentao Zhang<br>
+                    <em>Preprint</em>
+            </li>
+            <li>
+                <strong>Self-NPO: Negative Preference Optimization of Diffusion Models by Simply Learning from Itself without Explicit Preference Annotations</strong><br>
+                Fu-Yun Wang, Keqiang Sun, Yao Teng, Xihui Liu, Jiaming Song, Hongsheng Li<br>
+                <em>Preprint</em>
+            </li>
+        </ul>
+    </div>
+    <div style="clear: both;"></div>
+    </div>
+
+
         <div class="section" id="talks">
             <h1>Talks</h1>
             <ul>
-                <li>View My Diffusion Acceleration Talk Slides <a href="assets/slides/rectified-diffusion.pdf" target="_blank"> [2024-10] </a> <a href="assets/slides/talk-2024-12.pdf" target="_blank"> [2024-12] </a>  <a href="assets/slides/talk-2025-01.pdf" target="_blank">[2025-01]</a><a href="https://keysoftlab.nju.edu.cn/3f/68/c1578a737128/page.htm" target="_blank">(poster)</a> </li>
+                <li>
+                    Diffusion Acceleration Talk Slides
+                    <ul>
+                        <li><a href="assets/slides/rectified-diffusion.pdf" target="_blank">[2024-10]</a> Invited by TechBeat </li>
+                        <li><a href="assets/slides/talk-2024-12.pdf" target="_blank">[2024-12]</a> Invited by Kuaishou Keling Team</li>
+                        <li><a href="assets/slides/talk-2025-01.pdf" target="_blank">[2025-01]</a> Invited by Nanjing University (南京大学国家重点实验室) <a href="https://keysoftlab.nju.edu.cn/3f/68/c1578a737128/page.htm" target="_blank">(poster)</a></li>
+                    </ul>
+                </li>
+                <li>
+                    Diffusion Acceleration Talk Video
+                    <ul>
+                        <li><a href="https://www.techbeat.net/talk-info?id=917" target="_blank">[2024-10]</a> (Chinese) Invited by TechBeat</li>
+                    </ul>
+                </li>
             </ul>
+            <div style="clear: both;"></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="section" id="awards">
+            <h1>Awards & Honor</h1>
             <ul>
-                <li>View My Diffusion Acceleration Talk Videos <a href="https://www.techbeat.net/talk-info?id=917" target="_blank"> [2024-10](Chinese) </a></li>
+                <li> <b>2025</b> CVPR 2025 Outstanding Reviewer </li>
+                <li> <b>2023</b> HKPFS (Hong Kong PhD Fellowship Scheme)</li>
+                <li> <b>2023</b> Outstanding Graduate of Nanjing University</li>
+                <li> <b>2023</b> Outstanding Undergraduate Thesis of Nanjing University</li>
+                <li> <b>2022</b> Sensetime Scholarship</li>
+                <li> <b>2022</b> Huawei Scholarship</li>
+                <li> <b>2021</b> National Scholarship </li>
             </ul>
             <p></p>
             <div style="clear: both;"></div>
         </div>
 
-        <div class="divider"></div>
-        <div style="display:flex;flex-direction: column;" id="preprint">
-            <h1>Preprint</h1>
-            <div>
-                <a href="https://arxiv.org/abs/2410.18958" style="height: 10em;" class="research-thumb">
-                    <img src="assets/images/sct.png"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://arxiv.org/abs/2410.18958" class="research-proj-title">
-                    Stable Consistency Tuning: Understanding and Improving Consistency Models
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" href="https://gsunshine.github.io/">Zhengyang Geng</a>,
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=BN2Ze-QAAAAJ&hl=en&oi=ao">Hongsheng Li</a>
-                    <br><em>Deep Generative Model in Machine Learning: Theory, Principle and Efficacy.<strong><i style="color:#1e90ff"> ICLR 2025 Workshop</i></strong>.</em><br>
-                    <a href="https://arxiv.org/abs/2410.18958">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://github.com/G-U-N/Stable-Consistency-Tuning">GitHub</a>
-                </p>
-            </div>
-
-        <div style="display:flex;flex-direction: column;" id="research">
-            <h1>Publication</h1>
-            <div>
-                <a href="https://openreview.net/forum?id=nEDToD1R8M" style="height: 10em;" class="research-thumb">
-                    <img src="assets/images/rd.png"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://openreview.net/forum?id=nEDToD1R8M" class="research-proj-title">
-                    Rectified Diffusion: Straightness Is Not Your Need in Rectified Flow
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" href="https://yangling0818.github.io/">Ling Yang</a>,
-                    <a style="color:#000;" href="https://drinkingcoder.github.io/">Zhaoyang Huang</a>,
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=33yNvIgAAAAJ&hl=en">Mengdi Wang</a>,
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=BN2Ze-QAAAAJ&hl=en&oi=ao">Hongsheng Li</a>
-                    <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
-                    <strong><i style="color:red;">Understanding and extending rectification (reflow) to general diffusion models. </i></strong><br>
-                    <a href="https://arxiv.org/abs/2410.07303">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://github.com/G-U-N/Rectified-Diffusion?tab=readme-ov-file">GitHub</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="assets/slides/poster_rd.pdf">Poster</a> 
-                </p>
-            </div>
-            <div>
-                <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" style="height: 12em;" class="research-thumb">
-                    <img src="assets/images/npo.png"
-                        style="margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" class="research-proj-title">
-                    Diffusion-NPO: Negative Preference Optimization for Better Preference Aligned Generation of Diffusion Models
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" >Yunhao Shui</a>,
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=4jvU6FIAAAAJ&hl=en">Jingtan Piao</a>,
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=AJ7qJDEAAAAJ&hl=en">Keqiang Sun</a>,
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=BN2Ze-QAAAAJ&hl=en&oi=ao">Hongsheng Li</a>
-                    <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
-                    <strong><i style="color:red;">General, simple yet effective idea for strengthened diffusion preference optimization.</i></strong><br>
-                    <a href="https://openreview.net/pdf?id=iJi7nz5Cxc">Paper</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="assets/slides/poster_npo.pdf">Poster</a> 
-                </p>
-            </div>
-            <div>
-                <a href="https://openreview.net/forum?id=ZkFMe3OPfw" style="height: 10em;" class="research-thumb">
-                    <img src="assets/images/instaportrait.png"
-                        style="margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https:https://openreview.net/forum?id=ZkFMe3OPfw" class="research-proj-title">
-                    InstantPortrait: One-Step Portrait Editing via Diffusion Multi-Objective Distillation
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=VyNxC-MAAAAJ&hl=en">Zhixin Lai</a>,
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=AJ7qJDEAAAAJ&hl=en">Keqiang Sun</a>,
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" href="https://openreview.net/profile?id=~Dhritiman_Sagar1">Dhritiman Sagar</a>,
-                    <a style="color:#000;" href="https://openreview.net/profile?id=~Erli_Ding1">Erli Ding</a>
-                    <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
-                    <strong><i style="color:red;">Industrial-level real-time portrait editor.</i></strong><br>
-
-                    <a href="https://openreview.net/forum?id=ZkFMe3OPfw">Paper</a>
-                </p>
-            </div>
-            <div>
-                <a href="https://g-u-n.github.io/projects/pcm/" style="height: 14em;" class="research-thumb">
-                    <img src="assets/images/pcm.jpeg"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://g-u-n.github.io/projects/pcm/" class="research-proj-title">
-                   Phased Consistency Model
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;">Zhaoyang Huang</a>,
-                    <a style="color:#000;">Alexander William Bergman</a>,
-                    <a style="color:#000;">Dazhong Shen</a>,
-                    <a style="color:#000;">Peng Gao</a>,
-                    <a style="color:#000;">Michael Lingelbach</a>,
-                    <a style="color:#000;">Keqiang Sun</a>,
-                    <a style="color:#000;">Weikang Bian</a>,
-                    <a style="color:#000;">Guanglu Song</a>,
-                    <a style="color:#000;">Yu Liu</a>,
-                    <a style="color:#000;">Xiaogang Wang</a>,
-                    <a style="color:#000;">Hongsheng Li</a>
-                    <br><em>Conference on Neural Information Processing Systems.<strong><i style="color:#1e90ff"> NeurIPS 2024</i></strong>.</em><br>
-                    <strong><i style="color:red;">Few-step text-to-image and text-to-video generation.</i></strong><br>
-                    <a href="https://g-u-n.github.io/projects/pcm/">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://github.com/G-U-N/Phased-Consistency-Model">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://g-u-n.github.io/assets/slides/pcm.pdf">Paper</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="assets/slides/pcm-poster.pdf">Poster</a> 
-
-                </p>
-            </div>
-            <div>
-                <a href="https://arxiv.org/pdf/2409.11367" style="height: 14em;" class="research-thumb">
-                    <img src="assets/images/osv.png"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://arxiv.org/pdf/2409.11367" class="research-proj-title">
-                    OSV: One Step is Enough for High-Quality Image to Video Generation
-                </a>
-                <p>
-                    <a style="color:#000;">Xiaofeng Mao*</a>,
-                    <a style="color:#000;">Zhengkai Jiang*</a>,
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang*</b></a>,
-                    <a style="color:#000;">Wenbing Zhu</a>,
-                    <a style="color:#000;">Jiangning Zhang</a>,
-                    <a style="color:#000;">Hao Chen</a>,
-                    <a style="color:#000;">Mingmin Chi</a>,
-                    <a style="color:#000;">Yabiao Wang</a>
-                    <br><em>IEEE Conference on Computer Vision and Pattern Recognition.<strong><i style="color:#1e90ff">CVPR 2025</i></strong>.</em><br>
-                    <a href="https://arxiv.org/pdf/2409.11367">arXiv</a>
-                </p>
-            </div>
-            <div>
-                <a href="https://arxiv.org/abs/2501.02690" style="height: 14em;" class="research-thumb">
-                    <video width="320" height="auto" autoplay loop muted>
-                        <source src="assets/vids/corgi.mov" type="video/mp4">
-                    </video>
-                </a>
-                <a href="https://arxiv.org/abs/2501.02690" class="research-proj-title">
-                    GS-DiT: Advancing Video Generation with Pseudo 4D Gaussian Fields through Efficient Dense 3D Point Tracking
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://wkbian.github.io/">Weikang Bian</a>,
-                    <a style="color:#000;" href="https://drinkingcoder.github.io/">Zhaoyang Huang</a>,
-                    <a style="color:#000;" href="https://xiaoyushi97.github.io/">Xiaoyu Shi</a>,
-                    <a style="color:#000;" href="https://eugenelyj.github.io/">Yijin Li</a>,
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" href="https://scholar.google.com/citations?user=BN2Ze-QAAAAJ&hl=en&oi=ao">Hongsheng Li</a>
-                    <br><em>IEEE Conference on Computer Vision and Pattern Recognition.<strong><i style="color:#1e90ff">CVPR 2025</i></strong>.</em><br>
-                    <a href="https://arxiv.org/abs/2501.02690">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://wkbian.github.io/Projects/GS-DiT/">Project Page</a>
-                </p>
-            </div>
-
-            <div>
-                <a href="https://animatelcm.github.io" style="height: 14em;" class="research-thumb">
-                    <video width="320" height="auto" autoplay loop muted>
-                        <source src="assets/vids/animatelcm.mp4" type="video/mp4">
-                    </video>
-
-                </a>
-                <a href="https://animatelcm.github.io" class="research-proj-title">
-                    AnimateLCM: Computation-Efficient Personalized Style Video Generation without Personalized Video Data
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" >Zhaoyang Huang</a>,
-                    <a style="color:#000;" >Weikang Bian</a>,
-                    <a style="color:#000;" >Xiaoyu Shi</a>,
-                    <a style="color:#000;" >Keqiang Sun</a>,
-                    <a style="color:#000;" >Guanglu Song</a>,
-                    <a style="color:#000;" >Yu Liu</a>,
-                    <a style="color:#000;" >Hongsheng Li</a>
-
-                    <br><em>Special Interest Group on Computer Graphics and Interactive Techniques Asia.<strong><i style="color:#1e90ff"> SIGGRAPH Asia 2024 Technical Communications</i></strong>.</em><br>
-                    <a href="https://animatelcm.github.io">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://github.com/G-U-N/AnimateLCM">Github</a>  <img src="https://img.shields.io/github/stars/G-U-N/AnimateLCM?style=flat&amp;label=Stars&amp;logo=github&amp;labelColor=f6f6f6&amp;color=9cf&amp;logoColor=020d12" />&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://arxiv.org/abs/2402.00769">arXiv</a>
-                </p>
-            </div>
-            <div>
-                <a href="https://gen-l-2.github.io/" style="height: 12em;" class="research-thumb">
-                    <video width="320" height="auto" autoplay loop muted>
-                        <source src="assets/vids/zola.mp4" type="video/mp4">
-                    </video>
-                </a>
-                <a href="https://gen-l-2.github.io/" class="research-proj-title">
-                    ZoLA: Zero-Shot Creative Long Animation Generation with Short Video Model
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;">Zhaoyang Huang</a>,
-                    <a style="color:#000;">Qiang Ma</a>,
-                    <a style="color:#000;">Xudong Lu</a>,
-                    <a style="color:#000;">Weikang Bian</a>,
-                    <a style="color:#000;">Yijin Li</a>,
-                    <a style="color:#000;">Yu Liu</a>,
-                    <a style="color:#000;">Hongsheng Li</a>
-
-                    <br><em>European Conference on Computer Vision. <strong><i style="color:#1e90ff">ECCV 2024</i></strong>.</em><br>
-                    <strong><i style="color:red;">ECCV 2024 Oral Presentation</i></strong><br>
-                    <a href="https://gen-l-2.github.io/">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06174.pdf">Paper</a>
-                </p>
-            </div>
-
-            <div>
-                <a href="https://be-your-outpainter.github.io/" style="height: 14em;" class="research-thumb">
-                    <video width="320" height="auto" autoplay loop muted>
-                        <source src="assets/vids/outpaint.mp4" type="video/mp4">
-                    </video>
-                </a>
-                <a href="https://be-your-outpainter.github.io/" class="research-proj-title">
-                   Be-Your-Outpainter: Mastering Video Outpainting through Input-Specific Adaptation
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;">Xiaoshi Wu</a>,
-                    <a style="color:#000;">Zhaoyang Huang</a>,
-                    <a style="color:#000;">Xiaoyu Shi</a>,
-                    <a style="color:#000;">Dazhong Shen</a>,
-                    <a style="color:#000;">Guanglu Song</a>,
-                    <a style="color:#000;">Yu Liu</a>,
-                    <a style="color:#000;">Hongsheng Li</a>
-
-                    <br><em>European Conference on Computer Vision. <strong><i style="color:#1e90ff">ECCV 2024</i></strong>.</em><br>
-                    <a href="https://be-your-outpainter.github.io/">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06040.pdf">Paper</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://arxiv.org/abs/2403.13745">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://github.com/G-U-N/Be-Your-Outpainter">GitHub</a>
-                </p>
-            </div>
-        <div>
-            <a href="https://xiaoyushi97.github.io/Motion-I2V/" style="height: 14em;" class="research-thumb">
-                <video width="320" height="auto" autoplay loop muted>
-                    <source src="assets/vids/motioni2v.mp4" type="video/mp4">
-                </video>
-            </a>
-            <a href="https://xiaoyushi97.github.io/Motion-I2V/" class="research-proj-title">
-                Motion-I2V: Consistent and Controllable Image-to-Video Generation with Explicit Motion Modeling
-            </a>
-            <p>
-                <a style="color:#000;">Xiaoyu Shi*</a>,
-                <a style="color:#000;">Zhaoyang Huang*</a>,
-                <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang*</b></a>,
-                <a style="color:#000;">Weikang Bian*</a>,
-                <a style="color:#000;">Dasong Li</a>,
-                <a style="color:#000;">Yi Zhang</a>,
-                <a style="color:#000;">Manyuan Zhang</a>,
-                <a style="color:#000;">Kachun Cheung</a>,
-                <a style="color:#000;">Simon See</a>,
-                <a style="color:#000;">Hongwei Qin</a>,
-                <a style="color:#000;">Jifeng Dai</a>,
-                <a style="color:#000;">Hongsheng Li</a>
-                <br>
-                <em>Special Interest Group on GRAPHics and Interactive Techniques.<strong><i style="color:#1e90ff">SIGGRAPH 2024</i></strong>.</em><br>
-                <strong><i style="color:red;">SIGGRAPH 2024 Technical Papers Trailer</i></strong><br>
-                <a href="https://xiaoyushi97.github.io/Motion-I2V/">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                <a href="https://github.com/G-U-N/Motion-I2V">GitHub</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                <a href="https://arxiv.org/abs/2401.15977">arXiv</a><br>
-            </p>
-        </div>
-
-            <div>
-                <a href="https://arxiv.org/abs/2404.05384" style="height: 14em;" class="research-thumb">
-                    <img src="assets/images/s-cfg.png"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://arxiv.org/abs/2404.05384" class="research-proj-title">
-                    Rethinking the Spatial Inconsistency in Classifier-Free Diffusion Guidance
-                </a>
-                <p>
-                    
-                    <a style="color:#000;" >Dazhong Shen</a>,
-                    <a style="color:#000;">Guanglu Song</a>,
-                    <a style="color:#000;">Zeyue Xue</a>,
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" > Yu Liu</a>,
-                    <br><em>IEEE Conference on Computer Vision and Pattern Recognition.<strong><i style="color:#1e90ff">CVPR 2024</i></strong>.</em><br>
-                    <a href="https://arxiv.org/abs/2404.05384">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://github.com/SmilesDZgk/S-CFG">GitHub</a><br>
-
-                </p>
-            </div>
-            <div>
-                <a href="https://g-u-n.github.io/" style="height: 14em;" class="research-thumb">
-                    <img src="assets/images/foster.jpg"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://g-u-n.github.io/" class="research-proj-title">
-                    FOSTER: Feature Boosting and Compression for Class-Incremental Learning
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/zhoudw/">Da-Wei Zhou</a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/">Han-Jia Ye</a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/">De-Chuan Zhan</a>
-                    <br><em>European Conference on Computer Vision. <strong><i style="color:#1e90ff">ECCV 2022</i></strong>.</em><br>
-                    <a href="https://github.com/G-U-N/ECCV22-FOSTER">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://arxiv.org/abs/2204.04662">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <img src="https://img.shields.io/badge/dynamic/json?style=plastic&amp;labelColor=f6f6f6&amp;color=9cf&amp;style=flat&amp;label=Citations&amp;logo=Google%20Scholar&amp;query=publications%5B1%5D.citations&amp;url=https%3A%2F%2Fcse.bth.se%2F~fer%2Fgooglescholar-api%2Fgooglescholar.php%3Fuser%3DkMNaR-YAAAAJ" />                </p>
-                </p>
-            </div>
-            <div>
-                <a href="https://g-u-n.github.io/" style="height: 14em;" class="research-thumb">
-                    <img src="assets/images/3ef.png"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://g-u-n.github.io/" class="research-proj-title">
-                    BEEF: Bi-Compatible Class-Incremental via Energy-Based Expansion and Fusion
-                </a>
-                <p>
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/zhoudw/">Da-Wei Zhou</a>,
-                    <a style="color:#000;" href="https://leon-liuliu.github.io/">Liu Liu</a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/">Han-Jia Ye</a>,
-                    <a style="color:#000;" href="https://yataobian.com/">Yatao Bian</a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/">De-Chuan Zhan</a>,
-                    <a style="color:#000;" href="https://peilinzhao.github.io/">Peilin Zhao</a>
-                    <br><em>Eleventh International Conference on Learning Representations. <strong><i style="color:#1e90ff">ICLR 2023</i></strong>.</em><br>
-                    <a href="https://github.com/G-U-N/ICLR23-BEEF">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://openreview.net/forum?id=iP77_axu0h3">Paper</a>
-                </p>
-            </div>
-            <div>
-                <a href="https://g-u-n.github.io/" style="height: 14em;" class="research-thumb">
-                    <img src="assets/images/fact.jpg"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://g-u-n.github.io/" class="research-proj-title">
-                    FACT: Forward Compatible Few-Shot Class-Incremental Learning
-                </a>
-                <p>
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/zhoudw/">Da-Wei Zhou</a>,
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/">Han-Jia Ye</a>,
-                    <a style="color: #000;">Liang Ma</a>,
-                    <a style="color: #000;">Shiliang Pu</a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/">De-Chuan Zhan</a>
-                    <br><em>IEEE Conference on Computer Vision and Pattern Recognition.<strong><i style="color:#1e90ff">CVPR 2022</i></strong>.</em><br>
-                    <a href="https://github.com/zhoudw-zdw/CVPR22-Fact">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://arxiv.org/abs/2203.06953">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <img src="https://img.shields.io/badge/dynamic/json?style=plastic&amp;labelColor=f6f6f6&amp;color=9cf&amp;style=flat&amp;label=Citations&amp;logo=Google%20Scholar&amp;query=publications%5B2%5D.citations&amp;url=https%3A%2F%2Fcse.bth.se%2F~fer%2Fgooglescholar-api%2Fgooglescholar.php%3Fuser%3DkMNaR-YAAAAJ" />
-            </div>
-            <div>
-                <a href="https://g-u-n.github.io/" style="height: 14em;" class="research-thumb">
-                    <img src="assets/images/pycil.png"
-                        style=" margin-bottom:0px;"
-                        alt="">
-                </a>
-                <a href="https://g-u-n.github.io/" class="research-proj-title">
-                    PyCIL: A Python Toolbox for Class-Incremental Learning
-                </a>
-                <p>
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/zhoudw/">Da-Wei Zhou*</a>,
-                    <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang*</b></a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/">Han-Jia Ye</a>,
-                    <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/">De-Chuan Zhan</a>
-                    <br><em>SCIENCE CHINA Information Sciences. <strong><i style="color:#1e90ff">SCIS</i></strong>.</em><br>
-                    <a href="https://github.com/G-U-N/PyCIL">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://arxiv.org/abs/2112.12533">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                    <a href="https://mp.weixin.qq.com/s/A472p7XGZMhAMAR2wyHZJw">Media</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp;<img src="https://img.shields.io/github/stars/G-U-N/PyCIL?style=flat&amp;label=Stars&amp;logo=github&amp;labelColor=f6f6f6&amp;color=9cf&amp;logoColor=020d12" />
-                    <img src="https://img.shields.io/github/forks/G-U-N/PyCIL?style=flat&amp;label=Forks&amp;logo=github&amp;labelColor=f6f6f6&amp;color=9cf&amp;logoColor=020d12" />                </p>
-            </div>
-            <div>
-            <div class="divider"></div>
-            <div class="section" id="awards">
-                <h1>Awards & Honor</h1>
-                <ul>
-                    <li> <b>2023</b> HKPFS (Hong Kong PhD Fellowship Scheme)
-                    <li> <b>2023</b> Outstanding Graduate of Nanjing University
-                    <li> <b>2023</b> Outstanding Undergraduate Thesis of Nanjing University
-                    <li> <b>2022</b> Sensetime Scholarship
-                    <li> <b>2022</b> Huawei Scholarship
-                    <li> <b>2021</b> National Scholarship 
-                </ul>
-                <p></p>
-                <div style="clear: both;"></div>
-            </div>
-            <div class="section" id="services">
-                <h1>Sevices</h1>
-                <ul>
-                    Reviewer of TPAMI, TCSVT, PRL, CVPR 2023, NeurIPS 2023, ICLR 2024, CVPR 2024, ICML 2024, ECCV 2024, BMVC 2024, ICLR 2025, CVPR 2025
-                </ul>
-                <p></p>
-                <div style="clear: both;"></div>
-            </div>
+        <div class="section" id="services">
+            <h1>Services</h1>
+            <ul>
+<table style="border-collapse: collapse; width: 100%; text-align: left;">
+  <tr style="border-bottom: 1px solid #ddd;">
+    <th style="padding: 8px;">Journal/Conference</th>
+    <th style="padding: 8px;">Years</th>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)</td>
+    <td style="padding: 8px;">-</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">IEEE Transactions on Circuits and Systems for Video Technology (TCSVT)</td>
+    <td style="padding: 8px;">-</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">Pattern Recognition Letters (PRL)</td>
+    <td style="padding: 8px;">-</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">Conference on Computer Vision and Pattern Recognition (CVPR)</td>
+    <td style="padding: 8px;">2023, 2024, 2025</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">Neural Information Processing Systems (NeurIPS)</td>
+    <td style="padding: 8px;">2023, 2025</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">International Conference on Learning Representations (ICLR)</td>
+    <td style="padding: 8px;">2024, 2025</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">International Conference on Machine Learning (ICML)</td>
+    <td style="padding: 8px;">2024, 2025</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">European Conference on Computer Vision (ECCV)</td>
+    <td style="padding: 8px;">2024</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">International Conference on Computer Vision (ICCV)</td>
+    <td style="padding: 8px;">2025</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">British Machine Vision Conference (BMVC)</td>
+    <td style="padding: 8px;">2024</td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ddd;">
+    <td style="padding: 8px;">SIGGRAPH Asia</td>
+    <td style="padding: 8px;">2025</td>
+  </tr>
+</table>
+        <!-- <li>Reviewer of TPAMI, TCSVT, PRL, CVPR 2023, NeurIPS 2023, ICLR 2024, CVPR 2024, ICML 2024, ECCV 2024, BMVC 2024, ICLR 2025, CVPR 2025, ICML 2025, NeurIPS 2025, SIGGRAPH Asia 2025</li> -->
+            </ul>
+            <p></p>
             <div style="clear: both;"></div>
         </div>
     </div>
     <script type="text/javascript" id="clustrmaps" src="//clustrmaps.com/map_v2.js?d=CDfFGbXsSkbODpLYvxuFm3Ivejv6Ju6FkxS1dau4g-8&cl=ffffff&w=a"></script> 
 
-    
+    <script>
+        // JavaScript for collapsible sections
+        var coll = document.getElementsByClassName("collapsible-header");
+        let j;
+        for (j = 0; j < coll.length; j++) {
+            coll[j].addEventListener("click", function() {
+                this.classList.toggle("active");
+                const content = this.nextElementSibling;
+                content.style.display = content.style.display === "block" ? "none" : "block";
+            });
+        }
+    </script>
 
-    
+
+    <style>
+        #toggle-collaborators {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1em;
+            text-decoration: underline;
+        }
+        #toggle-collaborators:hover {
+            color: #0056b3;
+        }
+    </style>
+
+    <script>
+        function toggleCollaborators() {
+            const shortList = document.getElementById('collaborators-short');
+            const fullList = document.getElementById('collaborators-full');
+            const button = document.getElementById('toggle-collaborators');
+            
+            if (fullList.style.display === 'none') {
+                shortList.style.display = 'none';
+                fullList.style.display = 'inline';
+                button.textContent = 'Show less';
+            } else {
+                shortList.style.display = 'inline';
+                fullList.style.display = 'none';
+                button.textContent = 'Show more';
+            }
+        }
+    </script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        // Data for the tree diagram
+        const treeData = {
+            "name": "Research Work",
+            "children": [
+                {
+                    "name": "Diffusion Acceleration",
+                    "children": [
+                        { "name": "Rectified Diffusion: Straightness Is Not Your Need (ICLR 2025)", "url": "https://arxiv.org/abs/2410.07303" },
+                        { "name": "InstantPortrait: One-Step Portrait Editing (ICLR 2025)", "url": "https://openreview.net/forum?id=ZkFMe3OPfw" },
+                        {},
+                        {
+                            "name": "Consistency Models",
+                            "children": [
+                                { "name": "Consistency Distillation" },
+                                { "name": "Consistency Training" },
+                                { "name": "Stable Consistency Tuning (ICLR 2025 Workshop)", "url": "https://arxiv.org/abs/2410.18958" }
+                            ]
+                        },
+
+                        {
+                            "name": "Phased Consistency Model (NeurIPS 2024)",
+                            "children": [
+                                { "name": "AnimateLCM (SIGGRAPH Asia 2024)", "url": "https://animatelcm.github.io" },
+                                { "name": "OSV: One Step is Enough for High-Quality I2V (CVPR 2025)", "url": "https://arxiv.org/pdf/2409.11367" },
+                                {
+                                    "name": "FastVideo",
+                                    "children": [
+                                        { "name": "FastHunyuan" },
+                                        { "name": "FastWAN" }
+                                    ]
+                                },
+                                {
+                                    "name": "Unleashing VDM for Fast Shape Generation (CVPR 2025)",
+                                    "children": [
+                                        { "name": "Huanyuan-3D Turbo" }
+                                    ]
+                                }
+                            ]
+                        },
+                    ]
+                },
+                {
+                    "name": "Reinforcement Learning",
+                    "children": [
+                        {
+                            "name": "Diffusion-NPO (ICLR 2025)",
+                            "children": [
+                                { "name": "Self-NPO: Data-Free NPO" }
+                            ]
+                        },
+                        { "name": "Diffusion-Sharpening" }
+                    ]
+                },
+                {
+                    "name": "Generative Vision Applications",
+                    "children": [
+                        { "name": "GS-DiT  (CVPR 2025)", "url": "https://arxiv.org/abs/2501.02690" },
+                        { "name": "ZoLA: Zero-Shot Creative Long Animation Generation (ECCV 2024)", "url": "https://gen-l-2.github.io/" },
+                        { "name": "Be-Your-Outpainter (ECCV 2024)", "url": "https://be-your-outpainter.github.io/" },
+                        { "name": "Motion-I2V: Image-to-Video Generation with Explicit Motion Modeling (SIGGRAPH 2024)", "url": "https://xiaoyushi97.github.io/Motion-I2V/" },
+                        { "name": "Rethinking the Spatial Inconsistency in CFG (CVPR 2024)", "url": "https://arxiv.org/abs/2404.05384" },
+                    ]
+                },
+                {
+                    "name": "Class-Incremental Learning",
+                    "children": [
+                        {
+                            "name": "PyCIL (SCIS)",
+                            "children": [
+                                { "name": "FOSTER  (ECCV 2022)", "url": "https://arxiv.org/abs/2204.04662" },
+                                { "name": "BEEF (ICLR 2023)", "url": "https://openreview.net/forum?id=iP77_axu0h3" },
+                                { "name": "FACT  (CVPR 2022)", "url": "https://arxiv.org/abs/2203.06953" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Set up SVG
+        const svg = d3.select("#treeDiagram"),
+            width = +svg.attr("width"),
+            height = +svg.attr("height"),
+            g = svg.append("g").attr("transform", "translate(40,40)");
+
+        let i = 0; // Initialize a counter for node IDs
+
+        // Tree layout
+        const tree = d3.tree().size([height - 50, width - 100]);
+        const root = d3.hierarchy(treeData);
+        tree(root);
+        // Assign unique IDs to initial nodes
+        root.descendants().forEach(d => d.id = d.id || ++i);
+
+        // Initial drawing
+        update(root);
+
+        // Update function for collapsing/expanding
+        function update(source) {
+            const duration = 750;
+
+            // Compute the new tree layout.
+            const nodes = root.descendants().reverse();
+            const links = root.links();
+
+            // Normalize for fixed-depth.
+            nodes.forEach(d => { d.y = d.depth * 180; }); // Adjust this value to control node spacing horizontally
+
+            // Update the nodes…
+            const node = g.selectAll(".node")
+                .data(nodes, d => d.id);
+
+            // Enter any new nodes at the parent's previous position.
+            const nodeEnter = node.enter().append("g")
+                .attr("class", d => "node" + (d.children ? " node--internal" : " node--leaf"))
+                .attr("transform", d => `translate(${source.y0},${source.x0})`)
+                .on("click", click);
+
+            nodeEnter.append("circle")
+                .attr("r", 1e-6)
+                .attr("fill", d => d._children ? "#555" : "#999")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1);
+
+            nodeEnter.append("text")
+                .attr("dy", 3)
+                .attr("x", d => d.children || d._children ? -8 : 8)
+                .attr("text-anchor", d => d.children || d._children ? "end" : "start")
+                .style("font-family", "'Lato', sans-serif")
+                .style("font-size", "12px")
+                .style("fill", d => d.data.url ? "#1e90ff" : "#000")
+                .text(d => d.data.name)
+                .style("fill-opacity", 1e-6)
+                .on("click", (event, d) => {
+                    if (d.data.url) {
+                        event.stopPropagation(); // Prevent node collapse/expand when clicking text link
+                        window.open(d.data.url, "_blank");
+                    }
+                });
+
+            // Transition nodes to their new position.
+            const nodeUpdate = nodeEnter.merge(node);
+
+            nodeUpdate.transition()
+                .duration(duration)
+                .attr("transform", d => `translate(${d.y},${d.x})`);
+
+            nodeUpdate.select("circle")
+                .attr("r", 5)
+                .attr("fill", d => d._children ? "#555" : "#999");
+
+            nodeUpdate.select("text")
+                .style("fill-opacity", 1);
+
+            // Transition exiting nodes to the parent's new position.
+            const nodeExit = node.exit().transition()
+                .duration(duration)
+                .attr("transform", d => `translate(${source.y},${source.x})`)
+                .remove();
+
+            nodeExit.select("circle")
+                .attr("r", 1e-6);
+
+            nodeExit.select("text")
+                .style("fill-opacity", 1e-6);
+
+            // Update the links…
+            const link = g.selectAll(".link")
+                .data(links, d => d.target.id);
+
+            // Enter any new links at the parent's previous position.
+            const linkEnter = link.enter().insert("path", "g")
+                .attr("class", "link")
+                .attr("d", d3.linkHorizontal()
+                    .x(d => source.y0)
+                    .y(d => source.x0));
+
+            // Transition links to their new position.
+            link.merge(linkEnter).transition()
+                .duration(duration)
+                .attr("d", d3.linkHorizontal()
+                    .x(d => d.y)
+                    .y(d => d.x));
+
+            // Transition exiting links to the parent's new position.
+            link.exit().transition()
+                .duration(duration)
+                .attr("d", d3.linkHorizontal()
+                    .x(d => source.y)
+                    .y(d => source.x))
+                .remove();
+
+            // Stash the old positions for transition.
+            nodes.forEach(d => {
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
+        }
+
+        // Toggle children on click.
+        function click(event, d) {
+            if (d.children) {
+                d._children = d.children;
+                d.children = null;
+            } else {
+                d.children = d._children;
+                d._children = null;
+            }
+            update(d);
+        }
+
+        // Store initial positions for transition
+        root.x0 = root.x;
+        root.y0 = root.y;
+    </script>
+
+
 </body>
 
 </html>
+
+
