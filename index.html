@@ -100,6 +100,18 @@
         #research-summary .collapsible-header {
             background-color: #e0e0e0; /* Optional: slight visual distinction for active state */
         }
+        
+        #clustrmaps {
+            width: 200px !important; /* Adjust width as needed */
+            height: 150px !important; /* Adjust height as needed */
+            overflow: hidden;
+        }
+
+        #clustrmaps img, #clustrmaps iframe {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain; /* Ensures the map scales properly */
+        }
     </style>
 </head>
 
