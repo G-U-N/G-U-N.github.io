@@ -1,410 +1,1016 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8" />
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@200;300;400;600;700;900&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="assets/css/style.css" />
-    <title> Fu-Yun Wang </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Fu-Yun Wang</title>
+    
     <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent-warm: #f59e0b;
+            --accent-warm-light: #fef3c7;
+            --text-primary: #1e1b4b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --bg-page: #f8f7f4;
+            --bg-card: #ffffff;
+            --bg-card-alt: #faf9f6;
+            --bg-subtle: #f1f0eb;
+            --border-color: #e8e6df;
+            --border-light: #f0eee8;
+            --hover-color: #eef2ff;
+            --shadow-sm: 0 1px 2px rgba(30, 27, 75, 0.04);
+            --shadow-md: 0 4px 12px rgba(30, 27, 75, 0.06);
+            --shadow-lg: 0 8px 24px rgba(30, 27, 75, 0.08);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
 
-        body, p, li {
-            font-family: 'Lato', sans-serif;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 15px;
+            line-height: 1.7;
+            color: var(--text-primary);
+            background-color: var(--bg-page);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Header */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(248, 247, 244, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 0;
+        }
+
+        header nav {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        header a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+            padding: 0.4rem 0;
+        }
+
+        header a:hover { color: var(--primary-color); }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* ===== TWO-COLUMN HERO: Profile + Recent Work ===== */
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 2.2fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        /* Profile Card */
+        #profile {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-header {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        #profile-pic img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--bg-subtle);
+            box-shadow: var(--shadow-md);
+        }
+
+        .profile-header-text {
+            flex: 1;
+        }
+
+        #profile-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2rem;
             font-weight: 400;
-            line-height: 1.6;
-            color: #333; 
+            color: var(--text-primary);
+            margin-bottom: 0.15rem;
+            letter-spacing: -0.02em;
         }
-        h1, h2, h3 {
-            font-family: 'Lato', sans-serif;
+
+        .profile-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .profile-subtitle a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .profile-subtitle a:hover { text-decoration: underline; }
+
+        #profile-intro p {
+            margin-bottom: 0.75rem;
+            line-height: 1.7;
+            font-size: 0.92rem;
+        }
+
+        #profile-intro a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        #profile-intro a:hover { color: var(--primary-dark); }
+
+        .highlight-text {
+            background: linear-gradient(135deg, var(--accent-warm-light) 0%, #fde68a 100%);
+            border-left: 3px solid var(--accent-warm);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            font-size: 0.85rem;
+        }
+
+        .highlight-text p { margin: 0 !important; color: #92400e; }
+
+        .social-links {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: auto;
+            padding-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .social-links a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-subtle);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .social-links a:hover {
+            background: var(--hover-color);
+            color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        /* Recent Work Panel */
+        #recent-work {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            border: 1px solid #c7d2fe;
+            box-shadow: var(--shadow-sm);
+            overflow-y: auto;
+            max-height: 700px;
+        }
+
+        #recent-work h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.4rem;
+            color: var(--primary-dark);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .recent-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 0.15rem 0.6rem;
+            border-radius: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .recent-pub-card {
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(8px);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(199, 210, 254, 0.6);
+            transition: all 0.3s;
+        }
+
+        .recent-pub-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .recent-pub-card:last-child { margin-bottom: 0; }
+
+        .recent-pub-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.4rem;
+            line-height: 1.4;
+        }
+
+        .recent-pub-authors {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .recent-pub-venue {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
             font-weight: 600;
-            color: #222; 
+            margin-bottom: 0.75rem;
         }
-        /* CSS for collapsible sections */
+
+        .recent-pub-insight {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-left: 3px solid var(--accent-warm);
+            padding: 0.6rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            margin: 0.75rem 0;
+        }
+
+        .recent-pub-insight strong { color: #92400e; }
+
+        .method-box {
+            background: rgba(238, 242, 255, 0.6);
+            border-left: 3px solid var(--primary-color);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-sm);
+            margin: 0.75rem 0;
+            font-size: 0.82rem;
+        }
+
+        .method-box h4 {
+            font-size: 0.9rem;
+            color: var(--primary-dark);
+            margin-bottom: 0.4rem;
+        }
+
+        .method-box p { margin-bottom: 0.4rem; line-height: 1.6; }
+
+        .method-box ul {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 0.5rem;
+        }
+
+        .method-box ul li {
+            padding: 0.25rem 0 0.25rem 1.2rem;
+            position: relative;
+            border-bottom: none;
+            font-size: 0.82rem;
+        }
+
+        .method-box ul li::before {
+            content: '\f0da';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            color: var(--primary-color);
+            font-size: 0.7rem;
+        }
+
+        .pub-links {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .pub-links a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            padding: 0.3rem 0.6rem;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.78rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .pub-links a:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* ===== SECTIONS ===== */
+        .section {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .section h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.6rem;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border-color);
+            letter-spacing: -0.01em;
+        }
+
+        .section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Two-column layouts for Experience & Education */
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        /* Experience Cards */
+        .experience-card {
+            display: flex;
+            gap: 1.25rem;
+            padding: 1.5rem;
+            background: var(--bg-card-alt);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .experience-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .experience-card.current {
+            border: 2px solid var(--primary-color);
+            background: linear-gradient(135deg, #eef2ff, var(--bg-card-alt));
+        }
+
+        .company-logo {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            border-radius: var(--radius-sm);
+            background: white;
+            padding: 0.25rem;
+            flex-shrink: 0;
+        }
+
+        .experience-content h3 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .experience-content p {
+            margin-bottom: 0.3rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .experience-content p strong { color: var(--text-primary); }
+
+        .experience-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 0.4rem;
+            vertical-align: middle;
+        }
+
+        .badge.current {
+            background: linear-gradient(135deg, #10b981, #059669);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Collapsible */
         .collapsible-header {
             cursor: pointer;
-            padding: 10px;
-            background-color: #f1f1f1;
-            border: 1px solid #ddd;
-            margin-bottom: 5px;
+            padding: 1rem 1.25rem;
+            background: var(--bg-card-alt);
+            border-radius: var(--radius-md);
+            margin-bottom: 0.75rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: all 0.3s;
+            border: 1px solid var(--border-color);
         }
-        .collapsible-content {
-            display: none; /* Hidden by default */
-            overflow: hidden;
-            border: 1px solid #eee;
-            border-top: none;
-            padding: 10px;
+
+        .collapsible-header:hover {
+            background: var(--hover-color);
+            border-color: var(--primary-light);
         }
+
+        .collapsible-header h3 { margin: 0; font-size: 1.05rem; }
+
         .collapsible-header::after {
-            content: '\02795'; /* Plus sign */
-            font-size: 13px;
-            color: #777;
-            float: right;
-            margin-left: 5px;
+            content: '\f078';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            transition: transform 0.3s;
         }
-        .collapsible-header.active::after {
-            content: '\2796'; /* Minus sign */
+
+        .collapsible-header.active::after { transform: rotate(180deg); }
+
+        .collapsible-content {
+            display: none;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            background: var(--bg-card);
+            margin-top: -0.75rem;
+            margin-bottom: 0.75rem;
         }
-        .company-logo {
-            width: 80px; /* Adjust as needed */
-            height: auto;
-            vertical-align: middle;
-            margin-right: 15px;
+
+        /* Publication Items */
+        .publication-item {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+            background: var(--bg-card-alt);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
         }
-        .internship-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
+
+        .publication-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
-        .research-summary-image {
-            width: 100%;
-            max-width: 900px; /* Adjust as needed */
-            height: auto;
-            margin: 20px auto;
+
+        .research-thumb {
             display: block;
-            border: 1px solid #ddd;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            background: white;
         }
-        /* D3.js Tree Styles */
+
+        .research-thumb img,
+        .research-thumb video {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+
+        .publication-item:hover .research-thumb img,
+        .publication-item:hover .research-thumb video { transform: scale(1.05); }
+
+        .research-proj-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+            margin-bottom: 0.5rem;
+            display: block;
+            transition: color 0.2s;
+        }
+
+        .research-proj-title:hover { color: var(--primary-color); }
+
+        .publication-authors {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+            line-height: 1.5;
+        }
+
+        .publication-venue {
+            font-style: italic;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .publication-venue strong { color: var(--primary-color); }
+
+        .highlight {
+            background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+            padding: 0.6rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            margin: 0.5rem 0;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .publication-links {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .publication-links a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            padding: 0.3rem 0.6rem;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.78rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .publication-links a:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Research Tree */
+        #treeDiagram {
+            margin: 0.5rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: white;
+        }
+
         .link {
             fill: none;
-            stroke: #555;
-            stroke-opacity: 0.4;
+            stroke: #cbd5e1;
+            stroke-opacity: 0.6;
             stroke-width: 1.5px;
         }
 
-        .node circle {
+        .node circle { cursor: pointer; stroke: #fff; stroke-width: 2px; }
+        .node--internal circle { fill: var(--primary-color); }
+        .node--leaf circle { fill: #94a3b8; }
+
+        .node text {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 11px;
+            fill: var(--text-primary);
             cursor: pointer;
         }
 
-        .node text {
+        /* Lists */
+        ul { list-style: none; padding-left: 0; }
+
+        ul li {
+            padding: 0.5rem 0 0.5rem 1.25rem;
+            position: relative;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.9rem;
+        }
+
+        ul li:last-child { border-bottom: none; }
+
+        ul li::before {
+            content: '\f054';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            color: var(--primary-color);
+            font-size: 0.6rem;
+            top: 0.7rem;
+        }
+
+        ul li ul { margin-top: 0.25rem; }
+        ul li ul li::before { content: '\f0da'; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        table th {
+            background: var(--bg-subtle);
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        table tr:hover { background: var(--bg-card-alt); }
+
+        /* Toggle Button */
+        #toggle-collaborators {
+            background: none;
+            border: none;
+            color: var(--primary-color);
             cursor: pointer;
+            padding: 0;
+            font-size: 0.82rem;
+            text-decoration: underline;
+            font-family: inherit;
         }
 
-        .node--internal circle {
-            fill: #555;
+        /* Clustrmaps */
+        .clustrmaps-container {
+            text-align: center;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
         }
 
-        .node--leaf circle {
-            fill: #999;
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero-grid { grid-template-columns: 1fr; }
+            .two-col-grid { grid-template-columns: 1fr; }
+            #recent-work { max-height: none; }
         }
 
-        .node text {
-            font-family: 'Lato', sans-serif;
-            font-size: 12px;
-            fill: #000;
+        @media (max-width: 768px) {
+            .profile-header { flex-direction: column; text-align: center; }
+            #profile-pic img { width: 100px; height: 100px; }
+            .publication-item { grid-template-columns: 1fr; }
+            .container { padding: 0 1rem; }
+            .section { padding: 1.5rem; }
+            #profile-name { font-size: 1.6rem; }
         }
 
-        .node text[style*="1e90ff"] { /* Style for links */
-            fill: #1e90ff;
-        }
-        #research-summary .collapsible-content {
-            display: block; /* Show the collapsible content by default */
+        html { scroll-behavior: smooth; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        #research-summary .collapsible-header::after {
-            content: '\2796'; /* Minus sign for the header */
-        }
-
-        #research-summary .collapsible-header {
-            background-color: #e0e0e0; /* Optional: slight visual distinction for active state */
-        }
-
-        #clustrmaps {
-            width: 200px !important; /* Adjust width as needed */
-            height: 150px !important; /* Adjust height as needed */
-            overflow: hidden;
-        }
-
-        #clustrmaps img, #clustrmaps iframe {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain; /* Ensures the map scales properly */
+        @media print {
+            header { position: static; }
+            .collapsible-content { display: block !important; }
         }
     </style>
 </head>
 
 <body>
-    <div style="width:1000px;margin: 0px auto;">
-        <header id="header" width="400px" style="display:flex;justify-content: space-around;">
-            <a href="#profile-intro">Home</a>
-            <a href="#research-summary">Research</a>
-            <a href="#experience">Experience</a>
-            <a href="#education">Education</a>
-            <a href="#selected-publications">Publications</a>
-            <a href="#talks">Talks</a>
-            <a href="#awards">Awards</a>
-            <a href="#services">Services</a>
-        </header>
+    <header id="header">
+        <nav>
+            <a href="#profile"><i class="fas fa-home"></i> Home</a>
+            <a href="#recent-work"><i class="fas fa-star"></i> Recent</a>
+            <a href="#research-summary"><i class="fas fa-flask"></i> Research</a>
+            <a href="#experience"><i class="fas fa-briefcase"></i> Experience</a>
+            <a href="#education"><i class="fas fa-graduation-cap"></i> Education</a>
+            <a href="#selected-publications"><i class="fas fa-book"></i> Publications</a>
+            <a href="#talks"><i class="fas fa-microphone"></i> Talks</a>
+            <a href="#awards"><i class="fas fa-award"></i> Awards</a>
+            <a href="#services"><i class="fas fa-hands-helping"></i> Services</a>
+        </nav>
+    </header>
 
-        <div id="profile">
-            <div id="profile-pic">
-                <img src="assets/images/hike.jpg" alt="Fu-Yun Wang's Profile Picture"/>
-            </div>
-            <div id="profile-intro">
-                <div id="profile-name">Fu-Yun Wang
+    <div class="container">
+
+        <!-- ===== HERO: Profile + Recent Work side-by-side ===== -->
+        <div class="hero-grid">
+            <div id="profile">
+                <div class="profile-header">
+                    <div id="profile-pic">
+                        <img src="assets/images/hike.jpg" alt="Fu-Yun Wang"/>
+                    </div>
+                    <div class="profile-header-text">
+                        <div id="profile-name">Fu-Yun Wang</div>
+                        <img src="assets/images/sign.png" style="height: 36px; width: auto; margin: 0.25rem 0;">
+                        <div class="profile-subtitle">
+                            Ph.D. Candidate @ <a href="https://mmlab.ie.cuhk.edu.hk/people.html" target="_blank">MMLab, CUHK</a>
+                        </div>
+                    </div>
                 </div>
-                <div style="text-align: center;">
-                    <img src="assets/images/sign.png" style="vertical-align: middle; height: 50px; width: auto;">
+
+                <div id="profile-intro">
+                    <p>
+                Fu-Yun Wang (IPA: [fu˧˥ yn˧˥ wɑŋ]) is a third-year Ph.D. candidate at <a href="https://mmlab.ie.cuhk.edu.hk/people.html" target="_blank">MMLab@CUHK</a>.
+                He works on <strong>scalable post-training</strong>.
+                Currently vibing with <strong>world model and agentic stuff</strong>.
+                    </p>
+                    <div class="highlight-text">
+                        <p>
+                        <i class="fas fa-bullhorn"></i> Job market 2027. Looking for opportunities (industry or postdoc) to work on interesting projects. Always happy to chat early.                        </p>
+                    </div>
                 </div>
-                <!-- <div id="profile-email">fywang@link.cuhk.edu.hk; fywang0126@gmail.com</div> -->
-                <p>
-                    Fu-Yun Wang (Pronounced as "Foo-Yoon Wahng" IPA: [fu˧˥ yn˧˥ wɑŋ]) is a second-year Ph.D. Candidate of <a href="https://mmlab.ie.cuhk.edu.hk/people.html">MMLab@CUHK</a>.  
-                </p>
-                <p>
-                    My research interests now focus on scalable post-training techniques for diffusion models and unified multimodal models. 
-                </p>                   
-                <p style="color: red;">
-                    I plan to enter the job market in 2027 and am open to overseas opportunities in industrial generative AI jobs, and postdoctoral roles. Feel free to contact me early to discuss potential collaborations.
-                </p>
-                <!-- <p>
-                    I plan to enter the job market in 2027 and am open to overseas opportunities in industrial generative AI research, quantitative trading, and postdoctoral roles. Feel free to contact me early to discuss potential collaborations.
-                </p> -->
-                
-                <div>
-                    <a href="https://github.com/g-u-n" target="_blank">
-                        Github
-                    </a>
-                    /
-                    <a href="https://scholar.google.com/citations?user=R15m3J4AAAAJ" target="_blank">
-                        Google Scholar
-                    </a>
-                    /
-                    <a href="mailto:fywang@link.cuhk.edu.hk">
-                    Email
-                    </a>
-                    /
-                    <a href="https://www.xiaohongshu.com/user/profile/6436e0a9000000001400f7e1">
-                    RedNote
-                    </a>
-                    /
-                    <a href="https://huggingface.co/wangfuyun">
-                    HF-Space 🤗
-                    </a>
+
+                <div class="social-links">
+                    <a href="https://github.com/g-u-n" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                    <a href="https://scholar.google.com/citations?user=R15m3J4AAAAJ" target="_blank"><i class="fas fa-graduation-cap"></i> Scholar</a>
+                    <a href="mailto:fywang@link.cuhk.edu.hk"><i class="fas fa-envelope"></i> Email</a>
+                    <a href="https://www.xiaohongshu.com/user/profile/6436e0a9000000001400f7e1" target="_blank"><i class="fas fa-book-open"></i> RedNote</a>
+                    <a href="https://huggingface.co/wangfuyun" target="_blank"><i class="fas fa-smile"></i> HF 🤗</a>
                 </div>
             </div>
-            <div style="clear: both;"></div>
+
+            <!-- Recent Work Panel -->
+            <div id="recent-work">
+                <h2>
+                    <i class="fas fa-fire"></i> Recent Work
+                    <span class="recent-badge">New</span>
+                </h2>
+
+                <!-- PromptRL -->
+                <div class="recent-pub-card">
+                    <div class="recent-pub-title">PromptRL: Prompt Matters in RL for Flow-Based Image Generation</div>
+                    <div class="recent-pub-authors"><strong>Fu-Yun Wang</strong>, Han Zhang, Michael Gharbi, Hongsheng Li, Taesung Park</div>
+                    <span class="recent-pub-venue"><i class="fas fa-file-alt"></i> arXiv 2026</span>
+
+                    <div class="recent-pub-insight">
+                        <strong><i class="fas fa-lightbulb"></i> Key Insight:</strong>
+                        Achieves <strong>2× sample efficiency</strong> over flow-only RL while obtaining an adaptive prompt refinement agent that improves test-time performance.
+                    </div>
+
+                    <div class="method-box">
+                        <h4><i class="fas fa-cogs"></i> Method</h4>
+                        <p>PromptRL <strong>jointly trains language models and flow-matching models</strong> in a unified RL loop for text-to-image generation, using LMs as adaptive prompt refiners.</p>
+                        <ul>
+                            <li><strong>Unified RL Training:</strong> Joint optimization of both LM and FM in a single loop</li>
+                            <li><strong>Exploration Collapse Solution:</strong> Overcomes insufficient diversity through adaptive prompting</li>
+                            <li><strong>Test-time Adaptation:</strong> Adaptive prompt refinement at inference</li>
+                        </ul>
+                    </div>
+
+                    <div class="pub-links">
+                        <a href="https://g-u-n.github.io/projects/promptrl/" target="_blank"><i class="fas fa-link"></i> Project</a>
+                        <a href="https://arxiv.org/abs/2602.01382" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                        <a href="https://github.com/G-U-N/UniRL" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                    </div>
+                </div>
+
+                <!-- Image Diffusion Preview -->
+                <div class="recent-pub-card">
+                    <div class="recent-pub-title">Image Diffusion Preview with Consistency Solver</div>
+                    <div class="recent-pub-authors"><strong>Fu-Yun Wang</strong>¹², Hao Zhou¹, Liangzhe Yuan¹, Sanghyun Woo¹, Boqing Gong¹, Bohyung Han¹, Ming-Hsuan Yang¹, Han Zhang¹, Yukun Zhu¹, Ting Liu¹, Long Zhao¹ · <span style="font-size:0.78rem;">¹Google DeepMind ²CUHK</span></div>
+                    <span class="recent-pub-venue"><i class="fas fa-building"></i> arXiv 2026</span>
+
+                    <div class="recent-pub-insight">
+                        <strong><i class="fas fa-lightbulb"></i> Key Insight:</strong>
+                        Proposes a <strong>preview-and-refine paradigm</strong> for diffusion models: users first get fast low-step previews, then only run expensive full-step sampling on satisfactory ones—reducing overall interaction time by nearly <strong>50%</strong>.
+                    </div>
+
+                    <div class="method-box">
+                        <h4><i class="fas fa-cogs"></i> Method</h4>
+                        <p>ConsistencySolver is a <strong>lightweight, learnable high-order ODE solver</strong> derived from general linear multistep methods, optimized via Reinforcement Learning (PPO). It adapts integration coefficients to each sampling step, improving both preview <em>fidelity</em> and <em>consistency</em> with the full-step output—without modifying the base diffusion model.</p>
+                        <ul>
+                            <li><strong>Diffusion Preview Paradigm:</strong> Fast few-step preview → user evaluation → full-step refinement only when satisfied</li>
+                            <li><strong>Learnable ODE Solver:</strong> Adaptive multistep coefficients predicted by a lightweight MLP, trained end-to-end via RL</li>
+                            <li><strong>Preview Consistency:</strong> Preserves the deterministic PF-ODE mapping so preview closely matches the final output</li>
+                            <li><strong>FID on-par with 47% fewer steps</strong> vs. Multistep DPM-Solver; outperforms distillation baselines</li>
+                        </ul>
+                    </div>
+
+                    <div class="pub-links">
+                        <!-- <a href="#" style="opacity: 0.5; cursor: not-allowed;"><i class="fas fa-file-pdf"></i> Paper (Coming Soon)</a> -->
+                        <a href="https://arxiv.org/abs/2602.01382" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                        <a href="https://github.com/G-U-N/UniRL" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="divider"></div>
-
-        <!-- <div class="section" id="research-summary">
-            <h1>Research Overview</h1>
-            <p>Here's a visual summary of my research interests and contributions.</p>
-
-            <img src="assets/images/research_summary.jpg" alt="Research Work Summary" class="research-summary-image">
-            <div style="clear: both;"></div>
-        </div> -->
+        <!-- Research Summary -->
         <div class="section" id="research-summary">
-            <h1>Research Summary</h1>
-            <p>Below is an interactive tree diagram categorizing my research work by direction. Click nodes to expand/collapse, and click paper titles to visit links.</p>
+            <h1><i class="fas fa-project-diagram"></i> Research Summary</h1>
+            <p style="margin-bottom: 1rem; font-size: 0.9rem;">Interactive tree diagram of my research. Click nodes to expand/collapse; click paper titles to visit links.</p>
             <div class="collapsible-header">
                 <h3>Research Directions</h3>
             </div>
             <div class="collapsible-content">
-                <svg id="treeDiagram" width="1000" height="600" overflow="auto"></svg>
+                <svg id="treeDiagram" width="100%" height="700" style="overflow: visible;"></svg>
             </div>
-            <div style="clear: both;"></div>
         </div>
-        
-        <div class="divider"></div>
 
+        <!-- Experience -->
         <div class="section" id="experience">
-            <h1>Internship Experience</h1>
-            <div class="internship-item">
-                <img src="assets/images/tencent_logo.png" alt="Tencent Logo" class="company-logo">
-                <div>
-                    <h3>Tencent AI Lab</h3>
-                    <p><strong> Research Intern </strong> | 2022.6 - 2022.12</p>
-                    <p>Worked on Class-Incremental Learning.</p>
-                    <p>Supervised by: <a href="#">Dr. Liu Liu</a> </p>
-                    <p>Collaborated with  <a href="#">Dr. Yatao Bian</a> for instruction and discussions</p> 
+            <h1><i class="fas fa-briefcase"></i> Internship Experience</h1>
+            <div class="two-col-grid">
+                <div class="experience-card current">
+                    <img src="assets/images/bytedance_logo.png" alt="ByteDance" class="company-logo">
+                    <div class="experience-content">
+                        <h3>ByteDance Seed <span class="badge current">Current</span></h3>
+                        <p><strong>Research Intern</strong> · 2025.10 - Present</p>
+                        <p>Video Generation, Multimodal Models</p>
+                        <p>Mentor: <a href="https://haoqifan.github.io/" target="_blank">Haoqi Fan</a></p>
+                    </div>
                 </div>
-            </div>
-            <div class="internship-item">
-                <img src="assets/images/avolution_logo.png" alt="Tencent Logo" class="company-logo">
-                <div>
-                    <h3>Avolution AI (Accquired by MiniMax)</h3>
-                    <p><strong> Research Collaboration </strong> | 2023.10 - 2024.10</p>
-                    <p>Worked on Video Diffusion Models, Diffusion Distillation.</p>
-                    <p>Supervised by: <a href="#">Dr. Zhaoyang Huang</a></p>
-                    <p>Collaborated with <a href="#">Dr. Xiaoyu Shi</a> and <a href="#">Weikang Bian</a> for instruction and discussions</p>
+
+                <div class="experience-card">
+                    <img src="assets/images/reve_logo.png" alt="Reve" class="company-logo">
+                    <div class="experience-content">
+                        <h3>Reve Inc</h3>
+                        <p><strong>Research Intern</strong> · 2025.6 - 2025.11</p>
+                        <p>Multimodal LMs, Diffusion Models, RL</p>
+                        <p>Supervised by: Dr. Han Zhang</p>
+                    </div>
                 </div>
-            </div>
-            <div class="internship-item">
-                <img src="assets/images/deepmind_logo.jpeg" alt="Google Logo" class="company-logo">
-                <div>
-                    <h3>Google DeepMind</h3>
-                    <p><strong> Research Intern </strong> | 2025.2 - 2025.5</p>
-                    <p>Focused on Diffusion Distillation, Reinforcement Learning.</p>
-                    <p>Supervised by: <a href="#">Dr. Long Zhao</a>,  <a href="#">Dr. Ting Liu</a>,  <a href="#">Dr. Hao Zhou</a> and <a href="#">Dr. LiangZhe Yuan</a>  </p>
-        <p>
-            Collaborated with 
-            <span id="collaborators-short"><a href="#">Prof. Bohyung Han</a>, <a href="#">Prof. Boqing Gong</a></span>
-            <span id="collaborators-full" style="display: none;">
-                <a href="#">Prof. Bohyung Han</a>, <a href="#">Prof. Boqing Gong</a>, <a href="#">Prof. Ming-Hsuan Yang</a>, <a href="#">Dr. Yukun Zhu</a>
-            </span>
-            for instruction and discussions.
-            <button id="toggle-collaborators" onclick="toggleCollaborators()">Show more</button>
-        </p>
+
+                <div class="experience-card">
+                    <img src="assets/images/deepmind_logo.jpeg" alt="Google DeepMind" class="company-logo">
+                    <div class="experience-content">
+                        <h3>Google DeepMind</h3>
+                        <p><strong>Research Intern</strong> · 2025.2 - 2025.5</p>
+                        <p>Diffusion Distillation, RL</p>
+                        <p>Supervised by: Dr. Long Zhao, Dr. Ting Liu, Dr. Hao Zhou, Dr. LiangZhe Yuan</p>
+                        <p>
+                            Collaborated with 
+                            <span id="collaborators-short">Prof. Bohyung Han, Prof. Boqing Gong</span>
+                            <span id="collaborators-full" style="display: none;">Prof. Bohyung Han, Prof. Boqing Gong, Prof. Ming-Hsuan Yang, Dr. Yukun Zhu</span>
+                            <button id="toggle-collaborators" onclick="toggleCollaborators()">Show more</button>
+                        </p>
+                    </div>
                 </div>
-            </div>
-            <div class="internship-item">
-                <img src="assets/images/reve_logo.png" alt="Reve Logo" class="company-logo">
-                <div>
-                    <h3>Reve Art</h3>
-                    <p><strong> Research Intern </strong> | 2025.6 - Present</p>
-                    <p>Focused on Multimodal Language Models, Diffusion Moldes, Reinforcement Learning.</p>
-                    <p>Supervised by: <a href="#">Dr. Han Zhang</a></p>
+
+                <div class="experience-card">
+                    <img src="assets/images/avolution_logo.png" alt="Avolution" class="company-logo">
+                    <div class="experience-content">
+                        <h3>Avolution AI <span class="badge">Acquired by MiniMax</span></h3>
+                        <p><strong>Research Collaboration</strong> · 2023.10 - 2024.10</p>
+                        <p>Video Diffusion, Distillation</p>
+                        <p>Collaborated with: Dr. Zhaoyang Huang, Dr. Xiaoyu Shi, Weikang Bian</p>
+                    </div>
                 </div>
-            </div>
-            <div style="clear: both;"></div>
-        </div>
 
-        <div class="divider"></div>
-
-        <!-- <div class="section" id="education">
-            <h1>Education</h1>
-            <div>
-                <h3>The Chinese University of Hong Kong (CUHK)</h3>
-                <p><strong>Ph.D. in Engineering</strong> | 2023 - Present</p>
-                 <p> Supervisor: Professor <a href="https://www.ee.cuhk.edu.hk/~hsli/" target="_blank">Hongsheng Li</a> and Professor <a href="https://www.ee.cuhk.edu.hk/~xgwang/" target="_blank">Xiaogang Wang</a></p>
-            </div>
-            <div style="margin-top: 15px;">
-                <h3>Nanjing University</h3>
-                <p><strong>B.Eng. in Artificial Intelligence (RANK 2/88) </strong> | 2019 - 2023</p>
-                <p>Supervisor: Professor <a href="https://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a> and Dr. <a href="https://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou</a> (LAMDA Group)</p>
-            </div>
-            <div style="clear: both;"></div>
-        </div> -->
-
-    <div class="section" id="education">
-        <h1>Education</h1>
-
-        <div class="internship-item">
-            <img src="assets/images/cuhk_logo.gif" alt="CUHK Logo" class="company-logo">
-            <div>
-                <h3>The Chinese University of Hong Kong (CUHK)</h3>
-                <p><strong>Ph.D. in Engineering</strong> | 2023 - Present</p>
-                <p>Supervisor: Professor <a href="https://www.ee.cuhk.edu.hk/~hsli/" target="_blank">Hongsheng Li</a> and Professor <a href="https://www.ee.cuhk.edu.hk/~xgwang/" target="_blank">Xiaogang Wang</a></p>
+                <div class="experience-card">
+                    <img src="assets/images/tencent_logo.png" alt="Tencent" class="company-logo">
+                    <div class="experience-content">
+                        <h3>Tencent AI Lab</h3>
+                        <p><strong>Research Intern</strong> · 2022.6 - 2022.12</p>
+                        <p>Class-Incremental Learning</p>
+                        <p>Supervised by: Dr. Liu Liu, Prof. Yatao Bian</p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="internship-item">
-            <img src="assets/images/nju_logo.png" alt="Nanjing University Logo" class="company-logo">
-            <div>
-                <h3>Nanjing University</h3>
-                <p><strong>B.Eng. in Artificial Intelligence (RANK 2/88)</strong> | 2019 - 2023</p>
-                <p>Supervisor: Professor <a href="https://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a> and Professor <a href="https://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou</a> (LAMDA Group)</p>
+        <!-- Education -->
+        <div class="section" id="education">
+            <h1><i class="fas fa-graduation-cap"></i> Education</h1>
+            <div class="two-col-grid">
+                <div class="experience-card">
+                    <img src="assets/images/cuhk_logo.gif" alt="CUHK" class="company-logo">
+                    <div class="experience-content">
+                        <h3>The Chinese University of Hong Kong</h3>
+                        <p><strong>Ph.D. in Engineering</strong> · 2023 - Present</p>
+                        <p>Supervisor: Prof. <a href="https://www.ee.cuhk.edu.hk/~hsli/" target="_blank">Hongsheng Li</a> & Prof. <a href="https://www.ee.cuhk.edu.hk/~xgwang/" target="_blank">Xiaogang Wang</a></p>
+                    </div>
+                </div>
+                <div class="experience-card">
+                    <img src="assets/images/nju_logo.png" alt="NJU" class="company-logo">
+                    <div class="experience-content">
+                        <h3>Nanjing University</h3>
+                        <p><strong>B.Eng. in AI (Rank 2/88)</strong> · 2019 - 2023</p>
+                        <p>Supervisor: Prof. <a href="https://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a> & Prof. <a href="https://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou</a></p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div style="clear: both;"></div>
-    </div>
-
-        <div class="divider"></div>
-
+        <!-- Publications -->
         <div class="section" id="selected-publications">
-            <h1>Selected Publications</h1>
-            <p>Below are some of my selected publications, categorized by theme. For a complete list, please visit my <a href="https://scholar.google.com/citations?user=R15m3J4AAAAJ" target="_blank">Google Scholar profile</a>.</p>
+            <h1><i class="fas fa-book-open"></i> Selected Publications</h1>
+            <p style="margin-bottom: 1.25rem; font-size: 0.9rem;">Categorized by theme. Full list on <a href="https://scholar.google.com/citations?user=R15m3J4AAAAJ" target="_blank">Google Scholar</a>.</p>
 
             <div class="collapsible-header">
                 <h3>Diffusion Post-Training: Acceleration & Reinforcement Learning</h3>
             </div>
             <div class="collapsible-content">
-                <div>
-                    <a href="https://openreview.net/forum?id=nEDToD1R8M" style="height: 12em;" class="research-thumb">
-                        <img src="assets/images/rd.png" style="margin-bottom:0px;" alt="Rectified Diffusion">
+                <div class="publication-item">
+                    <a href="https://openreview.net/forum?id=nEDToD1R8M" class="research-thumb">
+                        <img src="assets/images/rd.png" alt="Rectified Diffusion">
                     </a>
-                    <a href="https://openreview.net/forum?id=nEDToD1R8M" class="research-proj-title">
-                        Rectified Diffusion: Straightness Is Not Your Need in Rectified Flow
-                    </a>
-                    <p>
-                        <a style="color:#000;" href="https://g-u-n.github.io/" target="_blank"><b>Fu-Yun Wang</b></a>,
-                        <a style="color:#000;" href="https://yangling0818.github.io/" target="_blank">Ling Yang</a>,
-                        <a style="color:#000;" href="https://drinkingcoder.github.io/" target="_blank">Zhaoyang Huang</a>,
-                        <a style="color:#000;" href="https://scholar.google.com/citations?user=33yNvIgAAAAJ&hl=en" target="_blank">Mengdi Wang</a>,
-                        <a style="color:#000;" href="https://scholar.google.com/citations?user=BN2Ze-QAAAAJ&hl=en&oi=ao" target="_blank">Hongsheng Li</a>
-                        <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
-                        <span class="highlight">We conducted an in-depth and meticulous theoretical analysis and empirical validation of flow matching, rectified flow, and the rectification operation. We demonstrated that the rectification operation is also applicable to general diffusion models, and that flow matching is fundamentally no different from the traditional noise addition methods in DDPM. Our <a href="https://zhuanlan.zhihu.com/p/884824542">related blog post on ZHIHU</a> garnered over <b>10k</b> views and approximately <b>400</b> likes.</span><br>
-                        <a href="https://arxiv.org/abs/2410.07303" target="_blank">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="https://github.com/G-U-N/Rectified-Diffusion?tab=readme-ov-file" target="_blank">GitHub</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="assets/slides/poster_rd.pdf" target="_blank">Poster</a> 
-                    </p>
+                    <div class="publication-content">
+                        <a href="https://openreview.net/forum?id=nEDToD1R8M" class="research-proj-title">Rectified Diffusion: Straightness Is Not Your Need in Rectified Flow</a>
+                        <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Ling Yang, Zhaoyang Huang, Mengdi Wang, Hongsheng Li</div>
+                        <div class="publication-venue"><strong>ICLR 2025</strong></div>
+                        <div class="highlight">In-depth theoretical analysis and empirical validation of flow matching, rectified flow, and the rectification operation. <a href="https://zhuanlan.zhihu.com/p/884824542" target="_blank">ZHIHU blog</a> garnered <strong>10k+</strong> views and ~400 likes.</div>
+                        <div class="publication-links">
+                            <a href="https://arxiv.org/abs/2410.07303" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                            <a href="https://github.com/G-U-N/Rectified-Diffusion" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                            <a href="assets/slides/poster_rd.pdf" target="_blank"><i class="fas fa-image"></i> Poster</a>
+                        </div>
+                    </div>
                 </div>
-                <br>
-                <div>
-                    <a href="https://g-u-n.github.io/projects/pcm/" style="height: 14em;" class="research-thumb">
-                        <img src="assets/images/pcm.jpeg" style=" margin-bottom:0px;" alt="Phased Consistency Model">
-                    </a>
-                    <a href="https://g-u-n.github.io/projects/pcm/" class="research-proj-title">
-                       Phased Consistency Model
-                    </a>
-                    <p>
-                        <a style="color:#000;" href="https://g-u-n.github.io/" target="_blank"><b>Fu-Yun Wang</b></a>,
-                        <a style="color:#000;" target="_blank">Zhaoyang Huang</a>,
-                        <a style="color:#000;" target="_blank">Alexander William Bergman</a>,
-                        <a style="color:#000;" target="_blank">Dazhong Shen</a>,
-                        <a style="color:#000;" target="_blank">Peng Gao</a>,
-                        <a style="color:#000;" target="_blank">Michael Lingelbach</a>,
-                        <a style="color:#000;" target="_blank">Keqiang Sun</a>,
-                        <a style="color:#000;" target="_blank">Weikang Bian</a>,
-                        <a style="color:#000;" target="_blank">Guanglu Song</a>,
-                        <a style="color:#000;" target="_blank">Yu Liu</a>,
-                        <a style="color:#000;" target="_blank">Xiaogang Wang</a>,
-                        <a style="color:#000;" target="_blank">Hongsheng Li</a>
-                        <br><em>Conference on Neural Information Processing Systems.<strong><i style="color:#1e90ff"> NeurIPS 2024</i></strong>.</em><br>
-                        <span class="highlight">We validated and enhanced the effectiveness of consistency models for text-to-image and text-to-video generation. Our method has been adopted by the <a href="https://github.com/hao-ai-lab/FastVideo" target="_blank">FastVideo</a> project, successfully accelerating SoTA video diffusion models including <a href="https://github.com/Tencent-Hunyuan/HunyuanVideo" target="_blank">HunyuanVideo</a> and <a href="https://huggingface.co/Wan-AI/Wan2.1-T2V-14B" target="_blank">WAN</a>.</span><br>                        <a href="https://g-u-n.github.io/projects/pcm/" target="_blank">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="https://github.com/G-U-N/Phased-Consistency-Model" target="_blank">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="https://g-u-n.github.io/assets/slides/pcm.pdf" target="_blank">Paper</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="assets/slides/pcm-poster.pdf" target="_blank">Poster</a> 
-                    </p>
-                </div>
-                <br>
-                <!-- <div>
-                    <a href="https://openreview.net/forum?id=ZkFMe3OPfw" style="height: 10em;" class="research-thumb">
-                        <img src="assets/images/instaportrait.png" style="margin-bottom:0px;" alt="InstantPortrait">
-                    </a>
-                    <a href="https://openreview.net/forum?id=ZkFMe3OPfw" class="research-proj-title">
-                        InstantPortrait: One-Step Portrait Editing via Diffusion Multi-Objective Distillation
-                    </a>
-                    <p>
-                        <a style="color:#000;" href="https://scholar.google.com/citations?user=VyNxC-MAAAAJ&hl=en">Zhixin Lai</a>,
-                        <a style="color:#000;" href="https://scholar.google.com/citations?user=AJ7qJDEAAAAJ&hl=en">Keqiang Sun</a>,
-                        <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                        <a style="color:#000;" href="https://openreview.net/profile?id=~Dhritiman_Sagar1">Dhritiman Sagar</a>,
-                        <a style="color:#000;" href="https://openreview.net/profile?id=~Erli_Ding1">Erli Ding</a>
-                        <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
-                        <span class="highlight">We developed an <b>industrial-level real-time portrait editor</b> using diffusion multi-objective distillation, enabling efficient and high-quality portrait editing in a single step.</span><br>
-                        <a href="https://openreview.net/forum?id=ZkFMe3OPfw" target="_blank">Paper</a>
-                    </p>
-                </div> -->
-                <br>
-                <div>
-                    <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" style="height: 12em;" class="research-thumb">
-                        <img src="assets/images/npo.png" style="margin-bottom:0px;" alt="Diffusion-NPO">
-                    </a>
-                    <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" class="research-proj-title">
-                        Diffusion-NPO: Negative Preference Optimization for Better Preference Aligned Generation of Diffusion Models
-                    </a>
-                    <p>
-                        <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                        <a style="color:#000;">Yunhao Shui</a>,
-                        <a style="color:#000;" href="https://scholar.google.com/citations?user=4jvU6FIAAAAJ&hl=en">Jingtan Piao</a>,
-                        <a style="color:#000;" href="https://scholar.google.com/citations?user=AJ7qJDEAAAAJ&hl=en">Keqiang Sun</a>,
-                        <a style="color:#000;" href="https://scholar.google.com/citations?user=BN2Ze-QAAAAJ&hl=en&oi=ao">Hongsheng Li</a>
-                        <br><em>Thirteenth International Conference on Learning Representations.<strong><i style="color:#1e90ff"> ICLR 2025</i></strong>.</em><br>
-                        <span class="highlight">We proposed a general, simple yet effective method for strengthened diffusion preference optimization, improving the alignment of generated outputs with user preferences.</span><br>
-                        <!-- <strong><i style="color:red;">General, simple yet effective idea for strengthened diffusion preference optimization.</i></strong><br> -->
-                        <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" target="_blank">Paper</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="assets/slides/poster_npo.pdf" target="_blank">Poster</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="https://github.com/G-U-N/Diffusion-NPO" target="_blank">Github</a>
 
-                    </p>
+                <div class="publication-item">
+                    <a href="https://g-u-n.github.io/projects/pcm/" class="research-thumb">
+                        <img src="assets/images/pcm.jpeg" alt="PCM">
+                    </a>
+                    <div class="publication-content">
+                        <a href="https://g-u-n.github.io/projects/pcm/" class="research-proj-title">Phased Consistency Model</a>
+                        <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Zhaoyang Huang, Alexander William Bergman, Dazhong Shen, Peng Gao, Michael Lingelbach, Keqiang Sun, Weikang Bian, Guanglu Song, Yu Liu, Xiaogang Wang, Hongsheng Li</div>
+                        <div class="publication-venue"><strong>NeurIPS 2024</strong></div>
+                        <!-- <div>Validate the </div> -->
+                        <!-- <div class="highlight">Adopted by <a href="https://huggingface.co/Qwen/Qwen-Image-2512" target="_blank">Qwen-Image-2512</a>, accelerating <a href="https://github.com/Tencent-Hunyuan/HunyuanVideo" target="_blank">HunyuanVideo</a> and <a href="https://huggingface.co/Wan-AI/Wan2.1-T2V-14B" target="_blank">WAN</a>.</div> -->
+                        <div class="highlight">Validate the feasibility of one-step video generation; Adopted by <a href="https://huggingface.co/Qwen/Qwen-Image-2512" target="_blank">Qwen-Image-2512</a> for first-stage initialization; Adopted by Early version of <a href="https://github.com/hao-ai-lab/FastVideo" target="_blank">FastVideo</a>, accelerating <a href="https://github.com/Tencent-Hunyuan/HunyuanVideo" target="_blank">HunyuanVideo</a> and <a href="https://huggingface.co/Wan-AI/Wan2.1-T2V-14B" target="_blank">WAN</a>.</div>
+                        <div class="publication-links">
+                            <a href="https://g-u-n.github.io/projects/pcm/" target="_blank"><i class="fas fa-link"></i> Project</a>
+                            <a href="https://github.com/G-U-N/Phased-Consistency-Model" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                            <a href="https://g-u-n.github.io/assets/slides/pcm.pdf" target="_blank"><i class="fas fa-file-pdf"></i> Paper</a>
+                            <a href="assets/slides/pcm-poster.pdf" target="_blank"><i class="fas fa-image"></i> Poster</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="publication-item">
+                    <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" class="research-thumb">
+                        <img src="assets/images/npo.png" alt="Diffusion-NPO">
+                    </a>
+                    <div class="publication-content">
+                        <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" class="research-proj-title">Diffusion-NPO: Negative Preference Optimization for Diffusion Models</a>
+                        <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Yunhao Shui, Jingtan Piao, Keqiang Sun, Hongsheng Li</div>
+                        <div class="publication-venue"><strong>ICLR 2025</strong></div>
+                        <div class="highlight">A general, simple yet effective method for strengthened diffusion preference optimization.</div>
+                        <div class="publication-links">
+                            <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" target="_blank"><i class="fas fa-file-pdf"></i> Paper</a>
+                            <a href="assets/slides/poster_npo.pdf" target="_blank"><i class="fas fa-image"></i> Poster</a>
+                            <a href="https://github.com/G-U-N/Diffusion-NPO" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -412,453 +1018,181 @@
                 <h3>Generative Vision Applications</h3>
             </div>
             <div class="collapsible-content">
-                <div>
-                    <a href="https://xiaoyushi97.github.io/Motion-I2V/" style="height: 14em;" class="research-thumb">
-                        <video width="320" height="auto" autoplay loop muted>
+                <div class="publication-item">
+                    <a href="https://xiaoyushi97.github.io/Motion-I2V/" class="research-thumb">
+                        <video width="100%" height="auto" autoplay loop muted>
                             <source src="assets/vids/motioni2v.mp4" type="video/mp4">
                         </video>
                     </a>
-                    <a href="https://xiaoyushi97.github.io/Motion-I2V/" class="research-proj-title">
-                        Motion-I2V: Consistent and Controllable Image-to-Video Generation with Explicit Motion Modeling
-                    </a>
-                    <p>
-                        <a style="color:#000;">Xiaoyu Shi*</a>,
-                        <a style="color:#000;">Zhaoyang Huang*</a>,
-                        <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang*</b></a>,
-                        <a style="color:#000;">Weikang Bian*</a>,
-                        <a style="color:#000;">Dasong Li</a>,
-                        <a style="color:#000;">Yi Zhang</a>,
-                        <a style="color:#000;">Manyuan Zhang</a>,
-                        <a style="color:#000;">Kachun Cheung</a>,
-                        <a style="color:#000;">Simon See</a>,
-                        <a style="color:#000;">Hongwei Qin</a>,
-                        <a style="color:#000;">Jifeng Dai</a>,
-                        <a style="color:#000;">Hongsheng Li</a>
-                        <br>
-                        <em>Special Interest Group on GRAPHics and Interactive Techniques.<strong><i style="color:#1e90ff">SIGGRAPH 2024</i></strong>.</em><br>
-                        <strong><i style="color:red;">SIGGRAPH 2024 Technical Papers Trailer</i></strong><br>
-                        <a href="https://xiaoyushi97.github.io/Motion-I2V/">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="https://github.com/G-U-N/Motion-I2V">GitHub</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="https://arxiv.org/abs/2401.15977">arXiv</a><br>
-                    </p>
+                    <div class="publication-content">
+                        <a href="https://xiaoyushi97.github.io/Motion-I2V/" class="research-proj-title">Motion-I2V: Consistent and Controllable Image-to-Video Generation</a>
+                        <div class="publication-authors">Xiaoyu Shi*, Zhaoyang Huang*, <strong>Fu-Yun Wang*</strong>, Weikang Bian*, et al.</div>
+                        <div class="publication-venue"><strong>SIGGRAPH 2024</strong> <span class="badge">Technical Papers Trailer</span></div>
+                        <div class="publication-links">
+                            <a href="https://xiaoyushi97.github.io/Motion-I2V/" target="_blank"><i class="fas fa-link"></i> Project</a>
+                            <a href="https://github.com/G-U-N/Motion-I2V" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                            <a href="https://arxiv.org/abs/2401.15977" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                        </div>
+                    </div>
                 </div>
-                <br>
-                <br>
-                <br>
-                <div>
-                    <a href="https://gen-l-2.github.io/" style="height: 12em;" class="research-thumb">
-                        <video width="320" height="160" autoplay loop muted>
+
+                <div class="publication-item">
+                    <a href="https://gen-l-2.github.io/" class="research-thumb">
+                        <video width="100%" height="auto" autoplay loop muted>
                             <source src="assets/vids/zola.mp4" type="video/mp4">
                         </video>
                     </a>
-                    <a href="https://gen-l-2.github.io/" class="research-proj-title">
-                        ZoLA: Zero-Shot Creative Long Animation Generation with Short Video Model
-                    </a>
-                    <p>
-                        <a style="color:#000;" href="https://g-u-n.github.io/"><b>Fu-Yun Wang</b></a>,
-                        <a style="color:#000;">Zhaoyang Huang</a>,
-                        <a style="color:#000;">Qiang Ma</a>,
-                        <a style="color:#000;">Xudong Lu</a>,
-                        <a style="color:#000;">Weikang Bian</a>,
-                        <a style="color:#000;">Yijin Li</a>,
-                        <a style="color:#000;">Yu Liu</a>,
-                        <a style="color:#000;">Hongsheng Li</a>
-
-                        <br><em>European Conference on Computer Vision. <strong><i style="color:#1e90ff">ECCV 2024</i></strong>.</em><br>
-                        <strong><i style="color:red;">ECCV 2024 Oral Presentation</i></strong><br>
-                        <a href="https://gen-l-2.github.io/">Project Page</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                        <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06174.pdf">Paper</a>
-                    </p>
+                    <div class="publication-content">
+                        <a href="https://gen-l-2.github.io/" class="research-proj-title">ZoLA: Zero-Shot Creative Long Animation Generation</a>
+                        <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Zhaoyang Huang, Qiang Ma, Xudong Lu, Weikang Bian, Yijin Li, Yu Liu, Hongsheng Li</div>
+                        <div class="publication-venue"><strong>ECCV 2024</strong> <span class="badge">Oral</span></div>
+                        <div class="publication-links">
+                            <a href="https://gen-l-2.github.io/" target="_blank"><i class="fas fa-link"></i> Project</a>
+                            <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06174.pdf" target="_blank"><i class="fas fa-file-pdf"></i> Paper</a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            
             <div class="collapsible-header">
                 <h3>Class-Incremental Learning</h3>
             </div>
-                <div class="collapsible-content">
-                    <div>
-                        <a href="https://g-u-n.github.io/" style="height: 14em;" class="research-thumb">
-                            <img src="assets/images/pycil.png" style=" margin-bottom:0px;" alt="PyCIL">
-                        </a>
-                        <a href="https://g-u-n.github.io/" class="research-proj-title">
-                            PyCIL: A Python Toolbox for Class-Incremental Learning
-                        </a>
-                        <p>
-                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou*</a>,
-                            <a style="color:#000;" href="https://g-u-n.github.io/" target="_blank"><b>Fu-Yun Wang*</b></a>,
-                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a>,
-                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/" target="_blank">De-Chuan Zhan</a>
-                            <br><em>SCIENCE CHINA Information Sciences. <strong><i style="color:#1e90ff">SCIS</i></strong>.</em><br>
-                            PyCIL stands out as a comprehensive and user-friendly Python toolbox for Class-Incremental Learning. Boasting nearly <b>1000</b> stars on GitHub, it is currently the most widely collected CIL toolkit, adopted by researchers worldwide. It provides a standardized framework for implementing and evaluating various CIL algorithms, fostering reproducible research and accelerating advancements in the field. <br>
-                            <a href="https://github.com/G-U-N/PyCIL" target="_blank">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                            <a href="https://arxiv.org/abs/2112.12533" target="_blank">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                            <a href="https://mp.weixin.qq.com/s/A472p7XGZMhAMAR2wyHZJw" target="_blank">Media</a> &nbsp;&nbsp;&bull;&nbsp;&nbsp;<img src="https://img.shields.io/github/stars/G-U-N/PyCIL?style=flat&amp;label=Stars&amp;logo=github&amp;labelColor=f6f6f6&amp;color=9cf&amp;logoColor=020d12" alt="GitHub Stars"/>
-                            <img src="https://img.shields.io/github/forks/G-U-N/PyCIL?style=flat&amp;label=Forks&amp;logo=github&amp;labelColor=f6f6f6&amp;color=9cf&amp;logoColor=020d12" alt="GitHub Forks"/>     <br>           
-                        </p>
-                    </div>
-                    <br>
-                    <br>
-                    <div>
-                        <a href="https://g-u-n.github.io/" style="height: 14em;" class="research-thumb">
-                            <img src="assets/images/foster.jpg" style=" margin-bottom:0px;" alt="FOSTER">
-                        </a>
-                        <a href="https://g-u-n.github.io/" class="research-proj-title">
-                            FOSTER: Feature Boosting and Compression for Class-Incremental Learning
-                        </a>
-                        <p>
-                            <a style="color:#000;" href="https://g-u-n.github.io/" target="_blank"><b>Fu-Yun Wang</b></a>,
-                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/zhoudw/" target="_blank">Da-Wei Zhou</a>,
-                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/" target="_blank">Han-Jia Ye</a>,
-                            <a style="color:#000;" href="http://www.lamda.nju.edu.cn/yehj/" target="_blank">De-Chuan Zhan</a>
-                            <br><em>European Conference on Computer Vision. <strong><i style="color:#1e90ff">ECCV 2022</i></strong>.</em><br>
-                            FOSTER introduces a novel approach to Class-Incremental Learning by combining feature boosting and compression strategies. This method effectively mitigates catastrophic forgetting while promoting the learning of new classes, showcasing robust performance in dynamic learning environments.<br>
-                            <a href="https://github.com/G-U-N/ECCV22-FOSTER" target="_blank">Github</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                            <a href="https://arxiv.org/abs/2204.04662" target="_blank">arXiv</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;
-                            <img src="https://img.shields.io/badge/dynamic/json?style=plastic&amp;labelColor=f6f6f6&amp;color=9cf&amp;style=flat&amp;label=Citations&amp;logo=Google%20Scholar&amp;query=publications%5B1%5D.citations&amp;url=https%3A%2F%2Fcse.bth.se%2F~fer%2Fgooglescholar-api%2Fgooglescholar.php%3Fuser%3DkMNaR-YAAAAJ" alt="Citations">                
-                        </p>
+            <div class="collapsible-content">
+                <div class="publication-item">
+                    <a href="https://g-u-n.github.io/" class="research-thumb">
+                        <img src="assets/images/pycil.png" alt="PyCIL">
+                    </a>
+                    <div class="publication-content">
+                        <a href="https://g-u-n.github.io/" class="research-proj-title">PyCIL: A Python Toolbox for Class-Incremental Learning</a>
+                        <div class="publication-authors">Da-Wei Zhou*, <strong>Fu-Yun Wang*</strong>, Han-Jia Ye, De-Chuan Zhan</div>
+                        <div class="publication-venue"><strong>SCIENCE CHINA Information Sciences</strong></div>
+                        <div class="highlight">Nearly <strong>1000</strong> GitHub stars — the most widely collected CIL toolkit.</div>
+                        <div class="publication-links">
+                            <a href="https://github.com/G-U-N/PyCIL" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                            <a href="https://arxiv.org/abs/2112.12533" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                        </div>
                     </div>
                 </div>
-            <div style="clear: both;"></div>
+
+                <div class="publication-item">
+                    <a href="https://g-u-n.github.io/" class="research-thumb">
+                        <img src="assets/images/foster.jpg" alt="FOSTER">
+                    </a>
+                    <div class="publication-content">
+                        <a href="https://g-u-n.github.io/" class="research-proj-title">FOSTER: Feature Boosting and Compression for Class-Incremental Learning</a>
+                        <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Da-Wei Zhou, Han-Jia Ye, De-Chuan Zhan</div>
+                        <div class="publication-venue"><strong>ECCV 2022</strong></div>
+                        <div class="publication-links">
+                            <a href="https://github.com/G-U-N/ECCV22-FOSTER" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                            <a href="https://arxiv.org/abs/2204.04662" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="divider"></div>
-
-        <div class="section" id="full-publications">
-    <h1>Full Publications</h1>
-    <div class="collapsible-header">
-        <h3>Complete List of Publications</h3>
-    </div>
-    <div class="collapsible-content">
-        <ul>
-            <li>
-                <strong>Self-NPO: Negative Preference Optimization of Diffusion Models by Simply Learning from Itself without Explicit Preference Annotations</strong><br>
-                Fu-Yun Wang, Keqiang Sun, Yao Teng, Xihui Liu, Jiaming Song, Hongsheng Li<br>
-                <em>AAAI 2026</em>
-            </li>
-            <li>
-                <strong>Speculative Jacobi-Denoising Decoding for Accelerating Autoregressive Text-to-image Generation</strong><br>
-                Yao Teng, Fu-Yun Wang, Xian Liu, Zhekai Chen, Han Shi, Yu Wang, Zhenguo Li, Weiyang Liu, Difan Zou, Xihui Liu<br>
-                <em>NeurIPS 2025</em>
-            </li>
-            <li>
-                <strong>Unleashing Vecset Diffusion Model for Fast Shape Generation</strong><br>
-                Zeqiang Lai, Yunfei Zhao, Zibo Zhao, Haolin Liu, Fuyun Wang, Huiwen Shi, Xianghui Yang, Qingxiang Lin, Jingwei Huang, Yuhong Liu, Jie Jiang, Chunchao Guo, Xiangyu Yue<br>
-                <em>ICCV 2025 (Highlight)</em>
-            </li>
-            <li>
-                <strong>Stable Consistency Tuning: Understanding and Improving Consistency Models</strong><br>
-                Fu-Yun Wang, Zhengyang Geng, Hongsheng Li<br>
-                <em>ICLR 2025 Workshop (Deep Generative Model in Machine Learning: Theory, Principle and Efficacy)</em><br>
-                <a href="https://arxiv.org/abs/2410.18958">arXiv</a> • <a href="https://github.com/G-U-N/Stable-Consistency-Tuning">GitHub</a>
-            </li>
-            <li>
-                <strong>Rectified Diffusion: Straightness Is Not Your Need in Rectified Flow</strong><br>
-                Fu-Yun Wang, Ling Yang, Zhaoyang Huang, Mengdi Wang, Hongsheng Li<br>
-                <em>ICLR 2025</em><br>
-                <a href="https://arxiv.org/abs/2410.07303">arXiv</a> • <a href="https://github.com/G-U-N/Rectified-Diffusion">GitHub</a> • <a href="assets/slides/poster_rd.pdf">Poster</a>
-            </li>
-            <li>
-                <strong>Diffusion-NPO: Negative Preference Optimization for Better Preference Aligned Generation of Diffusion Models</strong><br>
-                Fu-Yun Wang, Yunhao Shui, Jingtan Piao, Keqiang Sun, Hongsheng Li<br>
-                <em>ICLR 2025</em><br>
-                <a href="https://openreview.net/pdf?id=iJi7nz5Cxc">Paper</a> • <a href="assets/slides/poster_npo.pdf">Poster</a> • <a href="https://github.com/G-U-N/Diffusion-NPO">GitHub</a>
-            </li>
-            <li>
-                <strong>InstantPortrait: One-Step Portrait Editing via Diffusion Multi-Objective Distillation</strong><br>
-                Zhixin Lai, Keqiang Sun, Fu-Yun Wang, Dhritiman Sagar, Erli Ding<br>
-                <em>ICLR 2025</em><br>
-                <a href="https://openreview.net/forum?id=ZkFMe3OPfw">Paper</a>
-            </li>
-            <li>
-                <strong>Phased Consistency Model</strong><br>
-                Fu-Yun Wang, Zhaoyang Huang, Alexander William Bergman, Dazhong Shen, Peng Gao, Michael Lingelbach, Keqiang Sun, Weikang Bian, Guanglu Song, Yu Liu, Xiaogang Wang, Hongsheng Li<br>
-                <em>NeurIPS 2024</em><br>
-                <a href="https://g-u-n.github.io/projects/pcm/">Project Page</a> • <a href="https://github.com/G-U-N/Phased-Consistency-Model">GitHub</a> • <a href="https://g-u-n.github.io/assets/slides/pcm.pdf">Paper</a> • <a href="assets/slides/pcm-poster.pdf">Poster</a>
-            </li>
-            <li>
-                <strong>OSV: One Step is Enough for High-Quality Image to Video Generation</strong><br>
-                Xiaofeng Mao*, Zhengkai Jiang*, Fu-Yun Wang*, Wenbing Zhu, Jiangning Zhang, Hao Chen, Mingmin Chi, Yabiao Wang<br>
-                <em>CVPR 2025</em><br>
-                <a href="https://arxiv.org/pdf/2409.11367">arXiv</a>
-            </li>
-            <li>
-                <strong>GS-DiT: Advancing Video Generation with Pseudo 4D Gaussian Fields through Efficient Dense 3D Point Tracking</strong><br>
-                Weikang Bian, Zhaoyang Huang, Xiaoyu Shi, Yijin Li, Fu-Yun Wang, Hongsheng Li<br>
-                <em>CVPR 2025</em><br>
-                <a href="https://arxiv.org/abs/2501.02690">arXiv</a> • <a href="https://wkbian.github.io/Projects/GS-DiT/">Project Page</a>
-            </li>
-            <li>
-                <strong>AnimateLCM: Computation-Efficient Personalized Style Video Generation without Personalized Video Data</strong><br>
-                Fu-Yun Wang, Zhaoyang Huang, Weikang Bian, Xiaoyu Shi, Keqiang Sun, Guanglu Song, Yu Liu, Hongsheng Li<br>
-                <em>SIGGRAPH Asia 2024 Technical Communications</em><br>
-                <a href="https://animatelcm.github.io">Project Page</a> • <a href="https://github.com/G-U-N/AnimateLCM">GitHub</a> • <a href="https://arxiv.org/abs/2402.00769">arXiv</a>
-            </li>
-            <li>
-                <strong>ZoLA: Zero-Shot Creative Long Animation Generation with Short Video Model</strong><br>
-                Fu-Yun Wang, Zhaoyang Huang, Qiang Ma, Xudong Lu, Weikang Bian, Yijin Li, Yu Liu, Hongsheng Li<br>
-                <em>ECCV 2024 (Oral Presentation)</em><br>
-                <a href="https://gen-l-2.github.io/">Project Page</a> • <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06174.pdf">Paper</a>
-            </li>
-            <li>
-                <strong>Be-Your-Outpainter: Mastering Video Outpainting through Input-Specific Adaptation</strong><br>
-                Fu-Yun Wang, Xiaoshi Wu, Zhaoyang Huang, Xiaoyu Shi, Dazhong Shen, Guanglu Song, Yu Liu, Hongsheng Li<br>
-                <em>ECCV 2024</em><br>
-                <a href="https://be-your-outpainter.github.io/">Project Page</a> • <a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/06040.pdf">Paper</a> • <a href="https://arxiv.org/abs/2403.13745">arXiv</a> • <a href="https://github.com/G-U-N/Be-Your-Outpainter">GitHub</a>
-            </li>
-            <li>
-                <strong>Motion-I2V: Consistent and Controllable Image-to-Video Generation with Explicit Motion Modeling</strong><br>
-                Xiaoyu Shi*, Zhaoyang Huang*, Fu-Yun Wang*, Weikang Bian*, Dasong Li, Yi Zhang, Manyuan Zhang, Kachun Cheung, Simon See, Hongwei Qin, Jifeng Dai, Hongsheng Li<br>
-                <em>SIGGRAPH 2024</em><br>
-                <a href="https://xiaoyushi97.github.io/Motion-I2V/">Project Page</a> • <a href="https://github.com/G-U-N/Motion-I2V">GitHub</a> • <a href="https://arxiv.org/abs/2401.15977">arXiv</a>
-            </li>
-            <li>
-                <strong>Rethinking the Spatial Inconsistency in Classifier-Free Diffusion Guidance</strong><br>
-                Dazhong Shen, Guanglu Song, Zeyue Xue, Fu-Yun Wang, Yu Liu<br>
-                <em>CVPR 2024</em><br>
-                <a href="https://arxiv.org/abs/2404.05384">arXiv</a> • <a href="https://github.com/SmilesDZgk/S-CFG">GitHub</a>
-            </li>
-            <li>
-                <strong>FOSTER: Feature Boosting and Compression for Class-Incremental Learning</strong><br>
-                Fu-Yun Wang, Da-Wei Zhou, Han-Jia Ye, De-Chuan Zhan<br>
-                <em>ECCV 2022</em><br>
-                <a href="https://github.com/G-U-N/ECCV22-FOSTER">GitHub</a> • <a href="https://arxiv.org/abs/2204.04662">arXiv</a>
-            </li>
-            <li>
-                <strong>BEEF: Bi-Compatible Class-Incremental via Energy-Based Expansion and Fusion</strong><br>
-                Fu-Yun Wang, Da-Wei Zhou, Liu Liu, Han-Jia Ye, Yatao Bian, De-Chuan Zhan, Peilin Zhao<br>
-                <em>ICLR 2023</em><br>
-                <a href="https://github.com/G-U-N/ICLR23-BEEF">GitHub</a> • <a href="https://openreview.net/forum?id=iP77_axu0h3">Paper</a>
-            </li>
-            <li>
-                <strong>FACT: Forward Compatible Few-Shot Class-Incremental Learning</strong><br>
-                Da-Wei Zhou, Fu-Yun Wang, Han-Jia Ye, Liang Ma, Shiliang Pu, De-Chuan Zhan<br>
-                <em>CVPR 2022</em><br>
-                <a href="https://github.com/zhoudw-zdw/CVPR22-Fact">GitHub</a> • <a href="https://arxiv.org/abs/2203.06953">arXiv</a>
-            </li>
-            <li>
-                <strong>PyCIL: A Python Toolbox for Class-Incremental Learning</strong><br>
-                Da-Wei Zhou*, Fu-Yun Wang*, Han-Jia Ye, De-Chuan Zhan<br>
-                <em>SCIENCE CHINA Information Sciences</em><br>
-                <a href="https://github.com/G-U-N/PyCIL">GitHub</a> • <a href="https://arxiv.org/abs/2112.12533">arXiv</a> • <a href="https://mp.weixin.qq.com/s/A472p7XGZMhAMAR2wyHZJw">Media</a>
-            </li>
-            <li>
-                <strong>Diffusion-Sharpening: Fine-tuning Diffusion Models with Denoising Trajectory Sharpening</strong><br>
-                Ye Tian, Ling Yang, Fu-Yun Wang, Xinchen Zhang, Yunhai Tong, Mengdi Wang, Bin Cui<br>
-                <em>Preprint</em>
-            </li>
-            <li>
-                <strong>Lumina-Next: Making Lumina-T2X Stronger and Faster with Next-DiT</strong><br>
-                Le Zhuo, Ruoyi Du, Han Xiao, Yangguang Li, Dongyang Liu, Rongjie Huang, Wenze Liu, Xiangyang Zhu, Fu-Yun Wang, Zhanyu Ma, Xu Luo, Zehan Wang, Kaipeng Zhang, Lirui Zhao, Si Liu, Xiangyu Yue, Wanli Ouyang, Yu Qiao, Hongsheng Li, Peng Gao<br>
-                <em>NeurIPS 2024</em>
-            </li>
-            <li>
-                <strong>Trans4D: Realistic Geometry-Aware Transition for Compositional Text-to-4D Synthesis</strong><br>
-                    Bohan Zeng, Ling Yang, Siyu Li, Jiaming Liu, Zixiang Zhang, Juanxi Tian, Kaixin Zhu, Yongzhen Guo, Fu-Yun Wang, Minkai Xu, Stefano Ermon, Wentao Zhang<br>
-                    <em>Preprint</em>
-            </li>
-        </ul>
-    </div>
-    <div style="clear: both;"></div>
-    </div>
-
-
+        <!-- Talks -->
         <div class="section" id="talks">
-            <h1>Talks</h1>
+            <h1><i class="fas fa-microphone-alt"></i> Talks</h1>
             <ul>
                 <li>
-                    Diffusion Acceleration Talk Slides
+                    <strong>Diffusion Acceleration Talk Slides</strong>
                     <ul>
-                        <li><a href="assets/slides/rectified-diffusion.pdf" target="_blank">[2024-10]</a> Invited by TechBeat (将门创投) </li>
+                        <li><a href="assets/slides/rectified-diffusion.pdf" target="_blank">[2024-10]</a> Invited by TechBeat (将门创投)</li>
                         <li><a href="assets/slides/talk-2024-12.pdf" target="_blank">[2024-12]</a> Invited by Kuaishou Kling Team (快手可灵)</li>
-                        <li><a href="assets/slides/talk-2025-01.pdf" target="_blank">[2025-01]</a> Invited by Nanjing University (南京大学国家重点实验室) <a href="https://keysoftlab.nju.edu.cn/3f/68/c1578a737128/page.htm" target="_blank">(poster)</a></li>
+                        <li><a href="assets/slides/talk-2025-01.pdf" target="_blank">[2025-01]</a> Invited by Nanjing University <a href="https://keysoftlab.nju.edu.cn/3f/68/c1578a737128/page.htm" target="_blank">(poster)</a></li>
                     </ul>
                 </li>
                 <li>
-                    Diffusion Acceleration Talk Video
+                    <strong>Diffusion Acceleration Talk Video</strong>
                     <ul>
                         <li><a href="https://www.techbeat.net/talk-info?id=917" target="_blank">[2024-10]</a> (Chinese) Invited by TechBeat</li>
                     </ul>
                 </li>
             </ul>
-            <div style="clear: both;"></div>
         </div>
 
-        <div class="divider"></div>
-        <div class="section" id="awards">
-            <h1>Awards & Honor</h1>
-            <ul>
-                <li> <b>2025</b> CVPR 2025 Outstanding Reviewer </li>
-                <li> <b>2023</b> HKPFS (Hong Kong PhD Fellowship Scheme)</li>
-                <li> <b>2023</b> Outstanding Graduate of Nanjing University</li>
-                <li> <b>2023</b> Outstanding Undergraduate Thesis of Nanjing University</li>
-                <li> <b>2022</b> Sensetime Scholarship</li>
-                <li> <b>2022</b> Huawei Scholarship</li>
-                <li> <b>2021</b> National Scholarship </li>
-            </ul>
-            <p></p>
-            <div style="clear: both;"></div>
+        <!-- Awards & Services side by side -->
+        <div class="two-col-grid" style="margin: 1.5rem 0;">
+            <div class="section" id="awards" style="margin: 0;">
+                <h1><i class="fas fa-trophy"></i> Awards & Honor</h1>
+                <ul>
+                    <li><strong>2025</strong> CVPR 2025 Outstanding Reviewer</li>
+                    <li><strong>2023</strong> HKPFS (Hong Kong PhD Fellowship Scheme)</li>
+                    <li><strong>2023</strong> Outstanding Graduate of Nanjing University</li>
+                    <li><strong>2023</strong> Outstanding Undergraduate Thesis of NJU</li>
+                    <li><strong>2022</strong> Sensetime Scholarship</li>
+                    <li><strong>2022</strong> Huawei Scholarship</li>
+                    <li><strong>2021</strong> National Scholarship</li>
+                </ul>
+            </div>
+
+            <div class="section" id="services" style="margin: 0;">
+                <h1><i class="fas fa-hands-helping"></i> Academic Services</h1>
+                <p style="margin-bottom: 1rem; font-size: 0.88rem;">Reviewer for:</p>
+                <table>
+                    <thead>
+                        <tr><th>Venue</th><th>Years</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>TPAMI</td><td>—</td></tr>
+                        <tr><td>TCSVT / PRL</td><td>—</td></tr>
+                        <tr><td>CVPR</td><td>2023–2025</td></tr>
+                        <tr><td>NeurIPS</td><td>2023, 2025</td></tr>
+                        <tr><td>ICLR</td><td>2024, 2025</td></tr>
+                        <tr><td>ICML</td><td>2024, 2025</td></tr>
+                        <tr><td>ECCV / ICCV</td><td>2024 / 2025</td></tr>
+                        <tr><td>BMVC / SIGGRAPH Asia</td><td>2024 / 2025</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <div class="section" id="services">
-            <h1>Services</h1>
-            <ul>
-<table style="border-collapse: collapse; width: 100%; text-align: left;">
-  <tr style="border-bottom: 1px solid #ddd;">
-    <th style="padding: 8px;">Journal/Conference</th>
-    <th style="padding: 8px;">Years</th>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)</td>
-    <td style="padding: 8px;">-</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">IEEE Transactions on Circuits and Systems for Video Technology (TCSVT)</td>
-    <td style="padding: 8px;">-</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">Pattern Recognition Letters (PRL)</td>
-    <td style="padding: 8px;">-</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">Conference on Computer Vision and Pattern Recognition (CVPR)</td>
-    <td style="padding: 8px;">2023, 2024, 2025</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">Neural Information Processing Systems (NeurIPS)</td>
-    <td style="padding: 8px;">2023, 2025</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">International Conference on Learning Representations (ICLR)</td>
-    <td style="padding: 8px;">2024, 2025</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">International Conference on Machine Learning (ICML)</td>
-    <td style="padding: 8px;">2024, 2025</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">European Conference on Computer Vision (ECCV)</td>
-    <td style="padding: 8px;">2024</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">International Conference on Computer Vision (ICCV)</td>
-    <td style="padding: 8px;">2025</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">British Machine Vision Conference (BMVC)</td>
-    <td style="padding: 8px;">2024</td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ddd;">
-    <td style="padding: 8px;">SIGGRAPH Asia</td>
-    <td style="padding: 8px;">2025</td>
-  </tr>
-</table>
-        <!-- <li>Reviewer of TPAMI, TCSVT, PRL, CVPR 2023, NeurIPS 2023, ICLR 2024, CVPR 2024, ICML 2024, ECCV 2024, BMVC 2024, ICLR 2025, CVPR 2025, ICML 2025, NeurIPS 2025, SIGGRAPH Asia 2025</li> -->
-            </ul>
-            <p></p>
-            <div style="clear: both;"></div>
+        <div class="clustrmaps-container">
+            <a href="https://clustrmaps.com/site/1bnts" title="Visit tracker">
+                <img src="//www.clustrmaps.com/map_v2.png?d=CDfFGbXsSkbODpLYvxuFm3Ivejv6Ju6FkxS1dau4g-8&cl=ffffff" width="350px" style="border-radius: 8px; box-shadow: var(--shadow-sm);"/>
+            </a>
         </div>
     </div>
-    <!-- <script type="text/javascript" id="clustrmaps" src="//clustrmaps.com/map_v2.js?d=CDfFGbXsSkbODpLYvxuFm3Ivejv6Ju6FkxS1dau4g-8&cl=ffffff&w=a"></script>  -->
-    <!-- <div id="clustrmaps" style="width:180px; height:140px; overflow:hidden; margin:10px auto;"></div>
-    <script type="text/javascript" id="clustrmaps" src="//clustrmaps.com/map_v2.js?d=CDfFGbXsSkbODpLYvxuFm3Ivejv6Ju6FkxS1dau4g-8&cl=ffffff&w=a"></script> -->
 
-    <div style="text-align: center;">
-        <a href="https://clustrmaps.com/site/1bnts" title="ClustrMaps">
-            <img src="//www.clustrmaps.com/map_v2.png?d=CDfFGbXsSkbODpLYvxuFm3Ivejv6Ju6FkxS1dau4g-8&cl=ffffff" width="300px"/>
-        </a>
-    </div>    
     <script>
-        // JavaScript for collapsible sections
+        // Collapsible sections
         var coll = document.getElementsByClassName("collapsible-header");
-        let j;
-        for (j = 0; j < coll.length; j++) {
-            coll[j].addEventListener("click", function() {
+        for (let i = 0; i < coll.length; i++) {
+            coll[i].addEventListener("click", function() {
                 this.classList.toggle("active");
                 const content = this.nextElementSibling;
                 content.style.display = content.style.display === "block" ? "none" : "block";
             });
         }
-    </script>
 
-
-    <style>
-        #toggle-collaborators {
-            background: none;
-            border: none;
-            color: #007bff;
-            cursor: pointer;
-            padding: 0;
-            font-size: 1em;
-            text-decoration: underline;
-        }
-        #toggle-collaborators:hover {
-            color: #0056b3;
-        }
-    </style>
-
-    <script>
+        // Toggle collaborators
         function toggleCollaborators() {
-            const shortList = document.getElementById('collaborators-short');
-            const fullList = document.getElementById('collaborators-full');
-            const button = document.getElementById('toggle-collaborators');
-            
-            if (fullList.style.display === 'none') {
-                shortList.style.display = 'none';
-                fullList.style.display = 'inline';
-                button.textContent = 'Show less';
+            const s = document.getElementById('collaborators-short');
+            const f = document.getElementById('collaborators-full');
+            const b = document.getElementById('toggle-collaborators');
+            if (f.style.display === 'none') {
+                s.style.display = 'none'; f.style.display = 'inline'; b.textContent = 'Show less';
             } else {
-                shortList.style.display = 'inline';
-                fullList.style.display = 'none';
-                button.textContent = 'Show more';
+                s.style.display = 'inline'; f.style.display = 'none'; b.textContent = 'Show more';
             }
         }
     </script>
+
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
-        // Data for the tree diagram
         const treeData = {
-            "name": "Research Work",
+            "name": "Research",
             "children": [
                 {
-                    "name": "Diffusion Acceleration",
+                    "name": "Reinforcement Learning",
                     "children": [
-                        { "name": "Rectified Diffusion: Straightness Is Not Your Need (ICLR 2025)", "url": "https://arxiv.org/abs/2410.07303" },
-                        { "name": "InstantPortrait: One-Step Portrait Editing (ICLR 2025)", "url": "https://openreview.net/forum?id=ZkFMe3OPfw" },
-                        {},
-                        {
-                            "name": "Consistency Models",
-                            "children": [
-                                { "name": "Consistency Distillation" },
-                                { "name": "Consistency Training" },
-                                { "name": "Stable Consistency Tuning (ICLR 2025 Workshop)", "url": "https://arxiv.org/abs/2410.18958" }
-                            ]
-                        },
-
-                        {
-                            "name": "Phased Consistency Model (NeurIPS 2024)",
-                            "children": [
-                                { "name": "AnimateLCM (SIGGRAPH Asia 2024)", "url": "https://animatelcm.github.io" },
-                                { "name": "OSV: One Step is Enough for High-Quality I2V (CVPR 2025)", "url": "https://arxiv.org/pdf/2409.11367" },
-                                {
-                                    "name": "FastVideo",
-                                    "children": [
-                                        { "name": "FastHunyuan" },
-                                        { "name": "FastWAN" }
-                                    ]
-                                },
-                                {
-                                    "name": "Unleashing VDM for Fast Shape Generation (CVPR 2025)",
-                                    "children": [
-                                        { "name": "Huanyuan-3D Turbo" }
-                                    ]
-                                }
-                            ]
-                        },
+                        { "name": "PromptRL (arXiv 2026)", "url": "https://arxiv.org/abs/2602.01382" },
+                        { "name": "ConsistencySolver", "tags": ["distill", "guidance"] }
                     ]
                 },
                 {
-                    "name": "Reinforcement Learning",
+                    "name": "Generation Guidance",
                     "children": [
                         {
                             "name": "Diffusion-NPO (ICLR 2025)",
@@ -866,28 +1200,58 @@
                                 { "name": "Self-NPO: Data-Free NPO" }
                             ]
                         },
-                        { "name": "Diffusion-Sharpening" }
+                        { "name": "Rethinking Spatial Inconsistency in CFG (CVPR 2024)", "url": "https://arxiv.org/abs/2404.05384" }
                     ]
                 },
                 {
-                    "name": "Generative Vision Applications",
+                    "name": "Distillation",
                     "children": [
-                        { "name": "GS-DiT  (CVPR 2025)", "url": "https://arxiv.org/abs/2501.02690" },
-                        { "name": "ZoLA: Zero-Shot Creative Long Animation Generation (ECCV 2024)", "url": "https://gen-l-2.github.io/" },
-                        { "name": "Be-Your-Outpainter (ECCV 2024)", "url": "https://be-your-outpainter.github.io/" },
-                        { "name": "Motion-I2V: Image-to-Video Generation with Explicit Motion Modeling (SIGGRAPH 2024)", "url": "https://xiaoyushi97.github.io/Motion-I2V/" },
-                        { "name": "Rethinking the Spatial Inconsistency in CFG (CVPR 2024)", "url": "https://arxiv.org/abs/2404.05384" },
+                        { "name": "Rectified Diffusion (ICLR 2025)", "url": "https://arxiv.org/abs/2410.07303" },
+                        {
+                            "name": "Consistency Models",
+                            "children": [
+                                { "name": "Stable Consistency Tuning (ICLR 2025 WS)", "url": "https://arxiv.org/abs/2410.18958" },
+                                {
+                                    "name": "Phased Consistency Model (NeurIPS 2024)",
+                                    "url": "https://g-u-n.github.io/projects/pcm/",
+                                    "children": [
+                                        { "name": "AnimateLCM (SIGGRAPH Asia 2024)", "url": "https://animatelcm.github.io" },
+                                        { "name": "OSV: One Step I2V (CVPR 2025)", "url": "https://arxiv.org/pdf/2409.11367" },
+                                        {
+                                            "name": "FastVideo",
+                                            "children": [
+                                                { "name": "FastHunyuanv1" },
+                                                { "name": "FastWANv1" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Unleashing VDM for Fast Shape Gen (ICCV 2025)",
+                                            "children": [
+                                                { "name": "Hunyuan-3D Turbo" }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
                     ]
                 },
                 {
-                    "name": "Class-Incremental Learning",
+                    "name": "Generative Vision",
+                    "children": [
+                        { "name": "Motion-I2V (SIGGRAPH 2024)", "url": "https://xiaoyushi97.github.io/Motion-I2V/" },
+                        { "name": "ZoLA (ECCV 2024)", "url": "https://gen-l-2.github.io/" }
+                    ]
+                },
+                {
+                    "name": "Incremental Learning",
                     "children": [
                         {
                             "name": "PyCIL (SCIS)",
                             "children": [
-                                { "name": "FOSTER  (ECCV 2022)", "url": "https://arxiv.org/abs/2204.04662" },
+                                { "name": "FOSTER (ECCV 2022)", "url": "https://arxiv.org/abs/2204.04662" },
                                 { "name": "BEEF (ICLR 2023)", "url": "https://openreview.net/forum?id=iP77_axu0h3" },
-                                { "name": "FACT  (CVPR 2022)", "url": "https://arxiv.org/abs/2203.06953" }
+                                { "name": "FACT (CVPR 2022)", "url": "https://arxiv.org/abs/2203.06953" }
                             ]
                         }
                     ]
@@ -895,127 +1259,91 @@
             ]
         };
 
-        // Set up SVG
-        const svg = d3.select("#treeDiagram"),
-            width = +svg.attr("width"),
-            height = +svg.attr("height"),
-            g = svg.append("g").attr("transform", "translate(40,40)");
+        const svgEl = document.getElementById('treeDiagram');
+        const containerWidth = svgEl.parentElement.getBoundingClientRect().width - 40;
+        const width = Math.max(containerWidth, 900);
+        const height = 700;
+        
+        const svg = d3.select("#treeDiagram")
+            .attr("viewBox", `0 0 ${width} ${height}`)
+            .attr("preserveAspectRatio", "xMidYMid meet");
+        
+        const g = svg.append("g").attr("transform", "translate(60, 20)");
 
-        let i = 0; // Initialize a counter for node IDs
-
-        // Tree layout
-        const tree = d3.tree().size([height - 50, width - 100]);
+        let i = 0;
+        const tree = d3.tree().size([height - 40, width - 240]).separation((a, b) => (a.parent === b.parent ? 1 : 1.2));
         const root = d3.hierarchy(treeData);
-        tree(root);
-        // Assign unique IDs to initial nodes
-        root.descendants().forEach(d => d.id = d.id || ++i);
+        
+        // Collapse children initially except first level (root only expanded)
+        root.descendants().forEach(d => {
+            d.id = d.id || ++i;
+            if (d.depth > 0) {
+                d._children = d.children;
+                d.children = null;
+            }
+        });
 
-        // Initial drawing
+        root.x0 = height / 2;
+        root.y0 = 0;
         update(root);
 
-        // Update function for collapsing/expanding
         function update(source) {
-            const duration = 750;
-
-            // Compute the new tree layout.
+            const duration = 500;
+            tree(root);
             const nodes = root.descendants().reverse();
             const links = root.links();
+            nodes.forEach(d => { d.y = d.depth * 160; });
 
-            // Normalize for fixed-depth.
-            nodes.forEach(d => { d.y = d.depth * 180; }); // Adjust this value to control node spacing horizontally
-
-            // Update the nodes…
-            const node = g.selectAll(".node")
-                .data(nodes, d => d.id);
-
-            // Enter any new nodes at the parent's previous position.
+            const node = g.selectAll(".node").data(nodes, d => d.id);
             const nodeEnter = node.enter().append("g")
-                .attr("class", d => "node" + (d.children ? " node--internal" : " node--leaf"))
-                .attr("transform", d => `translate(${source.y0},${source.x0})`)
+                .attr("class", d => "node" + (d.children || d._children ? " node--internal" : " node--leaf"))
+                .attr("transform", `translate(${source.y0},${source.x0})`)
                 .on("click", click);
 
             nodeEnter.append("circle")
                 .attr("r", 1e-6)
-                .attr("fill", d => d._children ? "#555" : "#999")
-                .attr("stroke", "#fff")
-                .attr("stroke-width", 1);
+                .attr("fill", d => d._children ? "var(--primary-color)" : (d.children ? "var(--primary-light)" : "#94a3b8"));
 
             nodeEnter.append("text")
                 .attr("dy", 3)
-                .attr("x", d => d.children || d._children ? -8 : 8)
+                .attr("x", d => d.children || d._children ? -10 : 10)
                 .attr("text-anchor", d => d.children || d._children ? "end" : "start")
-                .style("font-family", "'Lato', sans-serif")
-                .style("font-size", "12px")
-                .style("fill", d => d.data.url ? "#1e90ff" : "#000")
+                .style("fill", d => d.data.url ? "var(--primary-color)" : "var(--text-primary)")
+                .style("font-weight", d => d.data.url ? "600" : "400")
+                .style("font-size", d => d.depth === 0 ? "14px" : (d.depth === 1 ? "12px" : "11px"))
                 .text(d => d.data.name)
                 .style("fill-opacity", 1e-6)
                 .on("click", (event, d) => {
                     if (d.data.url) {
-                        event.stopPropagation(); // Prevent node collapse/expand when clicking text link
+                        event.stopPropagation();
                         window.open(d.data.url, "_blank");
                     }
                 });
 
-            // Transition nodes to their new position.
             const nodeUpdate = nodeEnter.merge(node);
+            nodeUpdate.transition().duration(duration).attr("transform", d => `translate(${d.y},${d.x})`);
+            nodeUpdate.select("circle").attr("r", 5)
+                .attr("fill", d => d._children ? "var(--primary-color)" : (d.children ? "var(--primary-light)" : "#94a3b8"));
+            nodeUpdate.select("text").style("fill-opacity", 1);
 
-            nodeUpdate.transition()
-                .duration(duration)
-                .attr("transform", d => `translate(${d.y},${d.x})`);
+            const nodeExit = node.exit().transition().duration(duration)
+                .attr("transform", `translate(${source.y},${source.x})`).remove();
+            nodeExit.select("circle").attr("r", 1e-6);
+            nodeExit.select("text").style("fill-opacity", 1e-6);
 
-            nodeUpdate.select("circle")
-                .attr("r", 5)
-                .attr("fill", d => d._children ? "#555" : "#999");
+            const link = g.selectAll(".link").data(links, d => d.target.id);
+            const linkEnter = link.enter().insert("path", "g").attr("class", "link")
+                .attr("d", d3.linkHorizontal().x(() => source.y0).y(() => source.x0));
 
-            nodeUpdate.select("text")
-                .style("fill-opacity", 1);
+            link.merge(linkEnter).transition().duration(duration)
+                .attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
 
-            // Transition exiting nodes to the parent's new position.
-            const nodeExit = node.exit().transition()
-                .duration(duration)
-                .attr("transform", d => `translate(${source.y},${source.x})`)
-                .remove();
+            link.exit().transition().duration(duration)
+                .attr("d", d3.linkHorizontal().x(() => source.y).y(() => source.x)).remove();
 
-            nodeExit.select("circle")
-                .attr("r", 1e-6);
-
-            nodeExit.select("text")
-                .style("fill-opacity", 1e-6);
-
-            // Update the links…
-            const link = g.selectAll(".link")
-                .data(links, d => d.target.id);
-
-            // Enter any new links at the parent's previous position.
-            const linkEnter = link.enter().insert("path", "g")
-                .attr("class", "link")
-                .attr("d", d3.linkHorizontal()
-                    .x(d => source.y0)
-                    .y(d => source.x0));
-
-            // Transition links to their new position.
-            link.merge(linkEnter).transition()
-                .duration(duration)
-                .attr("d", d3.linkHorizontal()
-                    .x(d => d.y)
-                    .y(d => d.x));
-
-            // Transition exiting links to the parent's new position.
-            link.exit().transition()
-                .duration(duration)
-                .attr("d", d3.linkHorizontal()
-                    .x(d => source.y)
-                    .y(d => source.x))
-                .remove();
-
-            // Stash the old positions for transition.
-            nodes.forEach(d => {
-                d.x0 = d.x;
-                d.y0 = d.y;
-            });
+            nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
         }
 
-        // Toggle children on click.
         function click(event, d) {
             if (d.children) {
                 d._children = d.children;
@@ -1026,15 +1354,6 @@
             }
             update(d);
         }
-
-        // Store initial positions for transition
-        root.x0 = root.x;
-        root.y0 = root.y;
     </script>
-
-
 </body>
-
 </html>
-
-
