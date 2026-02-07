@@ -41,8 +41,105 @@
             font-size: 15px;
             line-height: 1.7;
             color: var(--text-primary);
-            background-color: var(--bg-page);
+            background: linear-gradient(135deg, #f8f7f4 0%, #eef2ff 50%, #faf5ff 100%);
+            background-attachment: fixed;
             -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Animated gradient background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse 60% 40% at 80% 20%, rgba(168, 85, 247, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse 50% 60% at 60% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse 40% 40% at 30% 90%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+            animation: gradientShift 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1) rotate(1deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(-1deg);
+            }
+        }
+
+        /* Floating blobs */
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .blob-1 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.2));
+            top: 10%;
+            left: 5%;
+            animation: float1 20s ease-in-out infinite;
+        }
+
+        .blob-2 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(251, 146, 60, 0.15));
+            top: 60%;
+            right: 10%;
+            animation: float2 25s ease-in-out infinite;
+        }
+
+        .blob-3 {
+            width: 250px;
+            height: 250px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.15));
+            bottom: 20%;
+            left: 30%;
+            animation: float3 18s ease-in-out infinite;
+        }
+
+        @keyframes float1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -40px) scale(1.05); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(40px, 30px) scale(1.02); }
+        }
+
+        @keyframes float2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-40px, 30px) scale(1.08); }
+            66% { transform: translate(30px, -20px) scale(0.92); }
+        }
+
+        @keyframes float3 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, -30px) scale(1.1); }
+        }
+
+        /* Ensure content is above background effects */
+        header, .container, footer {
+            position: relative;
+            z-index: 1;
         }
 
         /* Header */
@@ -50,10 +147,12 @@
             position: sticky;
             top: 0;
             z-index: 1000;
-            background: rgba(248, 247, 244, 0.92);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.5);
             padding: 0.75rem 0;
+            box-shadow: 0 4px 30px rgba(99, 102, 241, 0.05);
         }
 
         header nav {
@@ -94,13 +193,20 @@
 
         /* Profile Card */
         #profile {
-            background: var(--bg-card);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: var(--radius-xl);
             padding: 2.5rem;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md), 0 0 40px rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.6);
             display: flex;
             flex-direction: column;
+            transition: box-shadow 0.3s ease;
+        }
+
+        #profile:hover {
+            box-shadow: var(--shadow-lg), 0 0 60px rgba(99, 102, 241, 0.08);
         }
 
         .profile-header {
@@ -361,13 +467,20 @@
 
         /* ===== SECTIONS ===== */
         .section {
-            background: var(--bg-card);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: var(--radius-xl);
             padding: 2.5rem;
             margin: 1.5rem 0;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md), 0 0 40px rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.6);
             animation: fadeIn 0.5s ease-out;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .section:hover {
+            box-shadow: var(--shadow-lg), 0 0 60px rgba(99, 102, 241, 0.08);
         }
 
         .section h1 {
@@ -734,6 +847,11 @@
 </head>
 
 <body>
+    <!-- Floating background blobs -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
     <header id="header">
         <nav>
             <a href="#profile"><i class="fas fa-home"></i> Home</a>
