@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromptRL | Prompt Matters in RL for Flow-Based Image Generation</title>
+    <link rel="icon" href="assets/logo.png" type="image/png">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #fed7aa;
+            line-height: 1.7;
+            background-color: #0369a1;
+        }
+
+        /* --- Universal Utils --- */
+        .gradient-text {
+            color: #fed7aa;
+            font-weight: 700;
+        }
+        .hero-bg {
+            background: #0369a1;
+            border-bottom: 1px solid rgba(254, 215, 170, 0.1);
+        }
+
+        /* --- Component Styles --- */
+        .nav-link {
+            transition: color 0.2s ease;
+            color: #fed7aa;
+            opacity: 0.8;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .nav-link:hover { color: #ffffff; opacity: 1; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background-color: #fed7aa;
+            color: #0369a1;
+        }
+        .btn-primary:hover {
+            background-color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .btn-accent {
+            background-color: transparent;
+            color: #fed7aa;
+            border-color: #fed7aa;
+        }
+        .btn-accent:hover {
+            background-color: rgba(254, 215, 170, 0.1);
+            border-color: #ffffff;
+            color: #ffffff;
+        }
+
+        /* --- Table Styles --- */
+        .results-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.8125rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .results-table th, .results-table td {
+            padding: 9px 12px;
+            text-align: center;
+            color: rgba(254, 215, 170, 0.92);
+            border-bottom: 1px solid rgba(254, 215, 170, 0.14);
+        }
+        
+        .results-table th {
+            padding: 10px 12px;
+            background-color: rgba(254, 215, 170, 0.08);
+            font-weight: 700;
+            color: rgba(254, 215, 170, 0.96);
+            border-bottom: 1px solid rgba(254, 215, 170, 0.22);
+        }
+
+        .results-table th + th,
+        .results-table td + td {
+            border-left: 1px solid rgba(254, 215, 170, 0.10);
+        }
+
+        .results-table .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background: rgba(3, 105, 161, 0.92);
+            backdrop-filter: blur(6px);
+            border-right: 1px solid rgba(254, 215, 170, 0.16);
+            text-align: left;
+            padding-left: 12px;
+        }
+
+        .results-table thead .sticky-col {
+            z-index: 10;
+            background: rgba(254, 215, 170, 0.08) !important;
+        }
+
+        .results-table .best-val {
+            color: rgba(254, 215, 170, 0.98);
+            font-weight: 800;
+        }
+
+        .results-table .section-header td {
+            background-color: rgba(254, 215, 170, 0.15);
+            font-weight: 700;
+            color: #fed7aa;
+            text-align: left;
+            padding-left: 12px;
+        }
+
+        .table-wrapper {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(254, 215, 170, 0.22);
+            background: rgba(254, 215, 170, 0.03);
+        }
+
+        /* --- Mobile Responsive Styles --- */
+        @media (max-width: 768px) {
+            .mobile-menu-button {
+                display: block;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 0.5rem;
+            }
+
+            .mobile-menu-button i {
+                font-size: 1.5rem;
+                color: #fed7aa;
+            }
+
+            .mobile-nav {
+                display: none;
+                position: fixed;
+                top: 64px;
+                left: 0;
+                right: 0;
+                background: #0369a1;
+                border-bottom: 1px solid rgba(254, 215, 170, 0.2);
+                padding: 1rem;
+                z-index: 40;
+            }
+
+            .mobile-nav.active {
+                display: block;
+            }
+
+            .mobile-nav a {
+                display: block;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid rgba(254, 215, 170, 0.1);
+            }
+
+            h1 {
+                font-size: 2.25rem !important;
+            }
+
+            .table-wrapper::before {
+                content: '→ Swipe to view full table →';
+                display: block;
+                text-align: center;
+                padding: 0.5rem;
+                background: linear-gradient(135deg, #075985 0%, #0369a1 100%);
+                color: #fed7aa;
+                font-size: 0.75rem;
+                font-weight: 600;
+            }
+
+            section {
+                padding-top: 2rem !important;
+                padding-bottom: 2rem !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-[#fed7aa] bg-[#0369a1]">
+
+    <!-- Navigation -->
+    <nav class="w-full z-50 bg-[#0369a1] border-b border-[#fed7aa]/10" style="padding: 1.5rem 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 80rem; margin: 0 auto; padding: 0 2rem;">
+            <div style="display: flex; align-items: center;">
+                <a href="/" style="display: block; line-height: 0; text-decoration: none;">
+                    <img src="assets/logo.png" alt="PromptRL Logo" style="width: auto; height: 44px; object-fit: contain;">
+                </a>
+            </div>
+            
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex" style="gap: 1.5rem; align-items: center;">
+                <a href="#overview" class="nav-link">OVERVIEW</a>
+                <a href="#results" class="nav-link">RESULTS</a>
+                <a href="#installation" class="nav-link">INSTALLATION</a>
+                <a href="#citation" class="nav-link">CITATION</a>
+                <a href="https://github.com/G-U-N/UniRL" target="_blank" class="btn btn-accent">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="https://arxiv.org/abs/2602.01382" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Paper
+                </a>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <button class="md:hidden mobile-menu-button" id="mobileMenuBtn" aria-label="Toggle mobile menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </div>
+        
+        <!-- Mobile Navigation Menu -->
+        <div class="mobile-nav md:hidden" id="mobileMenu">
+            <a href="#overview" class="nav-link">OVERVIEW</a>
+            <a href="#results" class="nav-link">RESULTS</a>
+            <a href="#installation" class="nav-link">INSTALLATION</a>
+            <a href="#citation" class="nav-link">CITATION</a>
+            <a href="https://github.com/G-U-N/UniRL" target="_blank" class="nav-link">
+                <i class="fab fa-github"></i> GITHUB
+            </a>
+            <a href="https://arxiv.org/abs/2602.01382" target="_blank" class="nav-link">
+                <i class="fas fa-file-pdf"></i> PAPER
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-bg pt-32 pb-20 sm:pt-40 sm:pb-28">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-5xl sm:text-7xl font-bold text-[#fed7aa] tracking-tight mb-8 leading-tight">
+                <span class="gradient-text">PromptRL</span>
+            </h1>
+            <p class="text-xl sm:text-2xl text-[#fed7aa]/80 mb-8 max-w-3xl mx-auto">
+                Prompt Matters in RL for Flow-Based Image Generation
+            </p>
+            <div class="flex flex-wrap gap-4 justify-center mt-8">
+                <a href="https://arxiv.org/abs/2602.01382" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Read Paper
+                </a>
+                <a href="https://github.com/G-U-N/UniRL" target="_blank" class="btn btn-accent">
+                    <i class="fab fa-github"></i> View Code
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overview Section -->
+    <section id="overview" class="py-16 bg-[#0369a1]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#fed7aa] mb-4">Overview</h3>
+            <p class="text-[#fed7aa]/90 text-base mb-4">
+                <strong>PromptRL</strong> is a framework that jointly trains language models (LMs) and flow-matching models (FMs) within a unified reinforcement learning loop for text-to-image generation. By incorporating LMs as adaptive prompt refiners, PromptRL addresses two critical limitations in current flow-based RL pipelines: <em>exploration collapse</em> due to insufficient generation diversity, and <em>prompt overfitting</em> where models memorize specific training formulations.
+            </p>
+            <p class="text-[#fed7aa]/90 text-base mb-6">
+                PromptRL achieves <strong>2× sample efficiency</strong> compared to flow-only RL while obtaining an adaptive prompt refinement agent to improve test-time performance.
+            </p>
+
+            <!-- Key Features -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                <div class="bg-[#0369a1] border border-[#fed7aa]/20 rounded-lg p-6">
+                    <div class="text-3xl mb-3">🎯</div>
+                    <h4 class="text-lg font-semibold text-[#fed7aa] mb-2">Joint Training</h4>
+                    <p class="text-[#fed7aa]/70 text-sm">Unified RL loop for both language and flow models</p>
+                </div>
+                <div class="bg-[#0369a1] border border-[#fed7aa]/20 rounded-lg p-6">
+                    <div class="text-3xl mb-3">⚡</div>
+                    <h4 class="text-lg font-semibold text-[#fed7aa] mb-2">2× Efficiency</h4>
+                    <p class="text-[#fed7aa]/70 text-sm">Significantly improved sample efficiency</p>
+                </div>
+                <div class="bg-[#0369a1] border border-[#fed7aa]/20 rounded-lg p-6">
+                    <div class="text-3xl mb-3">🔄</div>
+                    <h4 class="text-lg font-semibold text-[#fed7aa] mb-2">Adaptive Prompts</h4>
+                    <p class="text-[#fed7aa]/70 text-sm">Dynamic prompt refinement for better generation</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Qualitative Results Section -->
+    <section class="py-16 bg-[#0369a1]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#fed7aa] mb-6">Qualitative Results</h3>
+            
+            <!-- Text-to-Image Generation -->
+            <div class="mb-12">
+                <h4 class="text-xl font-semibold text-[#fed7aa] mb-4">Text-to-Image Generation</h4>
+                <figure class="flex flex-col items-center">
+                    <img src="assets/t2i_comparison.png" alt="Text-to-Image Comparison" class="w-full max-w-5xl rounded-lg border border-[#fed7aa]/20">
+                    <figcaption class="text-center text-[#fed7aa]/70 text-sm mt-4 italic">
+                        Comparison of text-to-image generation quality across different methods
+                    </figcaption>
+                </figure>
+            </div>
+
+            <!-- Instructional Image Editing -->
+            <div>
+                <h4 class="text-xl font-semibold text-[#fed7aa] mb-4">Instructional Image Editing</h4>
+                <figure class="flex flex-col items-center">
+                    <img src="assets/edit_comparison.png" alt="Image Editing Comparison" class="w-full max-w-4xl rounded-lg border border-[#fed7aa]/20">
+                    <figcaption class="text-center text-[#fed7aa]/70 text-sm mt-4 italic">
+                        Comparison of instructional image editing results
+                    </figcaption>
+                </figure>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="results" class="py-16 bg-[#0369a1]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#fed7aa] mb-6">Quantitative Results</h3>
+
+            <!-- Summary Table -->
+            <div class="mb-12">
+                <h4 class="text-xl font-semibold text-[#fed7aa] mb-4">Performance Summary</h4>
+                <p class="text-[#fed7aa]/90 mb-4 text-base">
+                    PromptRL consistently outperforms baseline methods across multiple benchmarks.
+                </p>
+                <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col text-left">Benchmark</th>
+                                <th>Metric</th>
+                                <th>PromptRL w/ PE</th>
+                                <th>Best Baseline</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="sticky-col">GenEval</td>
+                                <td>Avg. Score ↑</td>
+                                <td class="best-val">0.97</td>
+                                <td>0.92 (FlowGRPO)</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Aesthetic</td>
+                                <td>PickScore ↑</td>
+                                <td class="best-val">24.05</td>
+                                <td>23.63 (DiffusionNFT)</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Aesthetic</td>
+                                <td>HPS ↑</td>
+                                <td class="best-val">32.03</td>
+                                <td>31.79 (DiffusionNFT)</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">OCR</td>
+                                <td>OCR-1k ↑</td>
+                                <td class="best-val">0.98</td>
+                                <td>0.89 (FlowGRPO)</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Image Editing</td>
+                                <td>EditReward Avg. ↑</td>
+                                <td class="best-val">1.43</td>
+                                <td>1.44 (ReasonEdit-Think)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- GenEval Benchmark -->
+            <div class="mb-12">
+                <h4 class="text-xl font-semibold text-[#fed7aa] mb-4">GenEval Benchmark (Full Results)</h4>
+                <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col text-left">Model</th>
+                                <th>1 Obj.</th>
+                                <th>2 Obj.</th>
+                                <th>Cnt.</th>
+                                <th>Clr.</th>
+                                <th>Pos.</th>
+                                <th>Attr.</th>
+                                <th>Avg. ↑</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="section-header">
+                                <td colspan="8">Foundation Models</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Show-o</td>
+                                <td>0.95</td><td>0.52</td><td>0.49</td><td>0.82</td><td>0.11</td><td>0.28</td><td>0.53</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Emu3-Gen</td>
+                                <td>0.98</td><td>0.71</td><td>0.34</td><td>0.81</td><td>0.17</td><td>0.21</td><td>0.54</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">SD3 Medium</td>
+                                <td>0.98</td><td>0.74</td><td>0.63</td><td>0.67</td><td>0.34</td><td>0.36</td><td>0.62</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">FLUX.1-dev</td>
+                                <td>0.98</td><td>0.81</td><td>0.74</td><td>0.79</td><td>0.22</td><td>0.45</td><td>0.66</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Qwen-Image</td>
+                                <td>0.99</td><td>0.92</td><td>0.89</td><td>0.88</td><td>0.76</td><td>0.77</td><td>0.87</td>
+                            </tr>
+                            <tr class="section-header">
+                                <td colspan="8">RL-based Methods</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">RePrompt</td>
+                                <td>0.98</td><td>0.87</td><td>0.77</td><td>0.85</td><td>0.62</td><td>0.49</td><td>0.76</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">FlowGRPO</td>
+                                <td>1.00</td><td>0.99</td><td>0.91</td><td>0.89</td><td>0.95</td><td>0.80</td><td>0.92</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">DiffusionNFT</td>
+                                <td>1.00</td><td>0.98</td><td>0.74</td><td>0.92</td><td>0.85</td><td>0.80</td><td>0.88</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">PromptRL w/o PE</td>
+                                <td>1.00</td><td>0.96</td><td>0.95</td><td>0.95</td><td>0.93</td><td>0.85</td><td>0.94</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col"><strong>PromptRL w/ PE</strong></td>
+                                <td class="best-val">1.00</td>
+                                <td class="best-val">0.99</td>
+                                <td class="best-val">0.99</td>
+                                <td class="best-val">0.96</td>
+                                <td class="best-val">0.99</td>
+                                <td class="best-val">0.90</td>
+                                <td class="best-val">0.97</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Aesthetic & OCR -->
+            <div class="mb-12">
+                <h4 class="text-xl font-semibold text-[#fed7aa] mb-4">Aesthetic & OCR Metrics</h4>
+                <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col text-left">Model</th>
+                                <th>P.S.</th>
+                                <th>HPS</th>
+                                <th>U.R.</th>
+                                <th>OCR-1k</th>
+                                <th>TMDB</th>
+                                <th>OpenLib</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="sticky-col">SD1.5</td>
+                                <td>20.92</td><td>23.71</td><td>2.00</td><td>0.05</td><td>0.13</td><td>0.08</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">SDXL</td>
+                                <td>22.14</td><td>26.67</td><td>2.78</td><td>0.13</td><td>0.20</td><td>0.09</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">FLUX.1-schnell</td>
+                                <td>22.64</td><td>29.39</td><td>3.25</td><td>0.54</td><td>0.66</td><td>0.50</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Qwen-Image</td>
+                                <td>23.05</td><td>30.40</td><td>3.53</td><td>0.65</td><td>0.79</td><td>0.94</td>
+                            </tr>
+                            <tr class="section-header">
+                                <td colspan="7">RL-based Methods</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">FlowGRPO</td>
+                                <td>23.33</td><td>29.80</td><td>3.33</td><td>0.89</td><td>0.83</td><td>0.73</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">DiffusionNFT</td>
+                                <td>23.63</td><td>31.79</td><td>3.39</td><td>0.89</td><td>0.91</td><td>0.86</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">PromptRL w/o PE</td>
+                                <td>24.01</td><td>31.79</td><td>3.38</td><td>0.97</td><td>0.92</td><td>0.95</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col"><strong>PromptRL w/ PE</strong></td>
+                                <td class="best-val">24.05</td>
+                                <td class="best-val">32.03</td>
+                                <td class="best-val">3.44</td>
+                                <td class="best-val">0.98</td>
+                                <td class="best-val">0.91</td>
+                                <td class="best-val">0.95</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Image Editing Results -->
+            <div>
+                <h4 class="text-xl font-semibold text-[#fed7aa] mb-4">Image Editing - EditReward</h4>
+                <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col text-left">Model</th>
+                                <th>Swap</th>
+                                <th>Style</th>
+                                <th>Add.</th>
+                                <th>Attr.</th>
+                                <th>Env.</th>
+                                <th>Removal</th>
+                                <th>Avg. ↑</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="sticky-col">InstructPix2Pix</td>
+                                <td>-0.24</td><td>0.91</td><td>-0.45</td><td>0.45</td><td>0.48</td><td>-0.80</td><td>0.02</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Qwen-Image-Edit</td>
+                                <td>1.11</td><td>1.14</td><td>0.95</td><td>0.90</td><td>1.39</td><td>0.61</td><td>1.03</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">FLUX.2-klein</td>
+                                <td>1.42</td><td>1.73</td><td>1.29</td><td>1.42</td><td>1.80</td><td>0.32</td><td>1.34</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">ReasonEdit-Think</td>
+                                <td>1.52</td><td>1.47</td><td>1.19</td><td>1.44</td><td>1.69</td><td>1.27</td><td>1.44</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">PromptRL w/o PE</td>
+                                <td>1.45</td><td>1.46</td><td>1.28</td><td>1.35</td><td>1.56</td><td>0.98</td><td>1.36</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col"><strong>PromptRL w/ PE</strong></td>
+                                <td class="best-val">1.47</td>
+                                <td class="best-val">1.43</td>
+                                <td class="best-val">1.29</td>
+                                <td class="best-val">1.39</td>
+                                <td class="best-val">1.72</td>
+                                <td class="best-val">1.24</td>
+                                <td class="best-val">1.43</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation Section -->
+    <section id="installation" class="py-16 bg-[#0369a1]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#fed7aa] mb-4">Installation</h3>
+            <p class="text-[#fed7aa]/90 text-base mb-6">
+                Follow these steps to set up PromptRL on your system:
+            </p>
+            <div class="bg-[#075985] rounded-lg p-6 border border-[#fed7aa]/20">
+                <pre class="text-sm text-[#fed7aa] overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed"><code>conda env create -f environment.yml
+conda activate unirl
+pip install git+https://github.com/openai/CLIP.git
+pip install git+https://github.com/huggingface/diffusers.git
+pip install flash-attn==2.7.4.post1 --no-build-isolation
+
+# Run evaluation
+bash gen.sh</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Citation Section -->
+    <section id="citation" class="py-16 bg-[#0369a1]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#fed7aa] mb-4">Citation</h3>
+            <p class="text-[#fed7aa]/90 text-base mb-6">
+                If you find our work useful, please consider citing our papers:
+            </p>
+            <div class="bg-[#075985] rounded-lg p-6 border border-[#fed7aa]/20 mb-4">
+                <pre class="text-sm text-[#fed7aa] overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed"><code>@article{wang2025promptrl,
+  title={PromptRL: Prompt Matters in RL for Flow-Based Image Generation},
+  author={Wang, Fu-Yun and Zhang, Han and Gharbi, Michael and Li, Hongsheng and Park, Taesung},
+  journal={arXiv preprint arXiv:2602.01382},
+  year={2026}
+}</code></pre>
+            </div>
+            <div class="bg-[#075985] rounded-lg p-6 border border-[#fed7aa]/20">
+                <pre class="text-sm text-[#fed7aa] overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed"><code>@article{wang2025unirl,
+  title={UniRL-Zero: Reinforcement Learning on Unified Models with Joint Language Model and Diffusion Model Experts},
+  author={Wang, Fu-Yun and Zhang, Han and Gharbi, Michael and Li, Hongsheng and Park, Taesung},
+  journal={arXiv preprint arXiv:2510.17937},
+  year={2025}
+}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Acknowledgments Section -->
+    <section class="py-16 bg-[#0369a1]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#fed7aa] mb-4">Acknowledgments</h3>
+            <p class="text-[#fed7aa]/90 text-base">
+                This codebase builds upon <a href="https://github.com/G-U-N/UniRL/tree/master" target="_blank" class="underline hover:text-white">UniRL-Zero</a>.
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 bg-[#075985] border-t border-[#fed7aa]/20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-sm text-[#fed7aa]/70">
+                PromptRL &middot; 2026
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for Mobile Menu -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const mobileMenu = document.getElementById('mobileMenu');
+            const mobileNavLinks = mobileMenu.querySelectorAll('a');
+
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('active');
+                    const icon = this.querySelector('i');
+                    if (mobileMenu.classList.contains('active')) {
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-times');
+                    } else {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
+
+                // Close mobile menu when clicking on a link
+                mobileNavLinks.forEach(link => {
+                    link.addEventListener('click', function() {
+                        mobileMenu.classList.remove('active');
+                        const icon = mobileMenuBtn.querySelector('i');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    });
+                });
+
+                // Close mobile menu when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!mobileMenuBtn.contains(event.target) && !mobileMenu.contains(event.target)) {
+                        mobileMenu.classList.remove('active');
+                        const icon = mobileMenuBtn.querySelector('i');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
+            }
+
+            // Smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
