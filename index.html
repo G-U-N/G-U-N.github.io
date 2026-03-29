@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -912,34 +913,6 @@
                     <span class="recent-badge">New</span>
                 </h2>
 
-                <!-- PromptRL -->
-                <div class="recent-pub-card">
-                    <div class="recent-pub-title">PromptRL: Prompt Matters in RL for Flow-Based Image Generation</div>
-                    <div class="recent-pub-authors"><strong>Fu-Yun Wang</strong>, Han Zhang, Michael Gharbi, Hongsheng Li, Taesung Park</div>
-                    <span class="recent-pub-venue"><i class="fas fa-file-alt"></i> arXiv 2026</span>
-
-                    <div class="recent-pub-insight">
-                        <strong><i class="fas fa-lightbulb"></i> Key Insight:</strong>
-                        Achieves <strong>2× sample efficiency</strong> over flow-only RL while obtaining an adaptive prompt refinement agent that improves test-time performance.
-                    </div>
-
-                    <div class="method-box">
-                        <h4><i class="fas fa-cogs"></i> Method</h4>
-                        <p>PromptRL <strong>jointly trains language models and flow-matching models</strong> in a unified RL loop for text-to-image generation, using LMs as adaptive prompt refiners.</p>
-                        <ul>
-                            <li><strong>Unified RL Training:</strong> Joint optimization of both LM and FM in a single loop</li>
-                            <li><strong>Exploration Collapse Solution:</strong> Overcomes insufficient diversity through adaptive prompting</li>
-                            <li><strong>Test-time Adaptation:</strong> Adaptive prompt refinement at inference</li>
-                        </ul>
-                    </div>
-
-                    <div class="pub-links">
-                        <a href="https://g-u-n.github.io/projects/promptrl/" target="_blank"><i class="fas fa-link"></i> Project</a>
-                        <a href="https://arxiv.org/abs/2602.01382" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
-                        <a href="https://github.com/G-U-N/UniRL" target="_blank"><i class="fab fa-github"></i> GitHub</a>
-                    </div>
-                </div>
-
                 <!-- Image Diffusion Preview -->
                 <div class="recent-pub-card">
                     <div class="recent-pub-title">Image Diffusion Preview with Consistency Solver</div>
@@ -968,6 +941,45 @@
                         <a href="https://github.com/G-U-N/consolver" target="_blank"><i class="fab fa-github"></i> GitHub</a>
                     </div>
                 </div>
+
+                <!-- Rectified Diffusion Theory Blog -->
+                <div class="recent-pub-card" style="background: rgba(255,255,255,0.7);">
+                    <div class="recent-pub-title"><i class="fas fa-book-open" style="color: var(--primary-color);"></i> Blog: Theoretical Analysis of Rectified Diffusion</div>
+                    <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.4rem 0 0.75rem;">Self-contained mathematical proofs showing that <strong>any</strong> general diffusion form achieves non-increasing optimal transport costs through rectification — generalizing Rectified Flow beyond the linear interpolation form. Companion note for <a href="https://arxiv.org/abs/2410.07303" target="_blank">Rectified Diffusion (ICLR 2025)</a>.</p>
+                    <div class="pub-links">
+                        <a href="blogs/rectified-diffusion-theory.html" target="_blank"><i class="fas fa-book"></i> Read Blog</a>
+                        <a href="https://arxiv.org/abs/2410.07303" target="_blank"><i class="fas fa-file-pdf"></i> Paper</a>
+                    </div>
+                </div>
+                
+                <!-- PromptRL -->
+                <div class="recent-pub-card">
+                    <div class="recent-pub-title">PromptRL: Prompt Matters in RL for Flow-Based Image Generation</div>
+                    <div class="recent-pub-authors"><strong>Fu-Yun Wang</strong>, Han Zhang, Michael Gharbi, Hongsheng Li, Taesung Park</div>
+                    <span class="recent-pub-venue"><i class="fas fa-file-alt"></i> arXiv 2026</span>
+
+                    <div class="recent-pub-insight">
+                        <strong><i class="fas fa-lightbulb"></i> Key Insight:</strong>
+                        Achieves <strong>2× sample efficiency</strong> over flow-only RL while obtaining an adaptive prompt refinement agent that improves test-time performance.
+                    </div>
+
+                    <div class="method-box">
+                        <h4><i class="fas fa-cogs"></i> Method</h4>
+                        <p>PromptRL <strong>jointly trains language models and flow-matching models</strong> in a unified RL loop for text-to-image generation, using LMs as adaptive prompt refiners.</p>
+                        <ul>
+                            <li><strong>Unified RL Training:</strong> Joint optimization of both LM and FM in a single loop</li>
+                            <li><strong>Exploration Collapse Solution:</strong> Overcomes insufficient diversity through adaptive prompting</li>
+                            <li><strong>Test-time Adaptation:</strong> Adaptive prompt refinement at inference</li>
+                        </ul>
+                    </div>
+
+                    <div class="pub-links">
+                        <a href="https://g-u-n.github.io/projects/promptrl/" target="_blank"><i class="fas fa-link"></i> Project</a>
+                        <a href="https://arxiv.org/abs/2602.01382" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                        <a href="https://github.com/G-U-N/UniRL" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -1085,11 +1097,12 @@
                         <a href="https://openreview.net/forum?id=nEDToD1R8M" class="research-proj-title">Rectified Diffusion: Straightness Is Not Your Need in Rectified Flow</a>
                         <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Ling Yang, Zhaoyang Huang, Mengdi Wang, Hongsheng Li</div>
                         <div class="publication-venue"><strong>ICLR 2025</strong></div>
-                        <div class="highlight">In-depth theoretical analysis and empirical validation of flow matching, rectified flow, and the rectification operation. <a href="https://zhuanlan.zhihu.com/p/884824542" target="_blank">ZHIHU blog</a> garnered <strong>10k+</strong> views and ~400 likes.</div>
+                        <div class="highlight">In-depth theoretical analysis and empirical validation of flow matching, rectified flow, and the rectification operation. <a href="https://zhuanlan.zhihu.com/p/884824542" target="_blank">ZHIHU blog</a> garnered <strong>10k+</strong> views and ~400 likes. <a href="blogs/rectified-diffusion-theory.html">Detailed theory note</a>.</div>
                         <div class="publication-links">
                             <a href="https://arxiv.org/abs/2410.07303" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
                             <a href="https://github.com/G-U-N/Rectified-Diffusion" target="_blank"><i class="fab fa-github"></i> GitHub</a>
                             <a href="assets/slides/poster_rd.pdf" target="_blank"><i class="fas fa-image"></i> Poster</a>
+                            <a href="blogs/rectified-diffusion-theory.html" target="_blank"><i class="fas fa-book"></i> Theory Blog</a>
                         </div>
                     </div>
                 </div>
@@ -1475,3 +1488,4 @@
     </script>
 </body>
 </html>
+
