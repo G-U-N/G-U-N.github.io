@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConsistencySolver | Image Diffusion Preview with Consistency Solver</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #e0f2fe;
+            line-height: 1.7;
+            background-color: #1e3a5f;
+        }
+
+        .gradient-text {
+            color: #fbbf24;
+            font-weight: 700;
+        }
+        .hero-bg {
+            background: #1e3a5f;
+            border-bottom: 1px solid rgba(251, 191, 36, 0.1);
+        }
+
+        .nav-link {
+            transition: color 0.2s ease;
+            color: #e0f2fe;
+            opacity: 0.8;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .nav-link:hover { color: #ffffff; opacity: 1; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background-color: #fbbf24;
+            color: #1e3a5f;
+        }
+        .btn-primary:hover {
+            background-color: #ffffff;
+            transform: translateY(-1px);
+        }
+        .btn-accent {
+            background-color: transparent;
+            color: #e0f2fe;
+            border-color: #e0f2fe;
+        }
+        .btn-accent:hover {
+            background-color: rgba(224, 242, 254, 0.1);
+            border-color: #ffffff;
+            color: #ffffff;
+        }
+
+        /* Table */
+        .results-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.8125rem;
+            font-variant-numeric: tabular-nums;
+        }
+        .results-table th, .results-table td {
+            padding: 9px 12px;
+            text-align: center;
+            color: rgba(224, 242, 254, 0.92);
+            border-bottom: 1px solid rgba(224, 242, 254, 0.14);
+        }
+        .results-table th {
+            padding: 10px 12px;
+            background-color: rgba(251, 191, 36, 0.08);
+            font-weight: 700;
+            color: rgba(224, 242, 254, 0.96);
+            border-bottom: 1px solid rgba(224, 242, 254, 0.22);
+        }
+        .results-table th + th,
+        .results-table td + td {
+            border-left: 1px solid rgba(224, 242, 254, 0.10);
+        }
+        .results-table .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background: rgba(30, 58, 95, 0.92);
+            backdrop-filter: blur(6px);
+            border-right: 1px solid rgba(224, 242, 254, 0.16);
+            text-align: left;
+            padding-left: 12px;
+        }
+        .results-table thead .sticky-col {
+            z-index: 10;
+            background: rgba(251, 191, 36, 0.08) !important;
+        }
+        .results-table .best-val {
+            color: rgba(251, 191, 36, 0.98);
+            font-weight: 800;
+        }
+        .results-table .section-header td {
+            background-color: rgba(251, 191, 36, 0.15);
+            font-weight: 700;
+            color: #e0f2fe;
+            text-align: left;
+            padding-left: 12px;
+        }
+        .table-wrapper {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(224, 242, 254, 0.22);
+            background: rgba(224, 242, 254, 0.03);
+        }
+
+        /* Math */
+        .katex-display {
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 4px 0;
+            margin: 12px 0;
+        }
+        .katex { font-size: 1.05em; color: #e0f2fe; }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .mobile-menu-button {
+                display: block;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 0.5rem;
+            }
+            .mobile-menu-button i {
+                font-size: 1.5rem;
+                color: #e0f2fe;
+            }
+            .mobile-nav {
+                display: none;
+                position: fixed;
+                top: 64px;
+                left: 0;
+                right: 0;
+                background: #1e3a5f;
+                border-bottom: 1px solid rgba(224, 242, 254, 0.2);
+                padding: 1rem;
+                z-index: 40;
+            }
+            .mobile-nav.active { display: block; }
+            .mobile-nav a {
+                display: block;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid rgba(224, 242, 254, 0.1);
+            }
+            h1 { font-size: 2.25rem !important; }
+            .table-wrapper::before {
+                content: '\2192 Swipe to view full table \2192';
+                display: block;
+                text-align: center;
+                padding: 0.5rem;
+                background: linear-gradient(135deg, #15304d 0%, #1e3a5f 100%);
+                color: #e0f2fe;
+                font-size: 0.75rem;
+                font-weight: 600;
+            }
+            section { padding-top: 2rem !important; padding-bottom: 2rem !important; }
+        }
+    </style>
+</head>
+<body class="text-[#e0f2fe] bg-[#1e3a5f]">
+
+    <!-- Navigation -->
+    <nav class="w-full z-50 bg-[#1e3a5f] border-b border-[#e0f2fe]/10" style="padding: 1.5rem 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 80rem; margin: 0 auto; padding: 0 2rem;">
+            <div style="display: flex; align-items: center;">
+                <a href="/" style="display: block; line-height: 0; text-decoration: none; font-size: 1.2rem; font-weight: 700; color: #fbbf24;">
+                    ConsistencySolver
+                </a>
+            </div>
+
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex" style="gap: 1.5rem; align-items: center;">
+                <a href="#overview" class="nav-link">OVERVIEW</a>
+                <a href="#method" class="nav-link">METHOD</a>
+                <a href="#results" class="nav-link">RESULTS</a>
+                <a href="#citation" class="nav-link">CITATION</a>
+                <a href="https://github.com/G-U-N/consolver" target="_blank" class="btn btn-accent">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="https://arxiv.org/abs/2512.13592" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Paper
+                </a>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <button class="md:hidden mobile-menu-button" id="mobileMenuBtn" aria-label="Toggle mobile menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Navigation Menu -->
+        <div class="mobile-nav md:hidden" id="mobileMenu">
+            <a href="#overview" class="nav-link">OVERVIEW</a>
+            <a href="#method" class="nav-link">METHOD</a>
+            <a href="#results" class="nav-link">RESULTS</a>
+            <a href="#citation" class="nav-link">CITATION</a>
+            <a href="https://github.com/G-U-N/consolver" target="_blank" class="nav-link">
+                <i class="fab fa-github"></i> GITHUB
+            </a>
+            <a href="https://arxiv.org/abs/2512.13592" target="_blank" class="nav-link">
+                <i class="fas fa-file-pdf"></i> PAPER
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-bg pt-32 pb-20 sm:pt-40 sm:pb-28">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-5xl sm:text-7xl font-bold text-[#fbbf24] tracking-tight mb-8 leading-tight">
+                <span class="gradient-text">ConsistencySolver</span>
+            </h1>
+            <p class="text-xl sm:text-2xl text-[#e0f2fe]/80 mb-4 max-w-3xl mx-auto">
+                Image Diffusion Preview with Consistency Solver
+            </p>
+            <p class="text-base text-[#e0f2fe]/60 mb-8 max-w-2xl mx-auto">
+                CVPR 2026
+            </p>
+            <p class="text-sm text-[#e0f2fe]/60 mb-8 max-w-3xl mx-auto">
+                Fu-Yun Wang<sup>1,2</sup>, Hao Zhou<sup>1</sup>, Liangzhe Yuan<sup>1</sup>, Sanghyun Woo<sup>1</sup>, Boqing Gong<sup>1</sup>, Bohyung Han<sup>1,3</sup>, Ming-Hsuan Yang<sup>1</sup>, Han Zhang<sup>1</sup>, Yukun Zhu<sup>1</sup>, Ting Liu<sup>1</sup>, Long Zhao<sup>1</sup>
+                <br><sup>1</sup>Google DeepMind &nbsp; <sup>2</sup>The Chinese University of Hong Kong &nbsp; <sup>3</sup>Seoul National University
+            </p>
+            <div class="flex flex-wrap gap-4 justify-center mt-8">
+                <a href="https://arxiv.org/abs/2512.13592" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Read Paper
+                </a>
+                <a href="https://github.com/G-U-N/consolver" target="_blank" class="btn btn-accent">
+                    <i class="fab fa-github"></i> View Code
+                </a>
+                <a href="../../blogs/consolver-theory.html" target="_blank" class="btn btn-accent">
+                    <i class="fas fa-book"></i> Theory Blog
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overview Section -->
+    <section id="overview" class="py-16 bg-[#1e3a5f]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#e0f2fe] mb-4">Overview</h3>
+            <p class="text-[#e0f2fe]/90 text-base mb-4">
+                The slow inference process of image diffusion models significantly degrades interactive user experiences. <strong>ConsistencySolver</strong> introduces a <em>preview-and-refine</em> paradigm: users first get fast low-step previews, then only run expensive full-step sampling on satisfactory ones.
+            </p>
+            <p class="text-[#e0f2fe]/90 text-base mb-6">
+                ConsistencySolver is a <strong>lightweight, learnable high-order ODE solver</strong> derived from general linear multistep methods, optimized via Reinforcement Learning (PPO). It achieves FID scores on-par with Multistep DPM-Solver using <strong>47% fewer steps</strong>, while reducing overall user interaction time by nearly <strong>50%</strong>.
+            </p>
+
+            <!-- Key Features -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                <div class="bg-[#1e3a5f] border border-[#e0f2fe]/20 rounded-lg p-6">
+                    <h4 class="text-lg font-semibold text-[#fbbf24] mb-2">Fidelity</h4>
+                    <p class="text-[#e0f2fe]/70 text-sm">Previews closely resemble final outputs in visual and structural quality, enabling informed user decisions.</p>
+                </div>
+                <div class="bg-[#1e3a5f] border border-[#e0f2fe]/20 rounded-lg p-6">
+                    <h4 class="text-lg font-semibold text-[#fbbf24] mb-2">Efficiency</h4>
+                    <p class="text-[#e0f2fe]/70 text-sm">Minimizes computational overhead for rapid iteration, letting users explore multiple variations quickly.</p>
+                </div>
+                <div class="bg-[#1e3a5f] border border-[#e0f2fe]/20 rounded-lg p-6">
+                    <h4 class="text-lg font-semibold text-[#fbbf24] mb-2">Consistency</h4>
+                    <p class="text-[#e0f2fe]/70 text-sm">Preserves deterministic PF-ODE mapping so refining a satisfactory preview always produces an aligned final result.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Method Section -->
+    <section id="method" class="py-16 bg-[#1e3a5f]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#e0f2fe] mb-6">Method</h3>
+
+            <p class="text-[#e0f2fe]/90 text-base mb-4">
+                ConsistencySolver is derived from classical Linear Multistep Methods (LMMs), adapted to the simplified PF-ODE. The update rule at each step is:
+            </p>
+            <div class="bg-[#15304d] rounded-lg p-6 border border-[#e0f2fe]/20 mb-6" id="math-formula">
+                \[
+                \mathbf{y}_{t_{i+1}} = \mathbf{y}_{t_i} + (n_{t_{i+1}} - n_{t_i}) \cdot \biggl[ \sum_{j=1}^{m} w_j(t_i, t_{i+1}) \cdot \boldsymbol{\epsilon}_{i+1-j} \biggr]
+                \]
+            </div>
+            <p class="text-[#e0f2fe]/90 text-base mb-4">
+                where \(\mathbf{y}_t = \mathbf{x}_t / \alpha_t\) is the signal-normalized state, \(n_t = \sigma_t / \alpha_t\) is the noise-to-signal ratio, and \(\boldsymbol{\epsilon}_{i+1-j}\) are cached noise predictions. The adaptive coefficients \(w_j(t_i, t_{i+1})\) are generated by a lightweight MLP policy, trained via PPO to maximize preview-target similarity.
+            </p>
+            <p class="text-[#e0f2fe]/90 text-base mb-4">
+                This framework unifies existing solvers as special cases: <strong>DDIM</strong> (\(m{=}1, w_1{=}1\)), <strong>PNDM</strong> (4-step Adams-Bashforth with fixed coefficients), and <strong>DPM-Solver-2</strong> (alternating 1- and 2-step updates). ConsistencySolver replaces these fixed coefficients with <em>learned</em> ones, optimized end-to-end.
+            </p>
+            <p class="text-[#e0f2fe]/70 text-sm mb-8">
+                For a detailed mathematical derivation, see our <a href="../../blogs/consolver-theory.html" target="_blank" class="underline hover:text-white">companion theory blog</a>.
+            </p>
+
+            <!-- Method Figure -->
+            <figure class="flex flex-col items-center mb-10">
+                <img src="assets/method.png" alt="ConsistencySolver Method Overview" class="w-full max-w-5xl rounded-lg border border-[#e0f2fe]/20">
+                <figcaption class="text-center text-[#e0f2fe]/70 text-sm mt-4 italic">
+                    Overview of ConsistencySolver. A lightweight MLP policy generates adaptive coefficients for the linear multistep update, trained via PPO to maximize preview–target similarity.
+                </figcaption>
+            </figure>        </div>
+    </section>
+
+    <!-- Qualitative Results Section -->
+    <section class="py-16 bg-[#1e3a5f]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#e0f2fe] mb-6">Qualitative Results</h3>
+
+            <!-- Text-to-Image Generation -->
+            <div class="mb-12">
+                <h4 class="text-xl font-semibold text-[#e0f2fe] mb-4">Text-to-Image Generation</h4>
+                <figure class="flex flex-col items-center">
+                    <img src="assets/visualization_t2i.png" alt="Text-to-Image Comparison" class="w-full max-w-5xl rounded-lg border border-[#e0f2fe]/20">
+                    <figcaption class="text-center text-[#e0f2fe]/70 text-sm mt-4 italic">
+                        Visual comparison on Stable Diffusion. ConsistencySolver produces previews with sharper details and superior alignment to refined outputs.
+                    </figcaption>
+                </figure>
+            </div>
+
+            <!-- Image Editing -->
+            <div>
+                <h4 class="text-xl font-semibold text-[#e0f2fe] mb-4">Instructional Image Editing</h4>
+                <figure class="flex flex-col items-center">
+                    <img src="assets/visualization_edit.png" alt="Image Editing Comparison" class="w-full max-w-4xl rounded-lg border border-[#e0f2fe]/20">
+                    <figcaption class="text-center text-[#e0f2fe]/70 text-sm mt-4 italic">
+                        Visual comparison on FLUX.1-Kontext for instructional image editing. Previews generated with 5 inference steps.
+                    </figcaption>
+                </figure>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="results" class="py-16 bg-[#1e3a5f]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#e0f2fe] mb-6">Quantitative Results</h3>
+
+            <!-- Stable Diffusion -->
+            <div class="mb-12">
+                <h4 class="text-xl font-semibold text-[#e0f2fe] mb-4">Stable Diffusion (Text-to-Image)</h4>
+                <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col text-left">Method</th>
+                                <th>Steps</th>
+                                <th>FID &darr;</th>
+                                <th>CLIP &uarr;</th>
+                                <th>Seg. &uarr;</th>
+                                <th>Dep. &uarr;</th>
+                                <th>Inc. &uarr;</th>
+                                <th>Img. &uarr;</th>
+                                <th>DINO &uarr;</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="section-header"><td colspan="9">Training-Free ODE Solvers</td></tr>
+                            <tr>
+                                <td class="sticky-col">DDIM</td>
+                                <td>5</td><td>52.59</td><td>87.8</td><td>41.9</td><td>14.2</td><td>74.1</td><td>16.4</td><td>73.2</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Multistep DPM</td>
+                                <td>5</td><td>25.87</td><td>93.1</td><td>66.6</td><td>19.1</td><td>85.6</td><td>20.6</td><td>85.5</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Multistep DPM</td>
+                                <td>8</td><td>19.53</td><td>95.9</td><td>76.3</td><td>21.8</td><td>90.8</td><td>23.2</td><td>90.6</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Multistep DPM</td>
+                                <td>10</td><td>19.29</td><td>97.0</td><td>80.5</td><td>24.1</td><td>93.1</td><td>25.1</td><td>93.0</td>
+                            </tr>
+                            <tr class="section-header"><td colspan="9">Distillation-Based Methods</td></tr>
+                            <tr>
+                                <td class="sticky-col">DMD2</td>
+                                <td>1</td><td>19.88</td><td>89.3</td><td>42.1</td><td>12.6</td><td>70.5</td><td>12.1</td><td>73.8</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Rectified Diff.</td>
+                                <td>4</td><td>20.64</td><td>94.4</td><td>67.6</td><td>18.5</td><td>87.0</td><td>19.7</td><td>85.6</td>
+                            </tr>
+                            <tr class="section-header"><td colspan="9">Distillation-Based Solvers</td></tr>
+                            <tr>
+                                <td class="sticky-col">AMED</td>
+                                <td>8</td><td>19.22</td><td>94.9</td><td>72.4</td><td>20.0</td><td>88.3</td><td>20.5</td><td>88.8</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Ours-Distill</td>
+                                <td>8</td><td>19.65</td><td>95.1</td><td>74.0</td><td>20.8</td><td>89.3</td><td>21.1</td><td>89.5</td>
+                            </tr>
+                            <tr class="section-header"><td colspan="9">Proposed Method</td></tr>
+                            <tr>
+                                <td class="sticky-col"><strong>ConsistencySolver</strong></td>
+                                <td>5</td><td class="best-val">20.39</td><td class="best-val">94.2</td><td class="best-val">69.4</td><td class="best-val">19.3</td><td class="best-val">87.1</td><td class="best-val">20.8</td><td class="best-val">86.5</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col"><strong>ConsistencySolver</strong></td>
+                                <td>8</td><td class="best-val">18.82</td><td class="best-val">96.4</td><td class="best-val">78.5</td><td class="best-val">22.2</td><td class="best-val">91.6</td><td class="best-val">23.4</td><td class="best-val">91.2</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col"><strong>ConsistencySolver</strong></td>
+                                <td>10</td><td class="best-val">18.66</td><td class="best-val">97.2</td><td class="best-val">83.2</td><td class="best-val">24.9</td><td class="best-val">93.9</td><td class="best-val">25.3</td><td class="best-val">93.5</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col"><strong>ConsistencySolver</strong></td>
+                                <td>12</td><td class="best-val">18.53</td><td class="best-val">97.9</td><td class="best-val">85.6</td><td class="best-val">26.7</td><td class="best-val">95.1</td><td class="best-val">26.7</td><td class="best-val">95.0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- FLUX.1-Kontext -->
+            <div class="mb-12">
+                <h4 class="text-xl font-semibold text-[#e0f2fe] mb-4">FLUX.1-Kontext (Image Editing)</h4>
+                <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col text-left">Method</th>
+                                <th>Steps</th>
+                                <th>E. R. &uarr;</th>
+                                <th>E. S. &uarr;</th>
+                                <th>DINO &uarr;</th>
+                                <th>Inc. &uarr;</th>
+                                <th>CLIP &uarr;</th>
+                                <th>Dep. &uarr;</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="sticky-col">Euler</td>
+                                <td>4</td><td>0.61</td><td>5.45</td><td>91.31</td><td>86.75</td><td>93.95</td><td>23.99</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Euler</td>
+                                <td>5</td><td>0.79</td><td>5.80</td><td>93.09</td><td>89.16</td><td>95.25</td><td>24.76</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Multistep DPM</td>
+                                <td>4</td><td>0.72</td><td>5.57</td><td>91.83</td><td>88.12</td><td>94.49</td><td>23.70</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Multistep DPM</td>
+                                <td>5</td><td>0.83</td><td>5.92</td><td>93.44</td><td>90.17</td><td>95.53</td><td>24.59</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col"><strong>ConsistencySolver</strong></td>
+                                <td>4</td><td class="best-val">0.73</td><td class="best-val">5.67</td><td class="best-val">92.39</td><td class="best-val">88.71</td><td class="best-val">94.86</td><td class="best-val">24.27</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col"><strong>ConsistencySolver</strong></td>
+                                <td>5</td><td class="best-val">0.86</td><td class="best-val">6.02</td><td class="best-val">93.90</td><td class="best-val">90.76</td><td class="best-val">95.87</td><td class="best-val">25.18</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cross-Model Generalization -->
+            <div class="mb-12">
+                <h4 class="text-xl font-semibold text-[#e0f2fe] mb-4">Cross-Model Generalization</h4>
+                <p class="text-[#e0f2fe]/90 mb-4 text-base">
+                    ConsistencySolver trained on SD1.5 generalizes zero-shot to unseen models without retraining.
+                </p>
+                <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col text-left">Model</th>
+                                <th>Steps</th>
+                                <th>Method</th>
+                                <th>FID &darr;</th>
+                                <th>CLIP &uarr;</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="sticky-col">SDXL</td>
+                                <td>10</td><td>Multistep DPM</td><td>26.32</td><td>32.52</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">SDXL</td>
+                                <td>10</td><td><strong>ConsistencySolver</strong></td><td class="best-val">23.32</td><td class="best-val">33.45</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">SD1.4</td>
+                                <td>5</td><td>Multistep DPM</td><td>25.22</td><td>29.94</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">SD1.4</td>
+                                <td>5</td><td><strong>ConsistencySolver</strong></td><td class="best-val">20.22</td><td class="best-val">30.16</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- User Study -->
+            <div>
+                <h4 class="text-xl font-semibold text-[#e0f2fe] mb-4">User Study: Preview Efficiency</h4>
+                <p class="text-[#e0f2fe]/90 mb-4 text-base">
+                    Diffusion Preview reduces end-to-end inference time by up to 55% while maintaining generation quality.
+                </p>
+                <div class="table-wrapper">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col text-left">Evaluator</th>
+                                <th colspan="2">GenEval</th>
+                                <th colspan="2">COCO 2017</th>
+                                <th colspan="2">LAION</th>
+                                <th>Speedup</th>
+                            </tr>
+                            <tr>
+                                <th class="sticky-col"></th>
+                                <th>Full</th><th>Preview</th>
+                                <th>Full</th><th>Preview</th>
+                                <th>Full</th><th>Preview</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="sticky-col">Claude Sonnet 4</td>
+                                <td>2.88s</td><td>1.74s</td>
+                                <td>3.64s</td><td>1.85s</td>
+                                <td>6.35s</td><td>2.87s</td>
+                                <td class="best-val">1.88x</td>
+                            </tr>
+                            <tr>
+                                <td class="sticky-col">Human</td>
+                                <td>3.82s</td><td>2.16s</td>
+                                <td>3.52s</td><td>2.03s</td>
+                                <td>5.18s</td><td>2.58s</td>
+                                <td class="best-val">1.85x</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Citation Section -->
+    <section id="citation" class="py-16 bg-[#1e3a5f]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#e0f2fe] mb-4">Citation</h3>
+            <p class="text-[#e0f2fe]/90 text-base mb-6">
+                If you find our work useful, please consider citing:
+            </p>
+            <div class="bg-[#15304d] rounded-lg p-6 border border-[#e0f2fe]/20">
+                <pre class="text-sm text-[#e0f2fe] overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed"><code>@inproceedings{wang2025consolver,
+  title={Image Diffusion Preview with Consistency Solver},
+  author={Wang, Fu-Yun and Zhou, Hao and Yuan, Liangzhe and Woo, Sanghyun and Gong, Boqing and Han, Bohyung and Yang, Ming-Hsuan and Zhang, Han and Zhu, Yukun and Liu, Ting and Zhao, Long},
+  booktitle={CVPR},
+  year={2026}
+}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Acknowledgments -->
+    <section class="py-16 bg-[#1e3a5f]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 class="text-2xl font-bold text-[#e0f2fe] mb-4">Acknowledgments</h3>
+            <p class="text-[#e0f2fe]/90 text-base">
+                We thank Hartwig Adam and Florian Schroff from Google DeepMind for their support of this project, and Prof. Hongsheng Li from CUHK for his valuable advice.
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 bg-[#15304d] border-t border-[#e0f2fe]/20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-sm text-[#e0f2fe]/70">
+                ConsistencySolver &middot; CVPR 2026
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile menu
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const mobileMenu = document.getElementById('mobileMenu');
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('active');
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-bars');
+                    icon.classList.toggle('fa-times');
+                });
+                mobileMenu.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', function() {
+                        mobileMenu.classList.remove('active');
+                        const icon = mobileMenuBtn.querySelector('i');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    });
+                });
+                document.addEventListener('click', function(event) {
+                    if (!mobileMenuBtn.contains(event.target) && !mobileMenu.contains(event.target)) {
+                        mobileMenu.classList.remove('active');
+                        const icon = mobileMenuBtn.querySelector('i');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
+            }
+
+            // Smooth scrolling
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+
+            // KaTeX rendering
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+
+</body>
+</html>
