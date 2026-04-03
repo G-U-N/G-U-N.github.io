@@ -160,39 +160,27 @@ Intuitively, consistency models pursue a *consistent mapping from any point on t
 
 ## Setup and Definitions
 
-### General Consistency Model
+### Consistency Model (CM)
 
-Consider a diffusion process with trajectory $\\mathbf{x}_t$ for $t \\in [0, 1]$, where $\\mathbf{x}_0$ is clean data and $\\mathbf{x}_1$ is noise. A consistency model aims to learn a mapping from any point $\\mathbf{x}_t$ on the ODE trajectory to a fixed target point $\\mathbf{x}_s$ for some $s < t$, such that this mapping is *consistent* across all time steps.
+Consider a diffusion process with trajectory $\\mathbf{x}_t$ for $t \\in [0, 1]$, where $\\mathbf{x}_0$ is clean data and $\\mathbf{x}_1$ is noise. A consistency model aims to learn a mapping from any point $\\mathbf{x}_t$ on the ODE trajectory to the clean data $\\mathbf{x}_0$, such that this mapping is *consistent* across all time steps.
 
-In the general case, define the consistency mapping with target time $s$ as:
+Using the **linear interpolation** form ($\\mathbf{x}_t = (1 - t)\\mathbf{x}_0 + t\\boldsymbol{\\epsilon}$) with v-prediction, the consistency model predicts:
 
 $$
-f_\\theta(\\mathbf{x}_t, t, s) = \\mathbf{x}_t + (\\alpha_s - \\alpha_t) \\cdot u_\\theta(\\mathbf{x}_t, t, s)
+\\mathbf{x}_0 = \\mathbf{x}_t - t \\cdot u_\\theta(\\mathbf{x}_t, t)
 $$
 
-where $u_\\theta(\\mathbf{x}_t, t, s)$ represents a **mean velocity field** that maps $\\mathbf{x}_t$ toward $\\mathbf{x}_s$ in a single step. Here $\\alpha_t$ is a monotonic schedule.
+Note that the consistency model always maps to $s = 0$ (the clean data endpoint).
 
-For the simpler **linear interpolation** form ($\\mathbf{x}_t = (1 - t)\\mathbf{x}_0 + t\\boldsymbol{\\epsilon}$), this becomes:
+### Consistency Trajectory Model (CTM)
+
+The consistency trajectory model generalizes CM by allowing the target time $s$ to be any $s < t$, not just $s = 0$. Using the flow-matching form, CTM predicts:
 
 $$
 \\mathbf{x}_s = \\mathbf{x}_t - (t - s) \\cdot u_\\theta(\\mathbf{x}_t, t, s)
 $$
 
-### Special Case: $s = 0$ (sCM / Standard Consistency Model)
-
-When $s = 0$, the mapping reduces to the standard form that directly predicts the clean data:
-
-$$
-\\mathbf{x}_0 = \\mathbf{x}_t - t \\cdot u(\\mathbf{x}_t, t)
-$$
-
-where $u(\\mathbf{x}_t, t) \\equiv u_\\theta(\\mathbf{x}_t, t, 0)$ is the mean velocity from $\\mathbf{x}_t$ to $\\mathbf{x}_0$. This is equivalent to the sCM (simplified Consistency Model) formulation.
-
-Similarly, at a neighboring time $t + \\mathrm{d}t$:
-
-$$
-\\mathbf{x}_0 = \\mathbf{x}_{t+\\mathrm{d}t} - (t + \\mathrm{d}t) \\cdot u(\\mathbf{x}_{t+\\mathrm{d}t}, t + \\mathrm{d}t)
-$$
+Note that CTM reduces to CM when $s = 0$, i.e., $u(\\mathbf{x}_t, t) \\equiv u_\\theta(\\mathbf{x}_t, t, 0)$.
 
 
 ## Derivation: From Consistency Model to MeanFlow ($s = 0$)
@@ -238,9 +226,9 @@ $$
 This is precisely the **MeanFlow** training objective.
 
 
-## General Case: Arbitrary Target Time $s$
+## General Case: From CTM to Generalized MeanFlow (Arbitrary $s$)
 
-The derivation above assumes $s = 0$. We now generalize to an arbitrary target time $s \\in [0, t)$.
+The derivation above assumes $s = 0$ (standard CM). We now generalize to an arbitrary target time $s \\in [0, t)$, corresponding to the CTM formulation.
 
 ### Setup
 
