@@ -1135,6 +1135,7 @@
                     <a href="mailto:fywang@link.cuhk.edu.hk"><i class="fas fa-envelope"></i> Email</a>
                     <a href="https://www.xiaohongshu.com/user/profile/6436e0a9000000001400f7e1" target="_blank"><i class="fas fa-book-open"></i> RedNote</a>
                     <a href="https://huggingface.co/wangfuyun" target="_blank"><i class="fas fa-smile"></i> HF 🤗</a>
+                    <button onclick="nmToggle()" style="background:none;border:1px solid currentColor;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:inherit;font-family:inherit;color:var(--primary-color);"><i class="fas fa-comment-dots"></i> nano-me</button>
                 </div>
             </div>
 
@@ -2019,6 +2020,252 @@
         }
     })();
     </script>
+
+<!-- ── nano-me floating chat widget ── -->
+<style>
+
+#nm-panel {
+  position:fixed; bottom:92px; right:28px; z-index:9000;
+  width:340px; height:480px;
+  background:#fff; border:1px solid #e8e6df;
+  border-radius:16px; box-shadow:0 8px 32px rgba(30,27,75,0.14);
+  display:flex; flex-direction:column; overflow:hidden;
+  transform:scale(0.9) translateY(12px); opacity:0;
+  pointer-events:none;
+  transition:transform 0.22s ease, opacity 0.22s ease;
+}
+#nm-panel.open { transform:scale(1) translateY(0); opacity:1; pointer-events:all; }
+
+#nm-header {
+  padding:12px 16px; background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  display:flex; align-items:center; gap:10px; flex-shrink:0;
+}
+#nm-header img { width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.4); }
+#nm-header .nm-info { flex:1; }
+#nm-header .nm-info .nm-name { color:#fff; font-weight:600; font-size:14px; }
+#nm-header .nm-info .nm-sub  { color:rgba(255,255,255,0.75); font-size:11px; }
+#nm-close { background:none; border:none; color:rgba(255,255,255,0.8); font-size:18px; cursor:pointer; padding:2px 6px; line-height:1; }
+#nm-close:hover { color:#fff; }
+
+#nm-loading {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px;
+  color:#64748b; font-size:12px;
+}
+.nm-spinner {
+  width:24px; height:24px; border:2px solid #e8e6df;
+  border-top-color:#6366f1; border-radius:50%;
+  animation:nm-spin 0.8s linear infinite;
+}
+@keyframes nm-spin { to { transform:rotate(360deg); } }
+
+#nm-messages {
+  flex:1; overflow-y:auto; padding:12px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.nm-msg { max-width:85%; padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.5; }
+.nm-msg.user { align-self:flex-end; background:#eef2ff; border:1px solid #c7d2fe; border-bottom-right-radius:3px; }
+.nm-msg.me   { align-self:flex-start; background:#f8f7f4; border:1px solid #e8e6df; border-bottom-left-radius:3px; }
+.nm-typing::after { content:'▋'; animation:nm-blink 0.8s step-end infinite; }
+@keyframes nm-blink { 50% { opacity:0; } }
+
+#nm-pills { padding:0 12px 8px; display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0; }
+.nm-pill {
+  background:#f8f7f4; border:1px solid #e8e6df;
+  padding:5px 12px; border-radius:20px; font-size:12px;
+  cursor:pointer; font-family:inherit; color:#1e1b4b;
+  transition:border-color 0.15s;
+}
+.nm-pill:hover { border-color:#6366f1; }
+
+#nm-input-row {
+  padding:10px 12px; border-top:1px solid #e8e6df;
+  display:flex; gap:6px; flex-shrink:0;
+}
+#nm-input {
+  flex:1; border:1px solid #e8e6df; border-radius:8px;
+  padding:7px 11px; font-family:inherit; font-size:13px;
+  background:#fff; color:#1e1b4b; outline:none;
+  transition:border-color 0.2s;
+}
+#nm-input:focus { border-color:#6366f1; }
+#nm-input::placeholder { color:#94a3b8; }
+#nm-send {
+  background:#6366f1; color:#fff; border:none;
+  padding:7px 14px; border-radius:8px; font-family:inherit;
+  font-size:13px; font-weight:600; cursor:pointer;
+  transition:background 0.2s;
+}
+#nm-send:hover:not(:disabled) { background:#4f46e5; }
+#nm-send:disabled { opacity:0.4; cursor:not-allowed; }
+.nm-hidden { display:none !important; }
+</style>
+
+
+<div id="nm-panel">
+  <div id="nm-header">
+    <img src="assets/images/profile.jpg" alt="Fu-Yun"/>
+    <div class="nm-info">
+      <div class="nm-name">nano-me</div>
+      <div class="nm-sub">9M params · runs in browser</div>
+    </div>
+    <button id="nm-close" onclick="nmToggle()">✕</button>
+  </div>
+  <div id="nm-loading">
+    <div class="nm-spinner"></div>
+    <div id="nm-load-text">loading model…</div>
+  </div>
+  <div id="nm-messages" class="nm-hidden"></div>
+  <div id="nm-pills" class="nm-hidden">
+    <button class="nm-pill" data-msg="你是谁？">你是谁？</button>
+    <button class="nm-pill" data-msg="你研究什么？">你研究什么？</button>
+    <button class="nm-pill" data-msg="Who are you?">Who are you?</button>
+    <button class="nm-pill" data-msg="What do you research?">What do you research?</button>
+  </div>
+  <div id="nm-input-row" class="nm-hidden">
+    <input type="text" id="nm-input" placeholder="Ask me something…" autocomplete="off"/>
+    <button id="nm-send" onclick="nmSend()">↑</button>
+  </div>
+</div>
+
+<script type="module">
+const CFG = { vocab_size:4096, max_seq_len:128, d_model:384, n_layers:6, n_heads:6, ffn_hidden:768, pad_id:0, bos_id:1, eos_id:2 };
+const GEN = { temperature:0.8, top_k:50, max_tokens:60 };
+const BASE = "assets/models";
+
+let session=null, tokenizer=null, ort=null, loaded=false;
+
+window.nmToggle = async () => {
+  const panel = document.getElementById("nm-panel");
+  const btn = document.querySelector(".social-links button[onclick='nmToggle()']");
+  if (btn) {
+    const r = btn.getBoundingClientRect();
+    const panelW = 340, panelH = 480, gap = 10;
+    let top = r.bottom + gap;
+    let left = r.left;
+    // keep within viewport
+    if (left + panelW > window.innerWidth - 12) left = window.innerWidth - panelW - 12;
+    if (top + panelH > window.innerHeight - 12) top = r.top - panelH - gap;
+    panel.style.top = top + "px";
+    panel.style.left = left + "px";
+    panel.style.bottom = "auto";
+    panel.style.right = "auto";
+  }
+  panel.classList.toggle("open");
+  if (panel.classList.contains("open") && !loaded) {
+    loaded = true;
+    await nmLoad();
+  }
+};
+
+async function nmLoad() {
+  const txt = document.getElementById("nm-load-text");
+  try {
+    txt.textContent = "loading tokenizer…";
+    const mod = await import("https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.min.mjs");
+    ort = mod.default;
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/";
+    tokenizer = buildTokenizer(await (await fetch(`${BASE}/tokenizer.json`)).json());
+    txt.textContent = "loading model (~10 MB)…";
+    session = await ort.InferenceSession.create(
+      await (await fetch(`${BASE}/model.onnx`)).arrayBuffer(),
+      { executionProviders:["wasm"] }
+    );
+    document.getElementById("nm-loading").classList.add("nm-hidden");
+    document.getElementById("nm-messages").classList.remove("nm-hidden");
+    document.getElementById("nm-pills").classList.remove("nm-hidden");
+    document.getElementById("nm-input-row").classList.remove("nm-hidden");
+    document.getElementById("nm-input").focus();
+  } catch(e) {
+    txt.textContent = "failed to load :(";
+    console.error(e);
+  }
+}
+
+document.querySelectorAll(".nm-pill").forEach(b => b.addEventListener("click", () => {
+  document.getElementById("nm-input").value = b.dataset.msg; nmSend();
+}));
+
+window.nmSend = async () => {
+  const inp = document.getElementById("nm-input");
+  const text = inp.value.trim();
+  if (!text || !session) return;
+  inp.value = ""; inp.disabled = true;
+  document.getElementById("nm-send").disabled = true;
+  document.getElementById("nm-pills").classList.add("nm-hidden");
+  nmAddMsg("user", text);
+  const typingEl = nmAddMsg("me", ""); typingEl.classList.add("nm-typing");
+  const prompt = `<|im_start|>user\n${text}<|im_end|><|im_start|>assistant\n`;
+  const outIds = await nmGenerate(tokenizer.encode(prompt));
+  let reply = tokenizer.decode(outIds).trim();
+  if (reply.includes("<|im_end|>")) reply = reply.split("<|im_end|>")[0];
+  if (reply.includes("<|im_start|>")) reply = reply.split("<|im_start|>")[0];
+  typingEl.classList.remove("nm-typing");
+  typingEl.textContent = reply.trim() || "…";
+  inp.disabled = false;
+  document.getElementById("nm-send").disabled = false;
+  inp.focus();
+};
+
+document.getElementById("nm-input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); nmSend(); }
+});
+
+async function nmGenerate(inputIds) {
+  let ids = inputIds.slice();
+  for (let i = 0; i < GEN.max_tokens; i++) {
+    const seq = ids.slice(-CFG.max_seq_len);
+    const out = await session.run({ input_ids: new ort.Tensor("int64", BigInt64Array.from(seq.map(BigInt)), [1, seq.length]) });
+    const logits = out.logits.data;
+    const off = (seq.length - 1) * CFG.vocab_size;
+    const last = new Float32Array(CFG.vocab_size);
+    for (let v = 0; v < CFG.vocab_size; v++) last[v] = logits[off + v] / GEN.temperature;
+    if (GEN.top_k > 0) {
+      const cut = [...last].sort((a,b)=>b-a)[Math.min(GEN.top_k,last.length)-1];
+      for (let v = 0; v < CFG.vocab_size; v++) if (last[v] < cut) last[v] = -Infinity;
+    }
+    const mx = Math.max(...last.filter(v=>v!==-Infinity));
+    let sum=0; const probs=new Float32Array(CFG.vocab_size);
+    for (let v=0;v<CFG.vocab_size;v++){probs[v]=Math.exp(last[v]-mx);sum+=probs[v];}
+    for (let v=0;v<CFG.vocab_size;v++) probs[v]/=sum;
+    let r=Math.random(),acc=0,next=0;
+    for (let v=0;v<CFG.vocab_size;v++){acc+=probs[v];if(acc>=r){next=v;break;}}
+    ids.push(next);
+    if (next===CFG.eos_id) break;
+  }
+  return ids.slice(inputIds.length);
+}
+
+function nmAddMsg(role, text) {
+  const msgs = document.getElementById("nm-messages");
+  const div = document.createElement("div");
+  div.className = `nm-msg ${role}`;
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function buildTokenizer(json) {
+  const vocab=json.model.vocab,merges=json.model.merges,added={};
+  for (const t of json.added_tokens) added[t.content]=t.id;
+  const id2tok={};
+  for (const [t,id] of Object.entries(vocab)) id2tok[id]=t;
+  for (const [t,id] of Object.entries(added)) id2tok[id]=t;
+  const b2c={},c2b={},direct=new Set();
+  for (const [lo,hi] of [[33,126],[161,172],[174,255]]) for(let b=lo;b<=hi;b++) direct.add(b);
+  let n=0;
+  for(let b=0;b<256;b++){b2c[b]=direct.has(b)?String.fromCharCode(b):String.fromCharCode(256+n++);}
+  for(const [b,c] of Object.entries(b2c)) c2b[c]=parseInt(b);
+  const mr={};
+  for(let i=0;i<merges.length;i++){const k=Array.isArray(merges[i])?merges[i].join(" "):merges[i];mr[k]=i;}
+  function bpe(w){if(w.length<=1)return w;let p=w.slice();while(p.length>1){let best=Infinity,idx=-1;for(let i=0;i<p.length-1;i++){const r=mr[p[i]+" "+p[i+1]];if(r!==undefined&&r<best){best=r;idx=i;}}if(idx===-1)break;p=[...p.slice(0,idx),p[idx]+p[idx+1],...p.slice(idx+2)];}return p;}
+  const PAT=/'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu;
+  function encode(text){const sr=new RegExp("("+Object.keys(added).map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")");const ids=[];for(const seg of text.split(sr)){if(!seg)continue;if(added[seg]!==undefined){ids.push(added[seg]);continue;}for(const w of(seg.match(PAT)||[seg])){const bytes=new TextEncoder().encode(w);const chars=[...Array.from(bytes).map(b=>b2c[b])];for(const t of bpe(chars)){const id=vocab[t];if(id!==undefined)ids.push(id);}}}return ids;}
+  function decode(ids){const p=[];for(const id of ids){const t=id2tok[id];if(!t||added[t]!==undefined)continue;p.push(t);}const bytes=Uint8Array.from([...p.join("")].map(c=>c2b[c]??c.charCodeAt(0)));return new TextDecoder("utf-8",{fatal:false}).decode(bytes);}
+  return {encode,decode};
+}
+</script>
 
 </body>
 </html>
