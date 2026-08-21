@@ -190,6 +190,7 @@
             grid-template-columns: 1fr 2.2fr;
             gap: 1.5rem;
             margin: 1.5rem 0;
+            align-items: start;
         }
 
         /* Profile Card */
@@ -212,14 +213,16 @@
 
         .profile-header {
             display: flex;
-            gap: 1.5rem;
+            flex-direction: column;
+            gap: 0.75rem;
             align-items: center;
-            margin-bottom: 1.5rem;
+            text-align: center;
+            margin-bottom: 1.25rem;
         }
 
         #profile-pic img {
-            width: 120px;
-            height: 120px;
+            width: 200px;
+            height: 200px;
             border-radius: 50%;
             object-fit: cover;
             border: 3px solid var(--bg-subtle);
@@ -227,7 +230,7 @@
         }
 
         .profile-header-text {
-            flex: 1;
+            width: 100%;
         }
 
         #profile-name {
@@ -278,42 +281,59 @@
 
         .highlight-text p { margin: 0 !important; color: #92400e; }
 
+        .job-market-note {
+            margin: 0.75rem 0 0 !important;
+            color: var(--text-muted);
+            font-size: 0.82rem !important;
+        }
+
         .social-links {
-            display: flex;
-            gap: 0.75rem;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.5rem;
             margin-top: auto;
             padding-top: 1rem;
-            flex-wrap: wrap;
         }
 
-        .social-links a {
+        .social-links a,
+        .social-links button {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.4rem;
-            padding: 0.4rem 0.8rem;
+            padding: 0.4rem 0.5rem;
             background: var(--bg-subtle);
+            border: none;
             border-radius: var(--radius-sm);
             transition: all 0.2s;
-            font-size: 0.82rem;
+            font-family: inherit;
+            font-size: 0.76rem;
             color: var(--text-primary);
             text-decoration: none;
+            white-space: nowrap;
         }
 
-        .social-links a:hover {
+        .social-links a:hover,
+        .social-links button:hover {
             background: var(--hover-color);
             color: var(--primary-color);
             transform: translateY(-1px);
         }
 
+        .social-links button { cursor: pointer; }
+
         /* Recent Work Panel */
         #recent-work {
             background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
             border-radius: var(--radius-xl);
-            padding: 2rem;
+            padding: 1.5rem;
             border: 1px solid #c7d2fe;
             box-shadow: var(--shadow-sm);
-            overflow-y: auto;
-            max-height: 700px;
+            box-sizing: border-box;
+            height: var(--profile-card-height, auto);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         #recent-work h2 {
@@ -324,6 +344,23 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            flex: 0 0 auto;
+        }
+
+        .recent-work-scroll {
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 0.35rem;
+            scrollbar-gutter: stable;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(99, 102, 241, 0.45) transparent;
+        }
+
+        .recent-work-scroll::-webkit-scrollbar { width: 6px; }
+        .recent-work-scroll::-webkit-scrollbar-track { background: transparent; }
+        .recent-work-scroll::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.35);
+            border-radius: 999px;
         }
 
         .recent-badge {
@@ -349,8 +386,8 @@
             background: rgba(255,255,255,0.85);
             backdrop-filter: blur(8px);
             border-radius: var(--radius-md);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
+            padding: 1.1rem;
+            margin-bottom: 0.75rem;
             border: 1px solid rgba(199, 210, 254, 0.6);
             transition: all 0.3s;
         }
@@ -363,18 +400,25 @@
         .recent-pub-card:last-child { margin-bottom: 0; }
 
         .recent-pub-title {
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.25rem;
             line-height: 1.4;
         }
 
         .recent-pub-authors {
-            font-size: 0.82rem;
+            font-size: 0.76rem;
             color: var(--text-secondary);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.2rem;
             line-height: 1.5;
+        }
+
+        .recent-pub-affiliations {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            line-height: 1.4;
+            margin-bottom: 0.4rem;
         }
 
         .recent-pub-venue {
@@ -385,59 +429,28 @@
             border-radius: 4px;
             font-size: 0.75rem;
             font-weight: 600;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .recent-pub-meta {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+            color: var(--primary-dark);
+            font-size: 0.74rem;
+            font-weight: 600;
         }
 
         .recent-pub-insight {
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border-left: 3px solid var(--accent-warm);
-            padding: 0.6rem 0.8rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.82rem;
-            margin: 0.75rem 0;
+            color: var(--text-secondary);
+            padding: 0;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            margin: 0.35rem 0;
         }
 
-        .recent-pub-insight strong { color: #92400e; }
-
-        .method-box {
-            background: rgba(238, 242, 255, 0.6);
-            border-left: 3px solid var(--primary-color);
-            padding: 0.75rem 1rem;
-            border-radius: var(--radius-sm);
-            margin: 0.75rem 0;
-            font-size: 0.82rem;
-        }
-
-        .method-box h4 {
-            font-size: 0.9rem;
-            color: var(--primary-dark);
-            margin-bottom: 0.4rem;
-        }
-
-        .method-box p { margin-bottom: 0.4rem; line-height: 1.6; }
-
-        .method-box ul {
-            list-style: none;
-            padding-left: 0;
-            margin-top: 0.5rem;
-        }
-
-        .method-box ul li {
-            padding: 0.25rem 0 0.25rem 1.2rem;
-            position: relative;
-            border-bottom: none;
-            font-size: 0.82rem;
-        }
-
-        .method-box ul li::before {
-            content: '\f0da';
-            font-family: 'Font Awesome 6 Free';
-            font-weight: 900;
-            position: absolute;
-            left: 0;
-            color: var(--primary-color);
-            font-size: 0.7rem;
-        }
+        .recent-pub-insight strong { color: var(--text-primary); }
 
         .pub-links {
             display: flex;
@@ -507,6 +520,85 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1.5rem;
+        }
+
+        .three-col-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .compact-info-block {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+        }
+
+        .compact-info-block h2 {
+            font-size: 1.05rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .compact-info-block p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .compact-info-block ul li {
+            padding-top: 0.4rem;
+            padding-bottom: 0.4rem;
+            font-size: 0.82rem;
+        }
+
+        .compact-info-block table td {
+            padding: 0.45rem;
+            font-size: 0.78rem;
+        }
+
+        .compact-more { margin-top: 0.75rem; }
+
+        .compact-more summary {
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        #research-demo {
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+            position: relative;
+        }
+
+        .video-generator-tag {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 2;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.45rem 0.7rem;
+            color: rgba(255, 255, 255, 0.92);
+            background: rgba(10, 10, 26, 0.68);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 999px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1;
+            text-decoration: none;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .video-generator-tag:hover {
+            color: #fff;
+            background: rgba(99, 102, 241, 0.86);
+            transform: translateY(-1px);
         }
 
         /* Experience Cards */
@@ -624,6 +716,7 @@
             display: grid;
             grid-template-columns: 220px 1fr;
             gap: 1.5rem;
+            align-items: start;
             padding: 1.5rem;
             margin-bottom: 1.25rem;
             background: var(--bg-card-alt);
@@ -647,13 +740,15 @@
 
         .research-thumb img,
         .research-thumb video {
+            display: block;
             width: 100%;
             height: 140px;
-            object-fit: cover;
             transition: transform 0.3s;
         }
 
-        .publication-item:hover .research-thumb img,
+        .research-thumb img { object-fit: contain; }
+        .research-thumb video { object-fit: cover; }
+
         .publication-item:hover .research-thumb video { transform: scale(1.05); }
 
         .research-proj-title {
@@ -671,8 +766,15 @@
         .publication-authors {
             font-size: 0.82rem;
             color: var(--text-secondary);
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.2rem;
             line-height: 1.5;
+        }
+
+        .publication-affiliations {
+            color: var(--text-muted);
+            font-size: 0.76rem;
+            line-height: 1.4;
+            margin-bottom: 0.4rem;
         }
 
         .publication-venue {
@@ -821,13 +923,17 @@
         @media (max-width: 1024px) {
             .hero-grid { grid-template-columns: 1fr; }
             .two-col-grid { grid-template-columns: 1fr; }
-            #recent-work { max-height: none; }
+            .three-col-grid { grid-template-columns: 1fr 1fr; }
+            #recent-work { height: auto; overflow: visible; }
+            .recent-work-scroll { overflow: visible; padding-right: 0; }
         }
 
         @media (max-width: 768px) {
             .profile-header { flex-direction: column; text-align: center; }
-            #profile-pic img { width: 100px; height: 100px; }
+            #profile-pic img { width: 160px; height: 160px; }
+            .social-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .publication-item { grid-template-columns: 1fr; }
+            .three-col-grid { grid-template-columns: 1fr; }
             .container { padding: 0 1rem; }
             .section { padding: 1.5rem; }
             #profile-name { font-size: 1.6rem; }
@@ -840,25 +946,66 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Blog scroll panel */
-        .blog-scroll-panel {
-            max-height: 380px;
+        /* Compact latest-post list */
+        .latest-post-list {
+            border-top: 1px solid var(--border-color);
+            max-height: calc(6 * 6.8rem);
             overflow-y: auto;
-            padding-right: 4px;
-            scroll-behavior: smooth;
+            overscroll-behavior: contain;
+            scrollbar-gutter: stable;
+            padding-right: 0.55rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-light) transparent;
         }
-        .blog-scroll-panel::-webkit-scrollbar {
-            width: 4px;
+
+        .latest-post-list::-webkit-scrollbar {
+            width: 7px;
         }
-        .blog-scroll-panel::-webkit-scrollbar-track {
+
+        .latest-post-list::-webkit-scrollbar-track {
             background: transparent;
         }
-        .blog-scroll-panel::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 4px;
+
+        .latest-post-list::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 999px;
         }
-        .blog-scroll-panel::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
+
+        .latest-post {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1.5rem;
+            align-items: center;
+            padding: 1.1rem 0;
+            border-bottom: 1px solid var(--border-color);
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .latest-post h3 {
+            font-size: 1rem;
+            margin-bottom: 0.2rem;
+            transition: color 0.2s;
+        }
+
+        .latest-post p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .latest-post span {
+            color: var(--primary-color);
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .latest-post:hover h3 { color: var(--primary-color); }
+
+        @media (max-width: 600px) {
+            .latest-post { grid-template-columns: 1fr; gap: 0.4rem; }
+            .latest-post-list { max-height: calc(6 * 8rem); }
         }
 
         @media print {
@@ -1088,14 +1235,9 @@
     <header id="header">
         <nav>
             <a href="#profile"><i class="fas fa-home"></i> Home</a>
-            <a href="#recent-work"><i class="fas fa-star"></i> Recent</a>
             <a href="#research-summary"><i class="fas fa-flask"></i> Research</a>
-            <a href="#experience"><i class="fas fa-briefcase"></i> Experience</a>
-            <a href="#education"><i class="fas fa-graduation-cap"></i> Education</a>
             <a href="#selected-publications"><i class="fas fa-book"></i> Publications</a>
-            <a href="#talks"><i class="fas fa-microphone"></i> Talks</a>
-            <a href="#awards"><i class="fas fa-award"></i> Awards</a>
-            <a href="#services"><i class="fas fa-hands-helping"></i> Services</a>
+            <a href="#experience"><i class="fas fa-user"></i> About</a>
         </nav>
     </header>
 
@@ -1106,7 +1248,7 @@
             <div id="profile">
                 <div class="profile-header">
                     <div id="profile-pic">
-                        <img src="assets/images/hike.jpg" alt="Fu-Yun Wang"/>
+                        <img src="assets/images/profile.jpg" alt="Fu-Yun Wang"/>
                     </div>
                     <div class="profile-header-text">
                         <div id="profile-name">Fu-Yun Wang</div>
@@ -1123,10 +1265,7 @@
                 He works on <strong>post-training</strong>.
                 Currently vibing with <strong>world model and agentic stuff</strong>.
                     </p>
-                    <div class="highlight-text">
-                        <p>
-                        <i class="fas fa-bullhorn"></i> Job market 2027. Looking for opportunities (industry) to work on interesting projects. Always happy to chat early.                        </p>
-                    </div>
+                    <p class="job-market-note">Job market 2027 · always happy to chat about interesting research projects.</p>
                 </div>
 
                 <div class="social-links">
@@ -1135,7 +1274,7 @@
                     <a href="mailto:fywang@link.cuhk.edu.hk"><i class="fas fa-envelope"></i> Email</a>
                     <a href="https://www.xiaohongshu.com/user/profile/6436e0a9000000001400f7e1" target="_blank"><i class="fas fa-book-open"></i> RedNote</a>
                     <a href="https://huggingface.co/wangfuyun" target="_blank"><i class="fas fa-smile"></i> HF 🤗</a>
-                    <button onclick="nmToggle()" style="background:none;border:1px solid currentColor;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:inherit;font-family:inherit;color:var(--primary-color);"><i class="fas fa-comment-dots"></i> nano-me</button>
+                    <button type="button" onclick="nmToggle()"><i class="fas fa-comment-dots"></i> nano-me</button>
                 </div>
             </div>
 
@@ -1146,6 +1285,24 @@
                     <span class="recent-badge">New</span>
                 </h2>
 
+                <div class="recent-work-scroll">
+                <!-- Representation Forcing -->
+                <div class="recent-pub-card">
+                    <div class="recent-pub-title">Representation Forcing for Bottleneck-Free Unified Multimodal Models</div>
+                    <div class="recent-pub-authors">Yuqing Wang et al. · <strong>Fu-Yun Wang</strong> (co-author)</div>
+                    <div class="recent-pub-affiliations">HKU · ByteDance Seed · CUHK · Nanjing University · Tsinghua University</div>
+                    <span class="recent-pub-venue"><i class="fas fa-layer-group"></i> arXiv 2026</span>
+
+                    <div class="recent-pub-insight">
+                        Predicts visual representations before pixels, removing the frozen-VAE bottleneck from unified multimodal models.
+                    </div>
+
+                    <div class="pub-links">
+                        <a href="https://yuqingwang1029.github.io/RepresentationForcing" target="_blank"><i class="fas fa-link"></i> Project</a>
+                        <a href="https://arxiv.org/abs/2605.31604" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                    </div>
+                </div>
+
                 <!-- Omni -->
                 <div class="recent-pub-card">
                     <div class="recent-pub-title"><img src="https://lf3-static.bytednsdoc.com/obj/eden-cn/slnhi/ljhwZthlaukjlkulzlp/Bagelmni/omni-o-bagel.png" alt="O" style="height:1em; vertical-align:-0.15em;">mni: Context Unrolling in <img src="https://lf3-static.bytednsdoc.com/obj/eden-cn/slnhi/ljhwZthlaukjlkulzlp/Bagelmni/omni-o-bagel.png" alt="O" style="height:1em; vertical-align:-0.15em;">mni Models</div>
@@ -1153,21 +1310,7 @@
                     <span class="recent-pub-venue"><i class="fas fa-rocket"></i> 2026</span>
 
                     <div class="recent-pub-insight">
-                        <strong><i class="fas fa-lightbulb"></i> Overview:</strong>
-                        A unified multimodal model natively trained on text, images, videos, 3D geometry, and hidden representations, performing advanced reasoning via <em>context unrolling</em> across modalities.
-                    </div>
-
-                    <div class="method-box">
-                        <h4><i class="fas fa-compass"></i> My Contribution — World Navigation</h4>
-                        <p><strong>Core contributor</strong> on the World Navigation capability — <strong>data processing</strong> and <strong>training validation</strong>. The model predicts next first-person / third-person views from discrete action text inputs, with physical behaviors (gravity, collision, buoyancy, momentum) emerging from multimodal training rather than explicit simulation.</p>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.6rem;">
-                            <video autoplay loop muted playsinline style="width: 100%; border-radius: 8px; display: block;">
-                                <source src="https://lf3-static.bytednsdoc.com/obj/eden-cn/slnhi/ljhwZthlaukjlkulzlp/Bagelmni/world_nav_visualizations/swimming_fall.mp4" type="video/mp4">
-                            </video>
-                            <video autoplay loop muted playsinline style="width: 100%; border-radius: 8px; display: block;">
-                                <source src="assets/vids/riding.mp4" type="video/mp4">
-                            </video>
-                        </div>
+                        A unified multimodal model that reasons via <em>context unrolling</em>; core contributor to World Navigation data processing and training validation.
                     </div>
 
                     <div class="pub-links">
@@ -1179,31 +1322,22 @@
                 <!-- Image Diffusion Preview -->
                 <div class="recent-pub-card">
                     <div class="recent-pub-title">Image Diffusion Preview with Consistency Solver</div>
-                    <div class="recent-pub-authors"><strong>Fu-Yun Wang</strong>¹², Hao Zhou¹, Liangzhe Yuan¹, Sanghyun Woo¹, Boqing Gong¹, Bohyung Han¹, Ming-Hsuan Yang¹, Han Zhang¹, Yukun Zhu¹, Ting Liu¹, Long Zhao¹ · <span style="font-size:0.78rem;">¹Google DeepMind ²CUHK</span></div>
-                    <span class="recent-pub-venue"><i class="fas fa-building"></i> CVPR 2026 <span style="color: #fbbf24; font-weight: 600;">(Highlight)</span> · <span style="color: #76b900; font-weight: 600;"><i class="fas fa-microphone-alt"></i> NVIDIA Tech Talk @ CVPR 2026</span> · <span style="color: #7dd3fc; font-weight: 600;">Tencent Qingyun (青云) Scholarship Travel Grant</span></span>
-
-                    <div class="recent-pub-insight">
-                        <strong><i class="fas fa-lightbulb"></i> Key Insight:</strong>
-                        Proposes a <strong>preview-and-refine paradigm</strong> for diffusion models: users first get fast low-step previews, then only run expensive full-step sampling on satisfactory ones—reducing overall interaction time by nearly <strong>50%</strong>.
+                    <div class="recent-pub-authors"><strong>Fu-Yun Wang</strong>, Hao Zhou, Liangzhe Yuan, Sanghyun Woo, Boqing Gong, Bohyung Han, Ming-Hsuan Yang, Han Zhang, Yukun Zhu, Ting Liu, Long Zhao</div>
+                    <div class="recent-pub-affiliations">Google DeepMind · CUHK · Seoul National University</div>
+                    <span class="recent-pub-venue"><i class="fas fa-building"></i> CVPR 2026 · Highlight</span>
+                    <div class="recent-pub-meta">
+                        <span><i class="fas fa-microphone-alt"></i> NVIDIA Tech Talk</span>
+                        <span><i class="fas fa-award"></i> Tencent Qingyun Travel Grant</span>
                     </div>
 
-                    <div class="method-box">
-                        <h4><i class="fas fa-cogs"></i> Method</h4>
-                        <p>ConsistencySolver is a <strong>lightweight, learnable high-order ODE solver</strong> derived from general linear multistep methods, optimized via Reinforcement Learning (PPO). It adapts integration coefficients to each sampling step, improving both preview <em>fidelity</em> and <em>consistency</em> with the full-step output—without modifying the base diffusion model.</p>
-                        <ul>
-                            <li><strong>Diffusion Preview Paradigm:</strong> Fast few-step preview → user evaluation → full-step refinement only when satisfied</li>
-                            <li><strong>Learnable ODE Solver:</strong> Adaptive multistep coefficients predicted by a lightweight MLP, trained end-to-end via RL</li>
-                            <li><strong>Preview Consistency:</strong> Preserves the deterministic PF-ODE mapping so preview closely matches the final output</li>
-                            <li><strong>FID on-par with 47% fewer steps</strong> vs. Multistep DPM-Solver; outperforms distillation baselines</li>
-                        </ul>
+                    <div class="recent-pub-insight">
+                        Fast, faithful low-step previews that reduce interaction time by nearly <strong>50%</strong> while preserving final-sample consistency.
                     </div>
 
                     <div class="pub-links">
                         <a href="https://g-u-n.github.io/projects/consolver/" target="_blank"><i class="fas fa-link"></i> Project</a>
                         <a href="https://arxiv.org/abs/2512.13592" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
                         <a href="https://github.com/G-U-N/consolver" target="_blank"><i class="fab fa-github"></i> GitHub</a>
-                        <a href="blogs/consolver-theory.html" target="_blank"><i class="fas fa-book"></i> Theory Blog</a>
-                        <a href="assets/slides/consolver-nvidia-cvpr2026.pdf" target="_blank"><i class="fas fa-chalkboard-teacher"></i> Slides (NVIDIA Talk)</a>
                     </div>
                 </div>
 
@@ -1211,22 +1345,15 @@
                 <!-- PromptRL -->
                 <div class="recent-pub-card">
                     <div class="recent-pub-title">PromptRL: Prompt Matters in RL for Flow-Based Image Generation</div>
-                    <div class="recent-pub-authors"><strong>Fu-Yun Wang</strong>, Han Zhang, Michael Gharbi, Hongsheng Li, Taesung Park</div>
+                    <div class="recent-pub-authors"><strong>Fu-Yun Wang</strong>, Han Zhang, Michaël Gharbi, Hongsheng Li, Taesung Park</div>
+                    <div class="recent-pub-affiliations">Reve · Meta Superintelligence Labs · CUHK</div>
                     <span class="recent-pub-venue"><i class="fas fa-building"></i> ICML 2026</span>
-
-                    <div class="recent-pub-insight">
-                        <strong><i class="fas fa-lightbulb"></i> Key Insight:</strong>
-                        Achieves <strong>2× sample efficiency</strong> over flow-only RL while obtaining an adaptive prompt refinement agent that improves test-time performance.
+                    <div class="recent-pub-meta">
+                        <span><i class="fas fa-award"></i> JQ Investments ICML Travel Award</span>
                     </div>
 
-                    <div class="method-box">
-                        <h4><i class="fas fa-cogs"></i> Method</h4>
-                        <p>PromptRL <strong>jointly trains language models and flow-matching models</strong> in a unified RL loop for text-to-image generation, using LMs as adaptive prompt refiners.</p>
-                        <ul>
-                            <li><strong>Unified RL Training:</strong> Joint optimization of both LM and FM in a single loop</li>
-                            <li><strong>Exploration Collapse Solution:</strong> Overcomes insufficient diversity through adaptive prompting</li>
-                            <li><strong>Test-time Adaptation:</strong> Adaptive prompt refinement at inference</li>
-                        </ul>
+                    <div class="recent-pub-insight">
+                        <strong>2× sample efficiency</strong> through joint LM/flow-model RL, plus adaptive test-time prompt refinement.
                     </div>
 
                     <div class="pub-links">
@@ -1235,51 +1362,68 @@
                         <a href="https://github.com/G-U-N/UniRL" target="_blank"><i class="fab fa-github"></i> GitHub</a>
                     </div>
                 </div>
+                </div>
 
+            </div>
+        </div>
+
+        <!-- Blogs -->
+        <div class="section" id="blogs">
+            <h1><i class="fas fa-book-open"></i> Latest Posts</h1>
+            <div class="latest-post-list">
+                <a class="latest-post" href="blogs/distributional-distillation.html">
+                    <div>
+                        <h3>Distributional Distillation I: From a Marginal KL to Two Scores</h3>
+                        <p>A complete derivation from density perturbations to the two-score and f-divergence gradients.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a class="latest-post" href="blogs/distributional-distillation-methods.html">
+                    <div>
+                        <h3>Distributional Distillation II: What the Methods Actually Estimate</h3>
+                        <p>Why SDS, VSD, DMD, DMD2, and Phased DMD do not optimize the same object.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a class="latest-post" href="blogs/distributional-distillation-flows.html">
+                    <div>
+                        <h3>Distributional Distillation III: From Scores to Particle Flows</h3>
+                        <p>The exact connection among KL-WGF, W-Flow, and Drifting Models—and where it ends.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a class="latest-post" href="blogs/consolver-theory.html">
+                    <div>
+                        <h3>Theoretical Analysis of ConsistencySolver</h3>
+                        <p>PF-ODEs, linear multistep methods, and the learnable solver update rule.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a class="latest-post" href="blogs/rectified-diffusion-theory.html">
+                    <div>
+                        <h3>Theoretical Analysis of Rectified Diffusion</h3>
+                        <p>Why general diffusion rectification yields non-increasing optimal transport costs.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a class="latest-post" href="blogs/cm-meanflow.html">
+                    <div>
+                        <h3>On the Equivalence of Consistency Models and MeanFlow</h3>
+                        <p>A continuous-time view connecting consistency objectives and MeanFlow.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
             </div>
         </div>
 
         <!-- Research Demo -->
         <div class="section" id="research-demo" style="padding: 0; overflow: hidden; border: none; background: #0a0a1a;">
+            <a class="video-generator-tag" href="https://github.com/G-U-N/vibe-manim" target="_blank" rel="noopener noreferrer" aria-label="This video was generated with vibe-manim">
+                <i class="fab fa-github" aria-hidden="true"></i> Generated with vibe-manim
+            </a>
             <video width="100%" autoplay loop muted playsinline style="display: block; border-radius: var(--radius-xl);">
                 <source src="assets/vids/research-demo.mp4" type="video/mp4">
             </video>
-        </div>
-
-        <!-- Blogs -->
-        <div class="section" id="blogs">
-            <h1><i class="fas fa-book-open"></i> Blogs</h1>
-            <div class="collapsible-content" style="display: block;">
-                <div class="blog-scroll-panel">
-
-                    <div class="recent-pub-card" style="background: rgba(255,255,255,0.7);">
-                        <div class="recent-pub-title"><i class="fas fa-book-open" style="color: var(--primary-color);"></i> Theoretical Analysis of ConsistencySolver</div>
-                        <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.4rem 0 0.75rem;">Detailed derivation of the simplified PF-ODE via variable substitution, background on Linear Multistep Methods, and how ConsistencySolver's learnable update rule unifies DDIM, PNDM, and DPM-Solver-2 as special cases. Companion note for <a href="https://arxiv.org/abs/2512.13592" target="_blank">ConsistencySolver (CVPR 2026 Highlight)</a>.</p>
-                        <div class="pub-links">
-                            <a href="blogs/consolver-theory.html" target="_blank"><i class="fas fa-book"></i> Read Blog</a>
-                            <a href="https://arxiv.org/abs/2512.13592" target="_blank"><i class="fas fa-file-pdf"></i> Paper</a>
-                        </div>
-                    </div>
-
-                    <div class="recent-pub-card" style="background: rgba(255,255,255,0.7);">
-                        <div class="recent-pub-title"><i class="fas fa-book-open" style="color: var(--primary-color);"></i> Theoretical Analysis of Rectified Diffusion</div>
-                        <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.4rem 0 0.75rem;">Self-contained mathematical proofs showing that <strong>any</strong> general diffusion form achieves non-increasing optimal transport costs through rectification — generalizing Rectified Flow beyond the linear interpolation form. Companion note for <a href="https://arxiv.org/abs/2410.07303" target="_blank">Rectified Diffusion (ICLR 2025)</a>.</p>
-                        <div class="pub-links">
-                            <a href="blogs/rectified-diffusion-theory.html" target="_blank"><i class="fas fa-book"></i> Read Blog</a>
-                            <a href="https://arxiv.org/abs/2410.07303" target="_blank"><i class="fas fa-file-pdf"></i> Paper</a>
-                        </div>
-                    </div>
-
-                    <div class="recent-pub-card" style="background: rgba(255,255,255,0.7);">
-                        <div class="recent-pub-title"><i class="fas fa-book-open" style="color: var(--primary-color);"></i> On the Equivalence of Consistency Models and MeanFlow</div>
-                        <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.4rem 0 0.75rem;">Proves that the Consistency Model objective in the continuous-time limit reduces to MeanFlow, generalizes to arbitrary target time $s$, and validates MeanFlow on diffusion policy for robotic control with 1-step generation matching 100-step sampling.</p>
-                        <div class="pub-links">
-                            <a href="blogs/cm-meanflow.html" target="_blank"><i class="fas fa-book"></i> Read Blog</a>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
         </div>
 
         <!-- Research Summary -->
@@ -1349,7 +1493,7 @@
                     <div class="experience-content">
                         <h3>Tencent AI Lab</h3>
                         <p><strong>Research Intern</strong> · 2022.6 - 2022.12</p>
-                        <p>Class-Incremental Learning</p>
+                        <p>Continual Learning</p>
                         <p>Supervised by: Dr. Liu Liu, Prof. Yatao Bian</p>
                     </div>
                 </div>
@@ -1388,6 +1532,43 @@
                 <h3>Diffusion Post-Training: Acceleration & Reinforcement Learning</h3>
             </div>
             <div class="collapsible-content">
+                <div class="publication-item">
+                    <a href="https://g-u-n.github.io/projects/promptrl/" class="research-thumb">
+                        <img src="projects/promptrl/assets/logo.png" alt="PromptRL">
+                    </a>
+                    <div class="publication-content">
+                        <a href="https://g-u-n.github.io/projects/promptrl/" class="research-proj-title">PromptRL: Prompt Matters in RL for Flow-Based Image Generation</a>
+                        <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Han Zhang, Michaël Gharbi, Hongsheng Li, Taesung Park</div>
+                        <div class="publication-affiliations">Reve · Meta Superintelligence Labs · CUHK</div>
+                        <div class="publication-venue"><strong>ICML 2026</strong> <span class="badge">JQ Investments ICML Travel Award</span></div>
+                        <div class="highlight">Jointly trains language models and flow-matching models in a unified RL loop, achieving <strong>2× sample efficiency</strong> and adaptive test-time prompt refinement.</div>
+                        <div class="publication-links">
+                            <a href="https://g-u-n.github.io/projects/promptrl/" target="_blank"><i class="fas fa-link"></i> Project</a>
+                            <a href="https://arxiv.org/abs/2602.01382" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                            <a href="https://github.com/G-U-N/UniRL" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="publication-item">
+                    <a href="https://g-u-n.github.io/projects/consolver/" class="research-thumb">
+                        <img src="projects/consolver/assets/preview.png" alt="ConsistencySolver">
+                    </a>
+                    <div class="publication-content">
+                        <a href="https://g-u-n.github.io/projects/consolver/" class="research-proj-title">Image Diffusion Preview with Consistency Solver</a>
+                        <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Hao Zhou, Liangzhe Yuan, Sanghyun Woo, Boqing Gong, Bohyung Han, Ming-Hsuan Yang, Han Zhang, Yukun Zhu, Ting Liu, Long Zhao</div>
+                        <div class="publication-affiliations">Google DeepMind · CUHK · Seoul National University</div>
+                        <div class="publication-venue"><strong>CVPR 2026</strong> <span class="badge">Highlight</span></div>
+                        <div class="highlight">A learnable high-order ODE solver for fast, faithful diffusion previews and consistent full-step refinement, reducing interaction time by nearly <strong>50%</strong>.</div>
+                        <div class="publication-links">
+                            <a href="https://g-u-n.github.io/projects/consolver/" target="_blank"><i class="fas fa-link"></i> Project</a>
+                            <a href="https://arxiv.org/abs/2512.13592" target="_blank"><i class="fas fa-file-pdf"></i> arXiv</a>
+                            <a href="https://github.com/G-U-N/consolver" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                            <a href="blogs/consolver-theory.html" target="_blank"><i class="fas fa-book"></i> Theory Blog</a>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="publication-item">
                     <a href="https://openreview.net/forum?id=nEDToD1R8M" class="research-thumb">
                         <img src="assets/images/rd.png" alt="Rectified Diffusion">
@@ -1485,7 +1666,7 @@
             </div>
 
             <div class="collapsible-header">
-                <h3>Class-Incremental Learning</h3>
+                <h3>Continual Learning</h3>
             </div>
             <div class="collapsible-content">
                 <div class="publication-item">
@@ -1521,61 +1702,55 @@
             </div>
         </div>
 
-        <!-- Talks -->
-        <div class="section" id="talks">
-            <h1><i class="fas fa-microphone-alt"></i> Talks</h1>
-            <ul>
-                <li>
-                    <strong>Diffusion Acceleration Talk Slides</strong>
+        <!-- Compact secondary information -->
+        <div class="section" id="more">
+            <h1><i class="fas fa-ellipsis-h"></i> More</h1>
+            <div class="three-col-grid">
+                <div class="compact-info-block" id="talks">
+                    <h2><i class="fas fa-microphone-alt"></i> Talks</h2>
                     <ul>
-                        <li><a href="assets/slides/rectified-diffusion.pdf" target="_blank">[2024-10]</a> Invited by TechBeat (将门创投)</li>
-                        <li><a href="assets/slides/talk-2024-12.pdf" target="_blank">[2024-12]</a> Invited by Kuaishou Kling Team (快手可灵)</li>
-                        <li><a href="assets/slides/talk-2025-01.pdf" target="_blank">[2025-01]</a> Invited by Nanjing University <a href="https://keysoftlab.nju.edu.cn/3f/68/c1578a737128/page.htm" target="_blank">(poster)</a></li>
+                        <li><a href="assets/slides/rectified-diffusion.pdf" target="_blank">TechBeat</a> · Oct 2024</li>
+                        <li><a href="assets/slides/talk-2024-12.pdf" target="_blank">Kuaishou Kling</a> · Dec 2024</li>
+                        <li><a href="assets/slides/talk-2025-01.pdf" target="_blank">Nanjing University</a> · Jan 2025</li>
+                        <li><a href="https://www.techbeat.net/talk-info?id=917" target="_blank">Talk video</a> · Chinese</li>
                     </ul>
-                </li>
-                <li>
-                    <strong>Diffusion Acceleration Talk Video</strong>
+                </div>
+
+                <div class="compact-info-block" id="awards">
+                    <h2><i class="fas fa-trophy"></i> Awards</h2>
                     <ul>
-                        <li><a href="https://www.techbeat.net/talk-info?id=917" target="_blank">[2024-10]</a> (Chinese) Invited by TechBeat</li>
+                        <li><strong>2026</strong> JQ Investments ICML Travel Award · <a href="https://arxiv.org/abs/2602.01382" target="_blank">PromptRL</a></li>
+                        <li><strong>2026</strong> Tencent Qingyun Travel Grant · <a href="https://arxiv.org/abs/2512.13592" target="_blank">ConsistencySolver</a></li>
+                        <li><strong>2025</strong> CVPR Outstanding Reviewer</li>
+                        <li><strong>2023</strong> HKPFS</li>
                     </ul>
-                </li>
-            </ul>
-        </div>
+                    <details class="compact-more">
+                        <summary>Earlier awards</summary>
+                        <ul>
+                            <li><strong>2023</strong> Outstanding Graduate of NJU</li>
+                            <li><strong>2023</strong> Outstanding Undergraduate Thesis of NJU</li>
+                            <li><strong>2022</strong> Sensetime Scholarship</li>
+                            <li><strong>2022</strong> Huawei Scholarship</li>
+                            <li><strong>2021</strong> National Scholarship</li>
+                        </ul>
+                    </details>
+                </div>
 
-        <!-- Awards & Services side by side -->
-        <div class="two-col-grid" style="margin: 1.5rem 0;">
-            <div class="section" id="awards" style="margin: 0;">
-                <h1><i class="fas fa-trophy"></i> Awards & Honor</h1>
-                <ul>
-                    <li><strong>2026</strong> Tencent Qingyun (青云) Scholarship — Travel Grant (for <a href="https://arxiv.org/abs/2512.13592" target="_blank">ConsistencySolver</a>, CVPR 2026 Highlight)</li>
-                    <li><strong>2025</strong> CVPR 2025 Outstanding Reviewer</li>
-                    <li><strong>2023</strong> HKPFS (Hong Kong PhD Fellowship Scheme)</li>
-                    <li><strong>2023</strong> Outstanding Graduate of Nanjing University</li>
-                    <li><strong>2023</strong> Outstanding Undergraduate Thesis of NJU</li>
-                    <li><strong>2022</strong> Sensetime Scholarship</li>
-                    <li><strong>2022</strong> Huawei Scholarship</li>
-                    <li><strong>2021</strong> National Scholarship</li>
-                </ul>
-            </div>
-
-            <div class="section" id="services" style="margin: 0;">
-                <h1><i class="fas fa-hands-helping"></i> Academic Services</h1>
-                <p style="margin-bottom: 1rem; font-size: 0.88rem;">Reviewer for:</p>
-                <table>
-                    <thead>
-                        <tr><th>Venue</th><th>Years</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>TPAMI</td><td>—</td></tr>
-                        <tr><td>TCSVT / PRL</td><td>—</td></tr>
-                        <tr><td>CVPR</td><td>2023–2025</td></tr>
-                        <tr><td>NeurIPS</td><td>2023, 2025</td></tr>
-                        <tr><td>ICLR</td><td>2024, 2025</td></tr>
-                        <tr><td>ICML</td><td>2024, 2025</td></tr>
-                        <tr><td>ECCV / ICCV</td><td>2024 / 2025</td></tr>
-                        <tr><td>BMVC / SIGGRAPH Asia</td><td>2024 / 2025</td></tr>
-                    </tbody>
-                </table>
+                <div class="compact-info-block" id="services">
+                    <h2><i class="fas fa-hands-helping"></i> Academic Services</h2>
+                    <p>Reviewer for TPAMI, TCSVT, PRL, CVPR, NeurIPS, ICLR, ICML, ECCV, ICCV, BMVC, and SIGGRAPH Asia.</p>
+                    <details class="compact-more">
+                        <summary>Reviewing years</summary>
+                        <table>
+                            <tbody>
+                                <tr><td>CVPR / NeurIPS</td><td>2023–2025</td></tr>
+                                <tr><td>ICLR / ICML</td><td>2024–2025</td></tr>
+                                <tr><td>ECCV / ICCV</td><td>2024 / 2025</td></tr>
+                                <tr><td>BMVC / SIGGRAPH Asia</td><td>2024 / 2025</td></tr>
+                            </tbody>
+                        </table>
+                    </details>
+                </div>
             </div>
         </div>
 
@@ -1608,6 +1783,27 @@
                 s.style.display = 'inline'; f.style.display = 'none'; b.textContent = 'Show more';
             }
         }
+
+        // Keep the desktop Recent Work panel exactly as tall as the profile card.
+        (function syncHeroCardHeights() {
+            const hero = document.querySelector('.hero-grid');
+            const profile = document.getElementById('profile');
+            if (!hero || !profile) return;
+
+            const sync = () => {
+                if (window.matchMedia('(min-width: 1025px)').matches) {
+                    hero.style.setProperty('--profile-card-height', `${Math.ceil(profile.getBoundingClientRect().height)}px`);
+                } else {
+                    hero.style.removeProperty('--profile-card-height');
+                }
+            };
+
+            if ('ResizeObserver' in window) new ResizeObserver(sync).observe(profile);
+            window.addEventListener('resize', sync);
+            const portrait = profile.querySelector('img');
+            if (portrait && !portrait.complete) portrait.addEventListener('load', sync, { once: true });
+            sync();
+        })();
     </script>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -1675,7 +1871,7 @@
                     ]
                 },
                 {
-                    "name": "Incremental Learning",
+                    "name": "Continual Learning",
                     "children": [
                         {
                             "name": "PyCIL (SCIS)",
@@ -2301,4 +2497,3 @@ function buildTokenizer(json) {
 
 </body>
 </html>
-

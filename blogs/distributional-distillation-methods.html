@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A derivation-first comparison of SDS, VSD, Diff-Instruct, DMD, DMD2, and Phased DMD.">
+    <title>Distributional Distillation II: What the Methods Actually Estimate — Fu-Yun Wang</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="distributional-distillation.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <main class="container">
+        <header class="blog-header">
+            <a href="../index.html#blogs" class="back-link"><i class="fas fa-arrow-left"></i> Back to all posts</a>
+            <div class="eyebrow">Distributional Distillation · Part II</div>
+            <h1>What SDS, VSD, and DMD Actually Estimate</h1>
+            <p class="dek">SDS, VSD, and DMD can look almost identical in code. They are not identical mathematically. This article follows the one term that changes between them and shows what each method keeps, learns, or accidentally removes.</p>
+            <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical notes</div>
+        </header>
+
+        <nav class="series-nav" aria-label="Distributional distillation series">
+            <a href="distributional-distillation.html"><strong>I · Two-score calculus</strong>KL, first variations, and the general \(f\)-divergence gradient</a>
+            <a href="distributional-distillation-methods.html" aria-current="page"><strong>II · What the methods estimate</strong>SDS, VSD, DMD, DMD2, and Phased DMD</a>
+            <a href="distributional-distillation-flows.html"><strong>III · From scores to flows</strong>Wasserstein gradient flow, W-Flow, and Drifting Models</a>
+        </nav>
+
+        <article class="blog-content">
+            <div class="toc">
+                <strong>The organizing equation</strong>
+                <ol>
+                    <li><a href="#three-slots">One density-based shape, three choices</a></li>
+                    <li><a href="#sds">SDS: what exactly disappears?</a></li>
+                    <li><a href="#vsd">VSD and Diff-Instruct: reconstruct the fake score</a></li>
+                    <li><a href="#gan">The GAN connection</a></li>
+                    <li><a href="#dmd">DMD and DMD2: marginal freedom versus a coverage anchor</a></li>
+                    <li><a href="#phased">Phased DMD: derive the target from the actual transition</a></li>
+                </ol>
+            </div>
+
+            <h2 id="three-slots">1. The same-looking update can mean different things</h2>
+
+            <p>Part I derived the reverse-KL generator gradient</p>
+
+            <div class="formula-card">
+                \[
+                \nabla_\theta\mathcal L
+                =\mathbb E\!\left[
+                \frac{\gamma(t)}{\sigma_t}
+                \bigl(
+                \boldsymbol\epsilon_\varphi(\mathbf x_t,t)
+                -\boldsymbol\epsilon_\psi(\mathbf x_t,t)
+                \bigr)^\top
+                \frac{\partial\mathbf x_t}{\partial\theta}
+                \right],
+                \qquad
+                \mathbf x_t=\alpha_tG_\theta(\mathbf z)+\sigma_t\boldsymbol\epsilon.
+                \]
+                <span class="equation-label">(1)</span>
+            </div>
+
+            <p>Before comparing names, it helps to turn this equation into three plain questions:</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \nabla_\theta\mathcal F
+                =\mathbb E\!\left[
+                \underbrace{w}_{\text{divergence}}
+                \bigl(
+                \underbrace{\text{target}}_{\text{teacher or data}}
+                -\underbrace{\text{student}}_{\text{how is }q\text{ represented?}}
+                \bigr)^\top
+                \underbrace{\frac{\partial\mathbf x}{\partial\theta}}_{\text{where is it formed?}}
+                \right].}
+                \]
+                <span class="equation-label">(2)</span>
+            </div>
+
+            <p>Reading Equation (2) from left to right gives three independent decisions:</p>
+
+            <ol>
+                <li><strong>Where should training focus?</strong> Reverse KL weights every sampled location equally; other divergences emphasize places the student is missing.</li>
+                <li><strong>How do we know what the student distribution looks like?</strong> We can substitute one noise sample, train a second denoiser, or estimate a density ratio with a discriminator.</li>
+                <li><strong>At which state is the comparison valid?</strong> A formula derived for a noised clean image may become wrong at an intermediate phase state.</li>
+            </ol>
+
+            <p>These questions are easy to mix together. The first controls mode coverage, the second controls estimator error, and the third controls whether the training target is correct at all.</p>
+
+            <figure class="plot-figure latex-figure">
+                <a href="figures/score-distill.png" aria-label="Open the full-resolution distribution-matching figure">
+                    <img src="figures/score-distill.png" alt="The book's LaTeX figure showing the difference between real and student scores, followed by the alternating generator and online critic update used in distribution matching." width="1262" height="710" loading="lazy" decoding="async">
+                </a>
+                <figcaption>The original LaTeX distribution-matching figure from the book. The left panel shows the two-score direction; the right panel shows why the student critic must be updated as the generator moves.</figcaption>
+            </figure>
+
+            <h2 id="sds">2. SDS: a conditional score substituted for a marginal score</h2>
+
+            <p>The hard term in Equation (1) is the score of the student's whole output distribution. SDS avoids learning it. Instead, it inserts the particular noise vector \(\boldsymbol\epsilon\) used to create the current \(\mathbf x_t\):</p>
+
+            <div class="formula-card">
+                \[
+                \nabla_\theta\mathcal L_{\mathrm{SDS}}
+                =\mathbb E\!\left[
+                \frac{\gamma(t)}{\sigma_t}
+                \bigl(\boldsymbol\epsilon_\varphi(\mathbf x_t,t,c)
+                -\boldsymbol\epsilon\bigr)^\top
+                \frac{\partial\mathbf x_t}{\partial\theta}
+                \right].
+                \]
+                <span class="equation-label">(3)</span>
+            </div>
+
+            <h3>One corrupted sample is not the whole student distribution</h3>
+
+            <p>Conditioned on one latent \(\mathbf z\), the corruption law is</p>
+
+            <div class="formula-card">
+                \[
+                q(\mathbf x_t\mid\mathbf z)
+                =\mathcal N\!\left(
+                \alpha_tG_\theta(\mathbf z),\sigma_t^2\mathbf I
+                \right),
+                \qquad
+                \nabla_{\mathbf x_t}\log q(\mathbf x_t\mid\mathbf z)
+                =-\frac{\boldsymbol\epsilon}{\sigma_t}.
+                \]
+            </div>
+
+            <p>The same noisy point \(\mathbf x_t\) could have come from many different clean student outputs. Reverse KL needs the score after considering all of those possibilities—the <em>mixture over all latents</em>, \(q_{\theta,t}(\mathbf x_t)=\int q(\mathbf x_t\mid\mathbf z)p(\mathbf z)d\mathbf z\). Differentiating that mixture gives</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \nabla_{\mathbf x_t}\log q_{\theta,t}(\mathbf x_t)
+                &=\frac{\int p(\mathbf z)\nabla_{\mathbf x_t}
+                    q(\mathbf x_t\mid\mathbf z)d\mathbf z}
+                    {q_{\theta,t}(\mathbf x_t)}\\
+                &=\int
+                \frac{p(\mathbf z)q(\mathbf x_t\mid\mathbf z)}
+                     {q_{\theta,t}(\mathbf x_t)}
+                \nabla_{\mathbf x_t}\log q(\mathbf x_t\mid\mathbf z)d\mathbf z\\
+                &=\mathbb E\!\left[
+                -\frac{\boldsymbol\epsilon}{\sigma_t}
+                \,\middle|\,\mathbf x_t
+                \right].
+                \end{aligned}
+                \]
+                <span class="equation-label" id="eq-marginal-score">(4)</span>
+            </div>
+
+            <p>So the correct fake score averages over all latent/noise explanations that could have produced the observed \(\mathbf x_t\). SDS keeps only the explanation sampled in the current iteration.</p>
+
+            <h3>One SDS step is a reconstruction step</h3>
+
+            <p>Let \(\mathbf x=G_\theta(\mathbf z)\), and form the teacher's clean prediction</p>
+
+            <div class="formula-card">
+                \[
+                \widehat{\mathbf x}_{0,\varphi}
+                =\frac{\mathbf x_t-\sigma_t
+                \boldsymbol\epsilon_\varphi(\mathbf x_t,t,c)}{\alpha_t}.
+                \]
+            </div>
+
+            <p>Because \(\mathbf x_t=\alpha_t\mathbf x+\sigma_t\boldsymbol\epsilon\),</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \mathbf x-\widehat{\mathbf x}_{0,\varphi}
+                &=\mathbf x-
+                \frac{\alpha_t\mathbf x+\sigma_t\boldsymbol\epsilon
+                -\sigma_t\boldsymbol\epsilon_\varphi}{\alpha_t}\\
+                &=\frac{\sigma_t}{\alpha_t}
+                \bigl(\boldsymbol\epsilon_\varphi-\boldsymbol\epsilon\bigr).
+                \end{aligned}
+                \]
+            </div>
+
+            <p>Therefore, up to a positive time-dependent scalar and with gradients stopped through the teacher, one sampled SDS update is the gradient of</p>
+
+            <div class="formula-card">
+                \[
+                \frac12\left\|
+                \mathbf x-\operatorname{sg}[
+                \widehat{\mathbf x}_{0,\varphi}]
+                \right\|^2.
+                \]
+            </div>
+
+            <p>This makes “pointwise” literal: each iteration moves one current render toward one teacher-denoised pseudo-target. No term here checks whether the collection of all renders remains diverse.</p>
+
+            <h3>The fake-score term vanishes in expectation</h3>
+
+            <p>The difference is not merely extra Monte Carlo noise. Since</p>
+
+            <div class="formula-card">
+                \[
+                \frac{\partial\mathbf x_t}{\partial\theta}
+                =\alpha_t\frac{\partial G_\theta(\mathbf z)}{\partial\theta}
+                \]
+            </div>
+
+            <p>depends on \(\mathbf z\) but not on the independently sampled zero-mean \(\boldsymbol\epsilon\),</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \mathbb E\!\left[
+                \boldsymbol\epsilon^\top
+                \frac{\partial\mathbf x_t}{\partial\theta}\right]
+                &=\alpha_t\,
+                \mathbb E_{\mathbf z}\!\left[
+                \mathbb E_{\boldsymbol\epsilon}[\boldsymbol\epsilon]^\top
+                \frac{\partial G_\theta(\mathbf z)}{\partial\theta}
+                \right]\\
+                &=\mathbf0.
+                \end{aligned}
+                \]
+                <span class="equation-label" id="eq-sds-entropy-vanishes">(5)</span>
+            </div>
+
+            <div class="callout">
+                <strong>SDS does not merely make the reverse-KL gradient noisier</strong>
+                Under the assumptions above, its substituted fake-score term averages to exactly zero. What remains is the attraction \(\mathbb E_q[-\log p_t]\); the term that encourages the student population to spread out, \(-H(q_t)\), is gone. This gives a direct reason to expect collapse pressure.
+            </div>
+
+            <h3>Why strong classifier-free guidance moves SDS</h3>
+
+            <p>With target prompt \(c\), source branch \(u\), and guidance scale \(\omega\), decompose the residual:</p>
+
+            <div class="formula-card">
+                \[
+                \widetilde{\boldsymbol\epsilon}_\varphi-\boldsymbol\epsilon
+                =
+                \underbrace{
+                \boldsymbol\epsilon_\varphi(\mathbf x_t,t,u)
+                -\boldsymbol\epsilon}_{\text{pointwise SDS}}
+                +\omega\underbrace{\left[
+                \boldsymbol\epsilon_\varphi(\mathbf x_t,t,c)
+                -\boldsymbol\epsilon_\varphi(\mathbf x_t,t,u)
+                \right]}_{\text{target--source contrast}}.
+                \]
+                <span class="equation-label">(6)</span>
+            </div>
+
+            <p>At the very large guidance scales used in SDS, the second term often dominates. It pulls toward the conditional target and pushes away from the unconditional source. This can be useful, but the unconditional branch is still not the score of the stochastic student's full output distribution.</p>
+
+            <h2 id="vsd">3. VSD and Diff-Instruct: reconstruct the student score</h2>
+
+            <p>VSD and Diff-Instruct pay the cost SDS avoids: they train a second denoiser to describe the student's current output distribution. For any differentiable image-producing system \(\mathbf x=R_\theta(\boldsymbol\xi)\), they generate current outputs, add noise, and solve an ordinary denoising problem:</p>
+
+            <div class="formula-card">
+                \[
+                \min_\psi\;
+                \mathbb E_{t,\boldsymbol\xi,\boldsymbol\epsilon}
+                \left\|
+                \boldsymbol\epsilon_\psi\!\left(
+                \alpha_t\operatorname{sg}[R_\theta(\boldsymbol\xi)]
+                +\sigma_t\boldsymbol\epsilon,t
+                \right)-\boldsymbol\epsilon
+                \right\|^2.
+                \]
+                <span class="equation-label">(7)</span>
+            </div>
+
+            <p>Condition on \(\mathbf x_t\). The standard square-loss decomposition is</p>
+
+            <div class="formula-card">
+                \[
+                \mathbb E\!\left[
+                \|f(\mathbf x_t)-\boldsymbol\epsilon\|^2
+                \mid\mathbf x_t\right]
+                =
+                \|f(\mathbf x_t)-\mathbb E[\boldsymbol\epsilon\mid\mathbf x_t]\|^2
+                +\operatorname{Var}(\boldsymbol\epsilon\mid\mathbf x_t).
+                \]
+            </div>
+
+            <p>The variance term is independent of \(f\), so the population minimizer is</p>
+
+            <div class="formula-card">
+                \[
+                \boldsymbol\epsilon_\psi^\star(\mathbf x_t,t)
+                =\mathbb E[\boldsymbol\epsilon\mid\mathbf x_t]
+                =-\sigma_t\nabla\log q_{\theta,t}(\mathbf x_t).
+                \]
+                <span class="equation-label" id="eq-fake-score-optimum">(8)</span>
+            </div>
+
+            <p>This auxiliary loss is not arbitrary. At its optimum, the second denoiser returns exactly the conditional average needed for the student's marginal score—and therefore restores the entropy term that SDS loses. Training alternates between teaching this denoiser what the student currently generates and using it to update the student.</p>
+
+            <h3>Critic lag produces a systematic outer-gradient error</h3>
+
+            <p>Let \(\boldsymbol\epsilon_\psi^\star\) be the exact conditional mean and \(\boldsymbol\epsilon_\psi\) the learned estimate. Subtract the ideal generator gradient from the applied one:</p>
+
+            <div class="formula-card">
+                \[
+                \widehat{\nabla_\theta\mathcal L}
+                -\nabla_\theta\mathcal L
+                =
+                \mathbb E\!\left[
+                \frac{\gamma(t)}{\sigma_t}
+                \bigl(\boldsymbol\epsilon_\psi^\star
+                -\boldsymbol\epsilon_\psi\bigr)^\top
+                \frac{\partial\mathbf x_t}{\partial\theta}
+                \right].
+                \]
+            </div>
+
+            <p>Using \(\|\mathbf a^\top B\|\leq\|\mathbf a\|\|B\|\) and the triangle inequality,</p>
+
+            <div class="formula-card">
+                \[
+                \left\|
+                \widehat{\nabla_\theta\mathcal L}
+                -\nabla_\theta\mathcal L
+                \right\|
+                \leq
+                \mathbb E\!\left[
+                \frac{\gamma(t)}{\sigma_t}
+                \|\boldsymbol\epsilon_\psi^\star-\boldsymbol\epsilon_\psi\|
+                \left\|\frac{\partial\mathbf x_t}{\partial\theta}\right\|
+                \right].
+                \]
+                <span class="equation-label" id="eq-critic-error">(9)</span>
+            </div>
+
+            <p>The difficulty is that the student changes after every generator update. A fake-score model trained on yesterday's generator still describes yesterday's distribution. Its error can therefore point the generator in the wrong direction, not merely add random noise. Equation (9) also shows why a small denoising loss is not enough: the remaining error is magnified by the time weight, \(1/\sigma_t\), and the generator Jacobian.</p>
+
+            <h2 id="gan">4. Why GANs and two-score methods are related</h2>
+
+            <p>The two-score bracket is the spatial gradient of a log density ratio:</p>
+
+            <div class="formula-card">
+                \[
+                \nabla\log q_t-\nabla\log p_t
+                =\nabla\log\frac{q_t}{p_t}.
+                \]
+            </div>
+
+            <p>For the original GAN classification problem, the optimal discriminator is</p>
+
+            <div class="formula-card">
+                \[
+                D^\star(\mathbf x)=\frac{p(\mathbf x)}{p(\mathbf x)+q(\mathbf x)},
+                \qquad
+                \log\frac{D^\star}{1-D^\star}
+                =\log\frac pq.
+                \]
+                <span class="equation-label">(10)</span>
+            </div>
+
+            <p>A discriminator estimates the value of the log density ratio \(\log(p/q)\). Two score networks estimate the direction in which that ratio changes. They expose the same population quantity in two forms, but only when the estimators are ideal. In practice, a discriminator is informed mainly by the batches it sees and can be unstable; score matching compares multiple noise scales but must keep its fake-score model synchronized with a moving student.</p>
+
+            <p>This also clarifies hybrid methods. ADD combines a teacher-derived score-distillation term with a real-data adversarial term. Core LADD uses teacher-generated positives in latent feature space, so its adversarial term remains teacher-derived. “Adversarial” tells us how a ratio is estimated, not where the reference distribution came from.</p>
+
+            <h2 id="dmd">5. DMD keeps a safety rope; DMD2 replaces it with a different signal</h2>
+
+            <p>The original DMD objective is a hybrid:</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \mathcal L_{\mathrm{DMD}}
+                =
+                \underbrace{\mathbb E_t[
+                \gamma(t)\mathrm{KL}(q_{\theta,t}\|p_t)]}
+                _{\text{teacher-derived marginal}}
+                +\lambda
+                \underbrace{\mathbb E_{(\mathbf z,\mathbf x)\sim\mathcal D}
+                \|G_\theta(\mathbf z)-\mathbf x\|^2}
+                _{\text{teacher-derived coupling}}.}
+                \]
+                <span class="equation-label" id="eq-dmd-objective">(11)</span>
+            </div>
+
+            <p>The dataset \(\mathcal D\) contains noise–image pairs created by running the full teacher ODE. The reverse-KL term asks whether all outputs look right as a population. The regression term still tells each individual noise input where the teacher sent it. They solve different problems:</p>
+
+            <ul>
+                <li>The reverse-KL term allows a new latent-to-image map and concentrates capacity on realistic outputs.</li>
+                <li>The paired regression term gives every sampled latent a designated endpoint. It is ordinary trajectory distillation and acts as an explicit coverage anchor.</li>
+            </ul>
+
+            <p>DMD2 removes the expensive pair dataset and adds a discriminator trained with real images. That is useful, but it is not the same safety rope. The discriminator can tell whether the output population differs from real data—and can even expose teacher errors—but it still does not assign a destination to each latent.</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Component</th><th>Constrains</th><th>Reference</th><th>Main role</th></tr></thead>
+                    <tbody>
+                        <tr><td>DMD score term</td><td>Marginal</td><td>Teacher</td><td>Sharp teacher-distribution matching</td></tr>
+                        <tr><td>DMD regression</td><td>Coupling</td><td>Teacher</td><td>Coverage anchor for every latent</td></tr>
+                        <tr><td>DMD2 score term</td><td>Marginal</td><td>Teacher</td><td>Teacher prior</td></tr>
+                        <tr><td>DMD2 discriminator</td><td>Marginal</td><td>Real data</td><td>Correct teacher/data mismatch</td></tr>
+                        <tr><td>rCM consistency term</td><td>Coupling</td><td>Teacher/data construction</td><td>Coverage-seeking regression</td></tr>
+                        <tr><td>rCM score term</td><td>Marginal</td><td>Teacher</td><td>Counter limited-capacity averaging</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="callout">
+                <strong>Classify loss components, not method names</strong>
+                “DMD is distribution matching” hides the point of its regression term. “DMD2 replaces the dataset with a GAN” hides the fact that a coupling constraint was removed and a data-derived marginal constraint was added. Those changes alter both coverage behavior and the teacher ceiling.
+            </div>
+
+            <h2 id="phased">6. Phased DMD: the input distribution determines the target</h2>
+
+            <p>Phased DMD introduces a different issue. In an early phase, the input \(\mathbf x_s\) is already noisy; it is not a clean image. We must therefore derive the denoising target from the transition that actually produced the later state \(\mathbf x_t\), rather than reuse the familiar clean-image target.</p>
+
+            <div class="formula-card">
+                \[
+                \mathbf x_t
+                =\alpha_{t|s}\mathbf x_s+\sigma_{t|s}\boldsymbol\epsilon,
+                \qquad
+                \alpha_{t|s}=\frac{\alpha_t}{\alpha_s},
+                \]
+                \[
+                \sigma_{t|s}^2
+                =\sigma_t^2-\alpha_{t|s}^2\sigma_s^2,
+                \qquad
+                \tau\equiv\sigma_{t|s}.
+                \]
+                <span class="equation-label">(12)</span>
+            </div>
+
+            <p>The observable conditional score of this actual transition is</p>
+
+            <div class="formula-card">
+                \[
+                \nabla_{\mathbf x_t}\log q(\mathbf x_t\mid\mathbf x_s)
+                =-\frac{\boldsymbol\epsilon}{\tau}.
+                \]
+            </div>
+
+            <p>Project it over the posterior of \(\mathbf x_s\) exactly as in Equation (4):</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \nabla_{\mathbf x_t}\log q_t(\mathbf x_t)
+                &=
+                \frac{\int q_s(\mathbf x_s)
+                \nabla_{\mathbf x_t}q(\mathbf x_t\mid\mathbf x_s)d\mathbf x_s}
+                {q_t(\mathbf x_t)}\\
+                &=\mathbb E\!\left[
+                \nabla_{\mathbf x_t}\log q(\mathbf x_t\mid\mathbf x_s)
+                \,\middle|\,\mathbf x_t\right]\\
+                &=\mathbb E\!\left[
+                -\frac{\boldsymbol\epsilon}{\tau}
+                \,\middle|\,\mathbf x_t\right].
+                \end{aligned}
+                \]
+                <span class="equation-label" id="eq-phased-score">(13)</span>
+            </div>
+
+            <p>Squared regression onto \(-\boldsymbol\epsilon/\tau\) therefore recovers the required marginal score. Every prediction parameterization follows from one affine conversion. If</p>
+
+            <div class="formula-card">
+                \[
+                \widehat{\mathbf y}(\mathbf x_t,t)
+                =A_t\mathbf x_t+B_t\widehat{\mathbf s}(\mathbf x_t,t),
+                \]
+            </div>
+
+            <p>then substitute the transition score to obtain</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \mathbf y_{\mathrm{target}}^{(s)}
+                =A_t\mathbf x_t-\frac{B_t}{\tau}\boldsymbol\epsilon.}
+                \]
+                <span class="equation-label">(14)</span>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Prediction</th><th>Conversion from score \(\mathbf s_t\)</th><th>Phased target</th></tr></thead>
+                    <tbody>
+                        <tr><td>Score</td><td>\(\widehat{\mathbf s}\)</td><td>\(-\boldsymbol\epsilon/\tau\)</td></tr>
+                        <tr><td>Noise</td><td>\(\widehat{\boldsymbol\epsilon}=-\sigma_t\widehat{\mathbf s}\)</td><td>\((\sigma_t/\tau)\boldsymbol\epsilon\)</td></tr>
+                        <tr><td>Clean sample</td><td>\(\widehat{\mathbf x}_0=(\mathbf x_t+\sigma_t^2\widehat{\mathbf s})/\alpha_t\)</td><td>\((\mathbf x_t-\sigma_t^2\boldsymbol\epsilon/\tau)/\alpha_t\)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>When \(s=0\), \(\tau=\sigma_t\), and these reduce to the usual clean-sample targets. When \(s&gt;0\), regressing directly onto \(\boldsymbol\epsilon\), \(\mathbf x_s\), or \(\boldsymbol\epsilon-\mathbf x_s\) is biased. The formulas may still look dimensionally plausible, which is exactly why this mistake is easy to make.</p>
+
+            <div class="pitfall">
+                <strong>The phase boundary is singular</strong>
+                As \(t\to s\), \(\tau=\sigma_{t|s}\to0\), so targets containing \(1/\tau\) diverge. Implementations must rescale the residual algebraically or avoid sampling arbitrarily close to the boundary.
+            </div>
+
+            <h2>The clean method map</h2>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Method</th><th>Student-side quantity</th><th>What the derivation says</th></tr></thead>
+                    <tbody>
+                        <tr><td>SDS</td><td>One sampled conditional noise</td><td>Pointwise pseudo-target; entropy term vanishes in expectation</td></tr>
+                        <tr><td>VSD / Diff-Instruct</td><td>Learned marginal fake score</td><td>Principled two-score gradient; moving-critic error matters</td></tr>
+                        <tr><td>DMD</td><td>Learned marginal fake score</td><td>Reverse-KL marginal term plus paired coupling anchor</td></tr>
+                        <tr><td>DMD2</td><td>Fake score plus real-data discriminator</td><td>Two marginal signals; no equivalent latent-wise anchor</td></tr>
+                        <tr><td>Phased DMD</td><td>Transition-correct marginal score</td><td>Target must be derived from \(q(\mathbf x_t\mid\mathbf x_s)\)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <section class="references">
+                <h2>References</h2>
+                <p>[1] Poole et al. “DreamFusion: Text-to-3D using 2D Diffusion.” ICLR 2023.</p>
+                <p>[2] Wang et al. “ProlificDreamer.” NeurIPS 2023.</p>
+                <p>[3] Luo et al. “Diff-Instruct.” NeurIPS 2023.</p>
+                <p>[4] Yin et al. “One-step Diffusion with Distribution Matching Distillation.” CVPR 2024.</p>
+                <p>[5] Yin et al. “Improved Distribution Matching Distillation for Fast Image Synthesis.” NeurIPS 2024.</p>
+                <p>[6] Fan et al. “Phased DMD: Few-step Distribution Matching Distillation via Score Matching within Subintervals.” CVPR 2026.</p>
+            </section>
+
+            <div class="next-post">
+                <a href="distributional-distillation.html"><i class="fas fa-arrow-left"></i> Part I · Two-score calculus</a>
+                <a href="distributional-distillation-flows.html">Part III · Scores to flows <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </article>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                throwOnError: false,
+                trust: true
+            });
+        });
+    </script>
+</body>
+</html>

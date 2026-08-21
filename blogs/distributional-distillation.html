@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A step-by-step derivation of distributional distillation, from noisy marginal KL to the two-score and f-divergence gradients.">
+    <title>Distributional Distillation I: From KL to Two Scores — Fu-Yun Wang</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="distributional-distillation.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <main class="container">
+        <header class="blog-header">
+            <a href="../index.html#blogs" class="back-link"><i class="fas fa-arrow-left"></i> Back to all posts</a>
+            <div class="eyebrow">Distributional Distillation · Part I</div>
+            <h1>From a Marginal KL to Two Scores</h1>
+            <p class="dek">How do we train a one-step generator when there is no correct image assigned to each noise input? We begin with that practical question and derive the familiar two-score update one line at a time.</p>
+            <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical notes</div>
+        </header>
+
+        <nav class="series-nav" aria-label="Distributional distillation series">
+            <a href="distributional-distillation.html" aria-current="page"><strong>I · Two-score calculus</strong>KL, first variations, and the general \(f\)-divergence gradient</a>
+            <a href="distributional-distillation-methods.html"><strong>II · What the methods estimate</strong>SDS, VSD, DMD, DMD2, and Phased DMD</a>
+            <a href="distributional-distillation-flows.html"><strong>III · From scores to flows</strong>Wasserstein gradient flow, W-Flow, and Drifting Models</a>
+        </nav>
+
+        <article class="blog-content">
+            <div class="toc">
+                <strong>This article answers one question</strong>
+                <ol>
+                    <li><a href="#objective">Why match noisy marginals?</a></li>
+                    <li><a href="#direction">What does the direction of KL change?</a></li>
+                    <li><a href="#two-score">How do we derive the two-score identity?</a></li>
+                    <li><a href="#f-divergence">Why is every smooth \(f\)-divergence the same direction with a different weight?</a></li>
+                    <li><a href="#entropy">Why is the fake score an entropy gradient?</a></li>
+                </ol>
+            </div>
+
+            <h2 id="objective">1. Stop grading samples one by one</h2>
+
+            <p>Let a one-step generator be</p>
+            <div class="formula-card">
+                \[
+                \mathbf x=G_\theta(\mathbf z),
+                \qquad \mathbf z\sim\mathcal N(\mathbf0,\mathbf I),
+                \qquad \mathbf x\sim q_\theta.
+                \]
+            </div>
+
+            <p>Suppose the teacher turns noise \(z_1\) into a cat and \(z_2\) into a dog. Trajectory distillation asks the student to reproduce those two assignments. Distributional distillation allows the student to swap them. What matters is that the collection of outputs still contains the right cats and dogs in the right proportions.</p>
+
+            <p>The formal name for the noise-to-image assignment is a <strong>coupling</strong>. Once we forget that assignment and keep only the output distribution, we keep the <strong>marginal</strong>. This extra freedom is useful when a one-step student is too small or too constrained to imitate the teacher's exact map.</p>
+
+            <p>Why not compare the clean output distributions directly? In image space, valid images occupy an extremely narrow part of all possible pixel arrays. The teacher and student can therefore miss each other almost completely, even if both produce recognizable images. In that case the KL can be infinite or provide almost no useful direction. The standard repair is simple: add the same type of Gaussian noise to both sides before comparing them.</p>
+
+            <div class="formula-card">
+                \[
+                \mathbf x_t
+                =\alpha_tG_\theta(\mathbf z)+\sigma_t\boldsymbol\epsilon,
+                \qquad \boldsymbol\epsilon\sim\mathcal N(\mathbf0,\mathbf I),
+                \]
+                \[
+                \boxed{
+                \mathcal L_{\mathrm{marginal}}(\theta)
+                =\mathbb E_t\!\left[\gamma(t)
+                \mathrm{KL}\!\left(q_{\theta,t}\|p_t\right)\right].}
+                \]
+                <span class="equation-label">(1)</span>
+            </div>
+
+            <p>At every \(t&gt;0\), the added noise spreads both distributions out, so they overlap and can “see” each other. Large \(t\) mainly compares coarse layout; small \(t\) compares fine detail. Here noise is not merely damage—it turns an almost impossible clean-space comparison into a sequence of easier comparisons from coarse to fine.</p>
+
+            <div class="callout">
+                <strong>The freedom–coverage trade-off</strong>
+                A marginal objective frees the student from reproducing the teacher's exact latent-to-image map. But once no target is assigned to each latent, coverage is no longer automatic. This is the structural reason marginal methods can be sharp and still drop modes.
+            </div>
+
+            <h2 id="direction">2. Forward and reverse KL fail differently</h2>
+
+            <p>Start with one Gaussian component \(p_m=\mathcal N(m,\varsigma^2)\) and a single-Gaussian student \(q_\mu=\mathcal N(\mu,\varsigma^2)\). They share the same variance, so their cross-entropy is</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                H(p_m,q_\mu)
+                =
+                \frac12\log(2\pi\varsigma^2)
+                +\frac{\varsigma^2+(m-\mu)^2}{2\varsigma^2}.}
+                \]
+                <span class="equation-label" id="eq-gaussian-cross-entropy">(G)</span>
+            </div>
+
+            <p>Because \(\mathrm{KL}(p\|q)=H(p,q)-H(p)\), minimizing forward KL over \(q\) is the same as minimizing this cross-entropy.</p>
+
+            <details class="optional-derivation">
+                <summary>Optional: derive Equation (G) from the Gaussian density</summary>
+                <div class="details-body">
+                    <div class="formula-card">
+                        \[
+                        -\log q_\mu(x)
+                        =\frac12\log(2\pi\varsigma^2)
+                        +\frac{(x-\mu)^2}{2\varsigma^2}.
+                        \]
+                    </div>
+                    <p>Take the expectation under \(p_m\), then add and subtract its mean \(m\):</p>
+                    <div class="formula-card">
+                        \[
+                        \begin{aligned}
+                        H(p_m,q_\mu)
+                        &=\frac12\log(2\pi\varsigma^2)
+                        +\frac{\mathbb E_{p_m}[(x-\mu)^2]}{2\varsigma^2},\\
+                        \mathbb E_{p_m}[(x-\mu)^2]
+                        &=\underbrace{\mathbb E_{p_m}[(x-m)^2]}_{\varsigma^2}
+                        +(m-\mu)^2.
+                        \end{aligned}
+                        \]
+                    </div>
+                </div>
+            </details>
+
+            <h3>The two-mode example</h3>
+
+            <p>Let the target contain two narrow modes, while the student can represent only one:</p>
+
+            <div class="formula-card">
+                \[
+                p(x)=\tfrac12p_-(x)+\tfrac12p_+(x),
+                \qquad
+                p_\pm(x)=\mathcal N(\pm a,\varsigma^2),
+                \qquad
+                q_\mu(x)=\mathcal N(\mu,\varsigma^2),
+                \qquad \varsigma\ll a.
+                \]
+            </div>
+
+            <h3>Forward KL straddles the modes</h3>
+
+            <p>The target \(p\) is not itself Gaussian. Instead, use the linearity of expectation to split its cross-entropy into the two Gaussian components:</p>
+
+            <div class="formula-card">
+                \[
+                H(p,q_\mu)
+                =\tfrac12H(p_-,q_\mu)+\tfrac12H(p_+,q_\mu).
+                \]
+            </div>
+
+            <p>Apply Equation (G) once with \(m=-a\) and once with \(m=+a\):</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                H(p,q_\mu)
+                &=
+                \frac12\log(2\pi\varsigma^2)
+                +\frac{
+                2\varsigma^2+(-a-\mu)^2+(a-\mu)^2
+                }{4\varsigma^2}\\
+                &=
+                \frac12\log(2\pi\varsigma^2)
+                +\frac12+\frac{a^2+\mu^2}{2\varsigma^2}.
+                \end{aligned}
+                \]
+            </div>
+
+            <p>Every term except \(\mu^2/(2\varsigma^2)\) is constant in \(\mu\), so the minimum is \(\mu=0\): a location between the modes where the target places almost no mass. A capacity-limited student covers both modes slightly and represents neither well.</p>
+
+            <h3>Reverse KL locks onto one mode</h3>
+
+            <p>Unlike forward KL, this reverse KL is difficult to evaluate directly: the logarithm contains a sum of two Gaussian densities, so it cannot be split across the two mixture components. Fortunately, gradient descent does not require a closed-form value; it only needs the derivative with respect to the student location \(\mu\). Write</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                K(\mu)
+                &=\mathrm{KL}(q_\mu\|p)\\
+                &=\mathbb E_{X\sim q_\mu}
+                [\log q_\mu(X)-\log p(X)].
+                \end{aligned}
+                \]
+            </div>
+
+            <p>A sample from \(q_\mu=\mathcal N(\mu,\varsigma^2)\) can be written as \(X=\mu+\varsigma Z\), where \(Z\sim\mathcal N(0,1)\). Substituting this into the expectation gives</p>
+
+            <div class="formula-card">
+                \[
+                K(\mu)=\mathbb E_Z\!\left[
+                \log q_\mu(\mu+\varsigma Z)
+                -\log p(\mu+\varsigma Z)
+                \right].
+                \]
+            </div>
+
+            <p>Now expand the student term:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \log q_\mu(\mu+\varsigma Z)
+                &=-\frac12\log(2\pi\varsigma^2)
+                -\frac{((\mu+\varsigma Z)-\mu)^2}{2\varsigma^2}\\
+                &=-\frac12\log(2\pi\varsigma^2)-\frac{Z^2}{2}.
+                \end{aligned}
+                \]
+            </div>
+
+            <p>This expression no longer contains \(\mu\), so its <em>total</em> derivative is zero for every fixed \(Z\)—the expectation is not needed for this cancellation. Written with the chain rule, the two contributions are</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \frac{\partial}{\partial\mu}\log q_\mu(x)
+                &=\frac{x-\mu}{\varsigma^2},
+                &
+                \frac{\partial}{\partial x}\log q_\mu(x)
+                &=-\frac{x-\mu}{\varsigma^2},\\
+                \frac{d}{d\mu}\log q_\mu(\mu+\varsigma Z)
+                &=\left.\frac{\partial}{\partial\mu}\log q_\mu(x)
+                \right|_{x=\mu+\varsigma Z}
+                +\left.\frac{\partial}{\partial x}\log q_\mu(x)
+                \right|_{x=\mu+\varsigma Z}
+                \frac{d(\mu+\varsigma Z)}{d\mu}\\
+                &=\frac{Z}{\varsigma}-\frac{Z}{\varsigma}\cdot1=0.
+                \end{aligned}
+                \]
+            </div>
+
+            <p>If \(x\) were held fixed, \(\partial_\mu\log q_\mu(x)\) would not be zero pointwise; only its expectation would vanish. Here \(x=\mu+\varsigma Z\) moves with \(\mu\), so the explicit parameter derivative and the sample-motion derivative cancel pointwise. This special simplification holds because the example changes only the mean while keeping the variance fixed.</p>
+
+            <p>The distribution of \(Z\) does not depend on \(\mu\), so we can now differentiate inside the expectation. Applying the chain rule to the remaining target term gives</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                K'(\mu)
+                &=\mathbb E_Z\!\left[
+                0-\frac{d}{d\mu}\log p(\mu+\varsigma Z)
+                \right]\\
+                &=-\mathbb E_Z\!\left[
+                \left.\frac{d}{dx}\log p(x)\right|_{x=\mu+\varsigma Z}
+                \underbrace{\frac{d(\mu+\varsigma Z)}{d\mu}}_{1}
+                \right]\\
+                &=\boxed{-\mathbb E_{X\sim q_\mu}[\nabla_x\log p(X)]}.
+                \end{aligned}
+                \]
+                <span class="equation-label" id="eq-reverse-kl-mixture">(R)</span>
+            </div>
+
+            <p>The last line merely renames \(\mu+\varsigma Z\) as \(X\). Since this random variable follows \(q_\mu\), the two expectations are identical. Equation (R) says that gradient descent moves the student along the average target score:</p>
+
+            <div class="formula-card">
+                \[
+                \mu\leftarrow\mu-\eta K'(\mu)
+                =\mu+\eta\,
+                \mathbb E_{X\sim q_\mu}[\nabla_x\log p(X)].
+                \]
+            </div>
+
+            <p>Now read the direction directly from the two-mode curve. Since \(p(x)&gt;0\), the score \(\nabla_x\log p(x)=p'(x)/p(x)\) has the same sign as the slope \(p'(x)\):</p>
+
+            <ul>
+                <li>On the positive side, samples move toward the right mode: rightward before the peak and leftward after it.</li>
+                <li>On the negative side, the picture is symmetric and samples move toward the left mode.</li>
+                <li>At exactly \(x=0\), the two sides balance and the score is zero; any small initialization or sampling imbalance chooses one side.</li>
+            </ul>
+
+            <p>Because the student is narrow compared with the distance between the modes, most of its samples lie in the same basin. Their average score therefore pulls the whole student toward one mode rather than leaving it between the two.</p>
+
+            <figure class="plot-figure">
+                <canvas id="kl-direction-plot" role="img" aria-label="Two panels comparing forward and reverse KL for a two-mode target and a one-mode student. Forward KL centers the student between the modes; reverse KL places it on one mode."></canvas>
+                <figcaption>
+                    <span class="legend-swatch legend-target"></span> target \(p\)
+                    <span class="legend-swatch legend-student"></span> one-mode student \(q_\mu\).
+                    Forward KL compromises between the modes; reverse KL renders one mode well and drops the other.
+                </figcaption>
+            </figure>
+
+            <div class="derivation">
+                <strong>Operational interpretation</strong>
+                The reverse-KL update is computed at samples the student already produces. If the student almost never generates one mode, training almost never visits that mode either, so there is little evidence telling the student to recover it. Gaussian noise means recovery is still possible, but finite batches make it unlikely. This is <em>sample starvation</em>, and it is why initialization and coverage anchors matter.
+            </div>
+
+            <h2 id="two-score">3. Deriving the two-score identity</h2>
+
+            <p>Fix one noise level \(t\). Write the reparameterized noisy sample as</p>
+
+            <div class="formula-card">
+                \[
+                \mathbf x_t=T_\theta(\mathbf z,\boldsymbol\epsilon)
+                =\alpha_tG_\theta(\mathbf z)+\sigma_t\boldsymbol\epsilon,
+                \qquad \mathbf x_t\sim q_{\theta,t}.
+                \]
+            </div>
+
+            <p>The target \(p_t\) stays fixed while the student distribution \(q_{\theta,t}\) moves. The difficulty is that KL grades an entire density, whereas backpropagation moves individual generated samples. We first need an identity that connects these two views.</p>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-body">
+                    <h3>Convert density motion into particle motion</h3>
+                    <p>First distinguish two similar-looking symbols. In an integral, \(\mathbf x\) is only a <strong>dummy coordinate</strong>: it runs over all possible locations and does not itself have a distribution. The density \(q_{\theta,t}(\mathbf x)\) supplies the weight at each location. By contrast, \(\mathbf x_t\) is a <strong>random sample</strong> whose distribution is \(q_{\theta,t}\).</p>
+
+                    <p>We obtain that random sample from base noise whose distribution does not depend on \(\theta\):</p>
+
+                    <div class="formula-card">
+                        \[
+                        \begin{aligned}
+                        \mathbf z&\sim\mathcal N(\mathbf0,\mathbf I),
+                        &\boldsymbol\epsilon&\sim\mathcal N(\mathbf0,\mathbf I),\\
+                        \mathbf x_t
+                        &=T_\theta(\mathbf z,\boldsymbol\epsilon)
+                        =\alpha_tG_\theta(\mathbf z)+\sigma_t\boldsymbol\epsilon,
+                        &\mathbf x_t&\sim q_{\theta,t}.
+                        \end{aligned}
+                        \]
+                    </div>
+
+                    <p>Now let \(g\) be any differentiable test function held fixed during the perturbation. Each equality below performs one separate conversion:</p>
+                    <div class="formula-card">
+                        \[
+                        \begin{aligned}
+                        \int \nabla_\theta q_{\theta,t}(\mathbf x)g(\mathbf x)\,d\mathbf x
+                        &=\nabla_\theta\int q_{\theta,t}(\mathbf x)g(\mathbf x)\,d\mathbf x\\
+                        &=\nabla_\theta\,
+                        \mathbb E_{\mathbf x_t\sim q_{\theta,t}}[g(\mathbf x_t)]\\
+                        &=\nabla_\theta\,
+                        \mathbb E_{\mathbf z,\boldsymbol\epsilon}
+                        [g(T_\theta(\mathbf z,\boldsymbol\epsilon))]\\
+                        &=\mathbb E_{\mathbf z,\boldsymbol\epsilon}\!\left[
+                        \nabla_{\mathbf x}g(\mathbf x_t)^\top
+                        \frac{\partial\mathbf x_t}{\partial\theta}
+                        \right].
+                        \end{aligned}
+                        \]
+                        <span class="equation-label">(2)</span>
+                    </div>
+                    <p>The first line moves the derivative through the integral. The second uses the definition of expectation: integrating \(g(\mathbf x)\) against the density \(q_{\theta,t}(\mathbf x)\) is the same as averaging \(g(\mathbf x_t)\) over samples \(\mathbf x_t\sim q_{\theta,t}\). The third is the actual <strong>reparameterization step</strong>: it replaces sampling from the moving distribution \(q_{\theta,t}\) with sampling fixed noises \((\mathbf z,\boldsymbol\epsilon)\) and passing them through \(T_\theta\). The final line is the ordinary chain rule.</p>
+
+                    <div class="formula-card">
+                        \[
+                        \frac{\partial\mathbf x_t}{\partial\theta}
+                        =\alpha_t\frac{\partial G_\theta(\mathbf z)}{\partial\theta}.
+                        \]
+                    </div>
+
+                    <p>Here we used the fact that the sampled \(\mathbf z\), \(\boldsymbol\epsilon\), and the fixed-time coefficients \(\alpha_t,\sigma_t\) do not change when differentiating with respect to \(\theta\). Thus the left side of Equation (2) describes how the whole density moves, while the right side describes how its generated particles move.</p>
+
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-body">
+                    <h3>Compute the first variation of reverse KL</h3>
+                    <p>Temporarily write \(q=q_{\theta,t}\) and \(p=p_t\). Perturb the density to \(q+\eta\,\delta q\):</p>
+                    <div class="formula-card">
+                        \[
+                        \begin{aligned}
+                        \frac{d}{d\eta}\mathrm{KL}(q+\eta\delta q\|p)\Big|_{\eta=0}
+                        &=\frac{d}{d\eta}
+                        \int(q+\eta\delta q)\log\frac{q+\eta\delta q}{p}\,d\mathbf x
+                        \Big|_{\eta=0}\\
+                        &=\int\left[
+                        \delta q\log\frac{q+\eta\delta q}{p}
+                        +(q+\eta\delta q)\frac{\delta q}{q+\eta\delta q}
+                        \right]_{\eta=0}d\mathbf x\\
+                        &=\int\delta q(\mathbf x)
+                        \left(\log\frac{q(\mathbf x)}{p(\mathbf x)}+1\right)d\mathbf x.
+                        \end{aligned}
+                        \]
+                    </div>
+                    <p>This is ordinary product rule, applied to a function whose input is now a density. Differentiating the leading \(q\) gives \(\delta q\log(q/p)\); differentiating the \(q\) inside the logarithm gives one more \(\delta q\). Hence</p>
+                    <div class="formula-card">
+                        \[
+                        \boxed{
+                        \frac{\delta}{\delta q}\mathrm{KL}(q\|p)
+                        =\log\frac qp+1.}
+                        \]
+                        <span class="equation-label">(3)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-body">
+                    <h3>Let the generator produce the perturbation</h3>
+                    <p>This step uses the functional version of the chain rule. For an ordinary function \(f(u)\), where the intermediate variable \(u\) depends on \(\theta\), the usual chain rule is</p>
+                    <div class="formula-card">
+                        \[
+                        \frac{d}{d\theta}f(u(\theta))
+                        =\frac{df}{du}\frac{du}{d\theta}.
+                        \]
+                    </div>
+                    <p>A density is different only because the intermediate object is no longer one number. It contains one value \(q(\mathbf x)\) at every location \(\mathbf x\). If space were a finite grid, the multivariable chain rule would sum the contribution from every grid point:</p>
+                    <div class="formula-card">
+                        \[
+                        \nabla_\theta F(q_1(\theta),\ldots,q_n(\theta))
+                        =\sum_{i=1}^n
+                        \frac{\partial F}{\partial q_i}
+                        \nabla_\theta q_i.
+                        \]
+                    </div>
+                    <p>For a continuous density, the sum becomes an integral and the partial derivative becomes a functional derivative:</p>
+                    <div class="formula-card">
+                        \[
+                        \boxed{
+                        \nabla_\theta F[q_{\theta,t}]
+                        =\int
+                        \frac{\delta F}{\delta q}(\mathbf x)
+                        \nabla_\theta q_{\theta,t}(\mathbf x)
+                        \,d\mathbf x.}
+                        \]
+                    </div>
+                    <p>The quantity \(\delta F/\delta q(\mathbf x)\) asks how sensitive \(F\) is to a small density change at location \(\mathbf x\). The integral adds the effects from all locations. Thus this is the same chain rule as before, with an integral replacing the finite sum.</p>
+                    <p>For reverse KL, Equation (3) supplies the functional derivative. Evaluate it at the current density, then apply Equation (2) with \(g=\log(q_{\theta,t}/p_t)+1\):</p>
+                    <div class="formula-card">
+                        \[
+                        \begin{aligned}
+                        \nabla_\theta\mathrm{KL}(q_{\theta,t}\|p_t)
+                        &=\int
+                        \underbrace{\frac{\delta\,\mathrm{KL}}{\delta q}(\mathbf x)}_{
+                        \log(q_{\theta,t}(\mathbf x)/p_t(\mathbf x))+1}
+                        \nabla_\theta q_{\theta,t}(\mathbf x)\,d\mathbf x\\
+                        &=\int\nabla_\theta q_{\theta,t}(\mathbf x)
+                        \left(\log\frac{q_{\theta,t}(\mathbf x)}{p_t(\mathbf x)}+1\right)d\mathbf x\\
+                        &=\mathbb E\!\left[
+                        \nabla_{\mathbf x}\left(
+                        \log\frac{q_{\theta,t}(\mathbf x_t)}{p_t(\mathbf x_t)}+1
+                        \right)^\top
+                        \frac{\partial\mathbf x_t}{\partial\theta}
+                        \right].
+                        \end{aligned}
+                        \]
+                    </div>
+                    <p>The spatial gradient kills the constant \(1\) and splits the log ratio into two scores:</p>
+                    <div class="formula-card">
+                        \[
+                        \boxed{
+                        \nabla_\theta\mathrm{KL}(q_{\theta,t}\|p_t)
+                        =\mathbb E\!\left[
+                        \bigl(
+                        \underbrace{\nabla\log q_{\theta,t}(\mathbf x_t)}_{\text{fake score}}
+                        -\underbrace{\nabla\log p_t(\mathbf x_t)}_{\text{real score}}
+                        \bigr)^\top
+                        \frac{\partial\mathbf x_t}{\partial\theta}
+                        \right].}
+                        \]
+                        <span class="equation-label" id="eq-two-score">(4)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="callout">
+                <strong>Why we hold the score field fixed during this step</strong>
+                The first variation already tells us how the objective changes when the density changes. We then evaluate that answer at the current density and ask how the generator moves its samples. Differentiating the first variation again would ask a second-order question; it is not a missing first-order gradient.
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-body">
+                    <h3>Translate scores into denoiser predictions</h3>
+                    <p>For Gaussian corruption, noise prediction and score prediction are related by</p>
+                    <div class="formula-card">
+                        \[
+                        \nabla\log p_t(\mathbf x_t)=-\frac{\boldsymbol\epsilon_\varphi(\mathbf x_t,t)}{\sigma_t},
+                        \qquad
+                        \nabla\log q_{\theta,t}(\mathbf x_t)=-\frac{\boldsymbol\epsilon_\psi(\mathbf x_t,t)}{\sigma_t}.
+                        \]
+                    </div>
+                    <p>Putting the time expectation back gives the familiar computational form:</p>
+                    <div class="formula-card">
+                        \[
+                        \boxed{
+                        \nabla_\theta\mathcal L
+                        =\mathbb E_{t,\mathbf z,\boldsymbol\epsilon}\!\left[
+                        \frac{\gamma(t)}{\sigma_t}
+                        \bigl(\boldsymbol\epsilon_\varphi-\boldsymbol\epsilon_\psi\bigr)^\top
+                        \frac{\partial\mathbf x_t}{\partial\theta}
+                        \right].}
+                        \]
+                        <span class="equation-label" id="eq-denoiser-gradient">(5)</span>
+                    </div>
+                    <p>This equation is not the starting assumption. It is the end of the density-to-particle calculation.</p>
+                </div>
+            </div>
+
+            <h2 id="f-divergence">4. General \(f\)-divergence: same direction, different weight</h2>
+
+            <p>The previous result is not special to KL. Many common distribution distances belong to the \(f\)-divergence family. The useful surprise is that they all point in the same teacher-minus-student score direction; they mainly disagree about how strongly to weight each location.</p>
+
+            <div class="formula-card">
+                \[
+                D_f(p_t\|q_{\theta,t})
+                =\int q_{\theta,t}(\mathbf x)
+                f\!\left(\frac{p_t(\mathbf x)}{q_{\theta,t}(\mathbf x)}\right)d\mathbf x,
+                \qquad r_t(\mathbf x)=\frac{p_t(\mathbf x)}{q_{\theta,t}(\mathbf x)}.
+                \]
+            </div>
+
+            <p>At one spatial point, hold \(p\) fixed and differentiate \(qf(p/q)\) with respect to \(q\):</p>
+
+            <div class="formula-card">
+                \[
+                \frac{d}{dq}\left[qf\!\left(\frac pq\right)\right]
+                =f(r)+qf'(r)\left(-\frac{p}{q^2}\right)
+                =f(r)-rf'(r).
+                \]
+            </div>
+
+            <p>Therefore the first variation is \(f(r)-rf'(r)\). Its spatial gradient is</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \nabla\bigl[f(r)-rf'(r)\bigr]
+                &=-rf''(r)\nabla r\\
+                &=-f''(r)r^2
+                \bigl(\nabla\log p-\nabla\log q\bigr),
+                \end{aligned}
+                \]
+            </div>
+
+            <p>where \(\nabla r=r(\nabla\log p-\nabla\log q)\). Applying the same density-to-particle identity gives</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \nabla_\theta D_f(p_t\|q_{\theta,t})
+                =-\mathbb E\!\left[
+                \underbrace{h(r_t)}_{f''(r_t)r_t^2}
+                \bigl(\nabla\log p_t-\nabla\log q_{\theta,t}\bigr)^\top
+                \frac{\partial\mathbf x_t}{\partial\theta}
+                \right].}
+                \]
+                <span class="equation-label" id="eq-f-divergence">(6)</span>
+            </div>
+
+            <p>So every smooth \(f\)-divergence uses the same teacher-minus-student score direction. The scalar \(h(r)\) decides <em>where training effort goes</em>. If \(r=p/q\) is large, the target has much more probability than the student at that location.</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Divergence</th><th>\(f(r)\)</th><th>\(h(r)\)</th><th>Effect</th></tr></thead>
+                    <tbody>
+                        <tr><td>Reverse KL</td><td>\(-\log r\)</td><td>\(1\)</td><td>No density-ratio estimate; mode-seeking</td></tr>
+                        <tr><td>Jensen–Shannon</td><td>\(r\log r-(r+1)\log\frac{r+1}{2}\)</td><td>\(\frac{r}{r+1}\)</td><td>Bounded, saturating coverage weight</td></tr>
+                        <tr><td>Squared Hellinger</td><td>\(1-\sqrt r\)</td><td>\(\frac14\sqrt r\)</td><td>Intermediate emphasis</td></tr>
+                        <tr><td>Forward KL</td><td>\(r\log r\)</td><td>\(r\)</td><td>Amplifies teacher-heavy, student-light regions</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Forward KL is coverage-seeking because \(r=p/q\) becomes large precisely where the teacher has mass and the student does not. But that same factor can have high variance. Any nonconstant \(h(r)\) also requires a density-ratio estimator—often a discriminator—in addition to the fake-score estimator. Reverse KL is computationally attractive partly because \(h\equiv1\) makes the ratio disappear.</p>
+
+            <h2 id="entropy">5. The fake score is the student's entropy gradient</h2>
+
+            <p>Split reverse KL into negative entropy and cross-entropy:</p>
+
+            <div class="formula-card">
+                \[
+                \mathrm{KL}(q\|p)
+                =\underbrace{\mathbb E_q[\log q]}_{-H(q)}
+                +\underbrace{\mathbb E_q[-\log p]}_{\text{cross-entropy}}.
+                \]
+            </div>
+
+            <p>Applying the same first-variation argument to the two pieces separately gives</p>
+
+            <div class="formula-card">
+                \[
+                \nabla_\theta[-H(q_{\theta,t})]
+                =\mathbb E\!\left[
+                \nabla\log q_{\theta,t}(\mathbf x_t)^\top
+                \frac{\partial\mathbf x_t}{\partial\theta}
+                \right],
+                \]
+                \[
+                \nabla_\theta\mathbb E_{q_{\theta,t}}[-\log p_t]
+                =-\mathbb E\!\left[
+                \nabla\log p_t(\mathbf x_t)^\top
+                \frac{\partial\mathbf x_t}{\partial\theta}
+                \right].
+                \]
+            </div>
+
+            <p>In plain language, the real score says, “move toward places the target considers likely.” The fake score says, “do not let all student samples pile into the same place.” It is not merely a variance-reduction baseline: it is the gradient of the student's negative entropy. If it is missing or badly estimated, attraction remains but the pressure that spreads samples out becomes too weak.</p>
+
+            <div class="derivation">
+                <strong>A one-dimensional Gaussian check</strong>
+                Let \(p=\mathcal N(0,s^2)\) and \(q_u=\mathcal N(0,u^2)\). Then
+                \[
+                \mathrm{KL}(q_u\|p)
+                =\tfrac12\left(\frac{u^2}{s^2}-1-\log\frac{u^2}{s^2}\right),
+                \qquad
+                \frac{d}{du}\mathrm{KL}(q_u\|p)
+                =\frac{u}{s^2}-\frac1u.
+                \]
+                The first term is target attraction; the second is entropy spreading. If \(u&gt;s\), the derivative is positive and gradient descent contracts the student. If \(u&lt;s\), it is negative and gradient descent expands it. The two scores cancel exactly at \(u=s\).
+            </div>
+
+            <h2>What Part I establishes</h2>
+
+            <p>The complete chain is now visible:</p>
+
+            <div class="formula-card">
+                \[
+                \text{density functional}
+                \longrightarrow
+                \text{first variation}
+                \longrightarrow
+                \text{spatial score field}
+                \longrightarrow
+                \text{generator Jacobian}.
+                \]
+            </div>
+
+            <p>What remains is estimation. The teacher score is available from a pretrained diffusion model; the student marginal score is not. SDS, VSD, Diff-Instruct, DMD, and adversarial variants differ primarily in what they substitute or learn for that missing quantity, what weight they apply, and at which state the comparison is formed.</p>
+
+            <section class="references">
+                <h2>References</h2>
+                <p>[1] Yin et al. “One-step Diffusion with Distribution Matching Distillation.” CVPR 2024.</p>
+                <p>[2] Xu, Nie, and Vahdat. “One-step Diffusion Models with \(f\)-Divergence Distribution Matching.” 2025.</p>
+                <p>[3] Wang et al. “ProlificDreamer: High-Fidelity and Diverse Text-to-3D Generation with Variational Score Distillation.” NeurIPS 2023.</p>
+            </section>
+
+            <div class="next-post">
+                <span>Next: what the algorithms actually estimate</span>
+                <a href="distributional-distillation-methods.html">Part II · SDS, VSD, and DMD <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </article>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const canvas = document.getElementById('kl-direction-plot');
+
+            function drawKLDirections() {
+                if (!canvas) return;
+
+                const cssWidth = Math.max(560, canvas.getBoundingClientRect().width || 760);
+                const cssHeight = cssWidth / 2.15;
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = Math.round(cssWidth * dpr);
+                canvas.height = Math.round(cssHeight * dpr);
+
+                const ctx = canvas.getContext('2d');
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+                const gap = 34;
+                const panelWidth = (cssWidth - gap) / 2;
+                const a = 1.55;
+                const sigma = 0.42;
+                const xMin = -3.2;
+                const xMax = 3.2;
+                const yMax = 1.04;
+                const targetColor = '#0f766e';
+                const studentColor = '#6366f1';
+                const axisColor = '#cbd5e1';
+                const textColor = '#1e1b4b';
+                const mutedColor = '#64748b';
+
+                function gaussian(x, mean) {
+                    const z = (x - mean) / sigma;
+                    return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+                }
+
+                function target(x) {
+                    return 0.5 * gaussian(x, -a) + 0.5 * gaussian(x, a);
+                }
+
+                function drawPanel(left, studentMean, title, note) {
+                    const top = 46;
+                    const bottom = cssHeight - 47;
+                    const plotLeft = left + 22;
+                    const plotRight = left + panelWidth - 12;
+                    const plotWidth = plotRight - plotLeft;
+                    const plotHeight = bottom - top;
+                    const mapX = x => plotLeft + (x - xMin) / (xMax - xMin) * plotWidth;
+                    const mapY = y => bottom - y / yMax * plotHeight;
+
+                    ctx.font = '600 14px DM Sans, sans-serif';
+                    ctx.fillStyle = textColor;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(title, left + panelWidth / 2, 19);
+                    ctx.font = '12px DM Sans, sans-serif';
+                    ctx.fillStyle = mutedColor;
+                    ctx.fillText(note, left + panelWidth / 2, 37);
+
+                    ctx.strokeStyle = axisColor;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(plotLeft, bottom);
+                    ctx.lineTo(plotRight, bottom);
+                    ctx.stroke();
+
+                    [-a, 0, a].forEach((tick, index) => {
+                        const x = mapX(tick);
+                        ctx.strokeStyle = '#e2e8f0';
+                        ctx.beginPath();
+                        ctx.moveTo(x, top);
+                        ctx.lineTo(x, bottom);
+                        ctx.stroke();
+                        ctx.fillStyle = mutedColor;
+                        ctx.font = '11px DM Sans, sans-serif';
+                        ctx.fillText(index === 0 ? '−a' : index === 1 ? '0' : '+a', x, bottom + 17);
+                    });
+
+                    function curve(fn, color, dashed) {
+                        ctx.beginPath();
+                        for (let i = 0; i <= 220; i += 1) {
+                            const x = xMin + (xMax - xMin) * i / 220;
+                            const px = mapX(x);
+                            const py = mapY(fn(x));
+                            if (i === 0) ctx.moveTo(px, py);
+                            else ctx.lineTo(px, py);
+                        }
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 2.4;
+                        ctx.setLineDash(dashed ? [7, 5] : []);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+
+                    curve(target, targetColor, false);
+                    curve(x => gaussian(x, studentMean), studentColor, true);
+
+                    const markerX = mapX(studentMean);
+                    ctx.fillStyle = studentColor;
+                    ctx.beginPath();
+                    ctx.arc(markerX, bottom, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                drawPanel(0, 0, 'Forward KL: cover both', 'student mean μ = 0');
+                drawPanel(panelWidth + gap, a, 'Reverse KL: choose one', 'student mean μ ≈ +a');
+            }
+
+            drawKLDirections();
+            window.addEventListener('resize', drawKLDirections);
+
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                throwOnError: false,
+                trust: true
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="From distribution functionals to particle fields: the precise connection among DMD, Wasserstein gradient flow, W-Flow, and Drifting Models.">
+    <title>Distributional Distillation III: From Scores to Flows — Fu-Yun Wang</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="distributional-distillation.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <main class="container">
+        <header class="blog-header">
+            <a href="../index.html#blogs" class="back-link"><i class="fas fa-arrow-left"></i> Back to all posts</a>
+            <div class="eyebrow">Distributional Distillation · Part III</div>
+            <h1>From Score Differences to Particle Flows</h1>
+            <p class="dek">DMD, W-Flow, and Drifting Models all tell generated samples where to move. We build that idea from the ground up, then ask the key question: was the motion derived from a global objective, or designed directly because it works?</p>
+            <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical notes</div>
+        </header>
+
+        <nav class="series-nav" aria-label="Distributional distillation series">
+            <a href="distributional-distillation.html"><strong>I · Two-score calculus</strong>KL, first variations, and the general \(f\)-divergence gradient</a>
+            <a href="distributional-distillation-methods.html"><strong>II · What the methods estimate</strong>SDS, VSD, DMD, DMD2, and Phased DMD</a>
+            <a href="distributional-distillation-flows.html" aria-current="page"><strong>III · From scores to flows</strong>Wasserstein gradient flow, W-Flow, and Drifting Models</a>
+        </nav>
+
+        <article class="blog-content">
+            <div class="toc">
+                <strong>The exact chain developed here</strong>
+                <ol>
+                    <li><a href="#pipeline">Functional → first variation → field → generator gradient</a></li>
+                    <li><a href="#continuity">Why Wasserstein geometry selects \(-\nabla\delta\mathcal F/\delta q\)</a></li>
+                    <li><a href="#detached">Why detached regression implements the same local update</a></li>
+                    <li><a href="#dmd-wgf">DMD as KL gradient flow on noisy marginals</a></li>
+                    <li><a href="#wflow">W-Flow as Sinkhorn gradient flow</a></li>
+                    <li><a href="#drift">Drifting Models: the precise overlap and the precise limit</a></li>
+                </ol>
+            </div>
+
+            <h2 id="pipeline">1. A global score does not yet tell each sample where to move</h2>
+
+            <div class="callout">
+                <strong>The idea before the notation</strong>
+                A distribution objective is a single report-card score for the whole generator. Training, however, must move individual generated samples. The derivation below turns the global report card into one arrow attached to each sample, then backpropagates those arrows through the generator.
+            </div>
+
+            <p>Sample a latent \(\mathbf z\), pass it through the generator, and call the resulting output distribution \(q_\theta\):</p>
+
+            <div class="formula-card">
+                \[
+                \mathbf x_\theta=f_\theta(\mathbf z),
+                \qquad
+                q_\theta=(f_\theta)_\#p_{\mathrm{ref}},
+                \qquad
+                J_\theta=\frac{\partial f_\theta(\mathbf z)}{\partial\theta}.
+                \]
+            </div>
+
+            <p>Let the scalar \(\mathcal F_p(q)\) grade how far the whole generated distribution is from a target \(p\). Its <strong>first variation</strong> asks a local question: if we add or remove a tiny amount of probability near \(\mathbf x\), how does that global grade change?</p>
+
+            <div class="formula-card">
+                \[
+                \phi_q(\mathbf x)
+                \equiv
+                \frac{\delta\mathcal F_p}{\delta q}(q)(\mathbf x).
+                \]
+            </div>
+
+            <p>Call that local sensitivity \(\phi_q(\mathbf x)\). The chain rule pairs it with the way the density changes; the identity from Part I then rewrites the same change in terms of moving generated samples:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \nabla_\theta\mathcal F_p(q_\theta)
+                &=\int\nabla_\theta q_\theta(\mathbf x)
+                \phi_{q_\theta}(\mathbf x)d\mathbf x\\
+                &=\mathbb E_{\mathbf z}\!\left[
+                J_\theta^\top
+                \nabla_{\mathbf x}\phi_{q_\theta}(\mathbf x_\theta)
+                \right].
+                \end{aligned}
+                \]
+                <span class="equation-label">(1)</span>
+            </div>
+
+            <p>Name the negative spatial gradient</p>
+
+            <div class="formula-card">
+                \[
+                \boldsymbol\xi_q(\mathbf x)
+                \equiv-\nabla_{\mathbf x}\phi_q(\mathbf x).
+                \]
+            </div>
+
+            <p>Equation (1) becomes</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \mathcal F_p(q)
+                \longrightarrow
+                \phi_q=\frac{\delta\mathcal F_p}{\delta q}
+                \xrightarrow{W_2}
+                \boldsymbol\xi_q=-\nabla\phi_q
+                \longrightarrow
+                \nabla_\theta\mathcal F_p(q_\theta)
+                =-\mathbb E[J_\theta^\top\boldsymbol\xi_q].}
+                \]
+                <span class="equation-label" id="eq-functional-pipeline">(2)</span>
+            </div>
+
+            <p>The first and last arrows are ordinary chain-rule steps. The middle arrow requires an extra choice. Knowing that one distribution is better than another does not uniquely specify the cheapest way to move probability mass between them. A geometry—or distance rule—on distributions supplies that missing choice.</p>
+
+            <h2 id="continuity">2. Wasserstein geometry chooses the cheapest useful motion</h2>
+
+            <p>Imagine training as a continuous clock \(\tau\). At every location \(\mathbf x\), place an arrow \(\boldsymbol\xi_\tau(\mathbf x)\). A generated sample reads the arrow at its current location as its velocity:</p>
+
+            <div class="formula-card">
+                \[
+                \frac{d\mathbf x_\tau}{d\tau}
+                =\boldsymbol\xi_\tau(\mathbf x_\tau).
+                \]
+            </div>
+
+            <p>When all samples follow these arrows, probability cannot appear or disappear; it can only flow across the boundary of a region. This conservation law is the continuity equation:</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \partial_\tau q_\tau
+                +\nabla\!\cdot(q_\tau\boldsymbol\xi_\tau)=0.}
+                \]
+                <span class="equation-label">(3)</span>
+            </div>
+
+            <p>Equation (3) describes the effect of any chosen arrow field; it does not yet tell us which arrows are best. To measure how a field changes the objective, let \(\phi_\tau=\delta\mathcal F_p/\delta q(q_\tau)\). Then</p>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-body">
+                    <h3>Functional chain rule</h3>
+                    <div class="formula-card">
+                        \[
+                        \frac{d}{d\tau}\mathcal F_p(q_\tau)
+                        =\int\phi_\tau(\mathbf x)
+                        \partial_\tau q_\tau(\mathbf x)d\mathbf x.
+                        \]
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-body">
+                    <h3>Insert probability conservation</h3>
+                    <div class="formula-card">
+                        \[
+                        \frac{d}{d\tau}\mathcal F_p(q_\tau)
+                        =-\int\phi_\tau
+                        \nabla\!\cdot(q_\tau\boldsymbol\xi_\tau)d\mathbf x.
+                        \]
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-body">
+                    <h3>Integrate by parts</h3>
+                    <p>Assuming the boundary term vanishes at infinity,</p>
+                    <div class="formula-card">
+                        \[
+                        \frac{d}{d\tau}\mathcal F_p(q_\tau)
+                        =\int q_\tau
+                        \nabla\phi_\tau^\top\boldsymbol\xi_\tau d\mathbf x
+                        =\mathbb E_{q_\tau}[
+                        \nabla\phi_\tau^\top\boldsymbol\xi_\tau].
+                        \]
+                        <span class="equation-label">(4)</span>
+                    </div>
+                </div>
+            </div>
+
+            <p>Equation (4) holds for any possible motion. Wasserstein geometry chooses a compromise: decrease the objective quickly, but penalize large sample movements. Completing the square makes the winning field explicit:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \arg\min_{\boldsymbol\xi}
+                \mathbb E_{q_\tau}\!\left[
+                \nabla\phi_\tau^\top\boldsymbol\xi
+                +\tfrac12\|\boldsymbol\xi\|^2\right]
+                &=
+                \arg\min_{\boldsymbol\xi}
+                \mathbb E_{q_\tau}\!\left[
+                \tfrac12\|\boldsymbol\xi+\nabla\phi_\tau\|^2
+                -\tfrac12\|\nabla\phi_\tau\|^2
+                \right]\\
+                &=-\nabla\phi_\tau.
+                \end{aligned}
+                \]
+            </div>
+
+            <p>Thus the Wasserstein gradient-flow velocity is</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \boldsymbol\xi_\tau
+                =-\nabla\frac{\delta\mathcal F_p}{\delta q}(q_\tau).}
+                \]
+                <span class="equation-label" id="eq-wgf-field">(5)</span>
+            </div>
+
+            <p>Substitute it back into Equation (4):</p>
+
+            <div class="formula-card">
+                \[
+                \frac{d}{d\tau}\mathcal F_p(q_\tau)
+                =-\mathbb E_{q_\tau}\!\left[
+                \left\|
+                \nabla\frac{\delta\mathcal F_p}{\delta q}(q_\tau)
+                \right\|^2\right]\leq0.
+                \]
+                <span class="equation-label">(6)</span>
+            </div>
+
+            <div class="callout">
+                <strong>“It stops when \(p=q\)” is not enough</strong>
+                Many hand-designed fields become zero when model and data match. A Wasserstein gradient flow promises more: its arrows come from an explicit scalar objective, and following them is guaranteed to decrease that objective according to Equation (6).
+            </div>
+
+            <h2 id="detached">3. Why these methods often look like ordinary regression in code</h2>
+
+            <p>If every generated sample were independent, we could simply move it by \(\eta\boldsymbol\xi_q(\mathbf x)\). A neural generator cannot move samples independently because they share the same weights. Backpropagation finds the parameter update that best approximates all requested motions together. We can implement this directly, or turn each arrow into a frozen regression target.</p>
+
+            <p>Freeze the current iterate \(\theta_0\) and define</p>
+
+            <div class="formula-card">
+                \[
+                \widetilde{\mathbf x}
+                =\operatorname{sg}\!\left[
+                f_{\theta_0}(\mathbf z)
+                +\eta\boldsymbol\xi_{q_{\theta_0}}
+                (f_{\theta_0}(\mathbf z))
+                \right],
+                \]
+                \[
+                \mathcal L_{\mathrm{sg}}(\theta;\theta_0)
+                =\frac{1}{2\eta}
+                \mathbb E_{\mathbf z}
+                \|f_\theta(\mathbf z)-\widetilde{\mathbf x}\|^2.
+                \]
+                <span class="equation-label">(7)</span>
+            </div>
+
+            <p>At the point where the target was formed,</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \nabla_\theta\mathcal L_{\mathrm{sg}}
+                \big|_{\theta=\theta_0}
+                &=\frac1\eta\mathbb E\!\left[
+                J_{\theta_0}^\top
+                (f_{\theta_0}(\mathbf z)-\widetilde{\mathbf x})
+                \right]\\
+                &=-\mathbb E\!\left[
+                J_{\theta_0}^\top
+                \boldsymbol\xi_{q_{\theta_0}}
+                (f_{\theta_0}(\mathbf z))
+                \right]\\
+                &=\nabla_\theta\mathcal F_p(q_\theta)
+                \big|_{\theta=\theta_0}.
+                \end{aligned}
+                \]
+                <span class="equation-label" id="eq-detached-regression">(8)</span>
+            </div>
+
+            <p>This identity explains the shared code pattern: take the current sample, add one small field step, freeze the result, and regress toward it. But seeing an MSE loss in code does not tell us where the arrow came from. The same regression wrapper can implement a principled gradient flow or a directly designed heuristic field.</p>
+
+            <div class="pitfall">
+                <strong>Training time is not diffusion time</strong>
+                The clock \(\tau\) describes how the model distribution changes over optimization steps. It is neither the diffusion noise level \(t\) nor inference time. A trained one-step generator does not integrate this continuity equation at inference; the local distribution updates have been compressed into its weights.
+            </div>
+
+            <h2 id="dmd-wgf">4. DMD's two scores are an attraction–spreading flow</h2>
+
+            <p>Fix a diffusion level \(t\) while the optimization clock \(\tau\) runs, and choose</p>
+
+            <div class="formula-card">
+                \[
+                \mathcal F_t(q)=\mathrm{KL}(q\|p_t).
+                \]
+            </div>
+
+            <p>Its first variation is \(\log(q/p_t)+1\). Applying Equation (5) gives</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \boldsymbol\xi_{\tau,t}(\mathbf x)
+                =-\nabla\left(\log\frac{q_{\tau,t}}{p_t}+1\right)
+                =\underbrace{\nabla\log p_t}_{s_{p_t}}
+                -\underbrace{\nabla\log q_{\tau,t}}_{s_{q_{\tau,t}}}.}
+                \]
+                <span class="equation-label" id="eq-kl-wgf">(9)</span>
+            </div>
+
+            <h3>Put the field back into the population equation</h3>
+
+            <p>Substitute the field into Equation (3):</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \partial_\tau q_{\tau,t}
+                &=-\nabla\!\cdot[
+                q_{\tau,t}(s_{p_t}-s_{q_{\tau,t}})]\\
+                &=-\nabla\!\cdot(q_{\tau,t}s_{p_t})
+                +\nabla\!\cdot(q_{\tau,t}\nabla\log q_{\tau,t})\\
+                &=-\nabla\!\cdot(q_{\tau,t}s_{p_t})
+                +\nabla\!\cdot(\nabla q_{\tau,t})\\
+                &=\boxed{
+                \Delta q_{\tau,t}
+                -\nabla\!\cdot(q_{\tau,t}s_{p_t}).}
+                \end{aligned}
+                \]
+                <span class="equation-label" id="eq-kl-fokker-planck">(10)</span>
+            </div>
+
+            <p>Equation (10) separates the two-score update into two population effects. First consider only the target score. If particles follow \(\dot{\mathbf x}=s_{p_t}(\mathbf x)\), then</p>
+
+            <div class="formula-card">
+                \[
+                \frac{d}{d\tau}\log p_t(\mathbf x_\tau)
+                =\nabla\log p_t(\mathbf x_\tau)^\top
+                \dot{\mathbf x}_\tau
+                =\|s_{p_t}(\mathbf x_\tau)\|^2\geq0,
+                \]
+            </div>
+
+            <p>so each particle climbs toward a region the target considers more likely. Now keep only the fake-score contribution. It becomes the heat equation \(\partial_\tau q=\Delta q\), whose solution spreads the model law like Gaussian smoothing. This does <em>not</em> mean DMD adds another random-noise step; the apparent diffusion is the population effect of deterministic arrows that depend on the current distribution.</p>
+
+            <figure class="plot-figure latex-figure">
+                <a href="figures/kl-wasserstein-flow.png" aria-label="Open the full-resolution reverse-KL Wasserstein-flow figure">
+                    <img src="figures/kl-wasserstein-flow.png" alt="The book's LaTeX figure mapping reverse KL from a distributional energy to a local potential and particle velocity, with particles moving downhill across the potential landscape." width="1472" height="941" loading="lazy" decoding="async">
+                </a>
+                <figcaption>The original LaTeX Wasserstein-flow figure from the book. Reverse KL becomes a local potential, whose negative spatial gradient moves particles downhill; after they move, the student density and its field must be recomputed.</figcaption>
+            </figure>
+
+            <p>At equilibrium \(q=p_t\), the two terms cancel exactly:</p>
+
+            <div class="formula-card">
+                \[
+                \Delta p_t-\nabla\!\cdot(p_ts_{p_t})
+                =\Delta p_t-\nabla\!\cdot(\nabla p_t)=0.
+                \]
+            </div>
+
+            <p>DMD averages this KL-WGF over noise levels and projects each field through the noisy generator Jacobian:</p>
+
+            <div class="formula-card">
+                \[
+                \mathcal F_{\mathrm{DMD}}(\theta)
+                =\mathbb E_t[\gamma(t)\mathrm{KL}(q_{\theta,t}\|p_t)],
+                \]
+                \[
+                \nabla_\theta\mathcal F_{\mathrm{DMD}}
+                =-\mathbb E_{t,\mathbf z,\boldsymbol\epsilon}\!\left[
+                \gamma(t)\boldsymbol\xi_t(\mathbf x_t)^\top
+                \frac{\partial\mathbf x_t}{\partial\theta}\right].
+                \]
+                <span class="equation-label">(11)</span>
+            </div>
+
+            <p>Using \(s_{p_t}=-\boldsymbol\epsilon_\varphi/\sigma_t\) and \(s_{q_t}=-\boldsymbol\epsilon_\psi/\sigma_t\) recovers the usual DMD teacher-minus-fake denoiser gradient. The WGF view does not replace the two-score derivation; it explains the distributional motion induced by it.</p>
+
+            <h2 id="wflow">5. W-Flow uses the same recipe with a transport objective</h2>
+
+            <p>DMD asks score models how to move each sample. W-Flow instead solves a softened batch transport problem: which real samples should generated samples move toward, while avoiding a biased collapse caused by entropy regularization? Its global objective is the Sinkhorn divergence:</p>
+
+            <div class="formula-card">
+                \[
+                \mathrm{OT}_{\varepsilon_{\mathrm{OT}}}(q,p)
+                =
+                \inf_{\pi\in\Pi(q,p)}
+                \left\{
+                \int\tfrac12\|\mathbf x-\mathbf y\|^2d\pi
+                +\varepsilon_{\mathrm{OT}}\mathrm{KL}(\pi\|q\otimes p)
+                \right\},
+                \]
+                \[
+                S_{\varepsilon_{\mathrm{OT}}}(q,p)
+                =\mathrm{OT}_{\varepsilon_{\mathrm{OT}}}(q,p)
+                -\tfrac12\mathrm{OT}_{\varepsilon_{\mathrm{OT}}}(q,q)
+                -\tfrac12\mathrm{OT}_{\varepsilon_{\mathrm{OT}}}(p,p).
+                \]
+                <span class="equation-label">(12)</span>
+            </div>
+
+            <p>Let the conditional barycentric maps of the optimal couplings be</p>
+
+            <div class="formula-card">
+                \[
+                T^\varepsilon_{q,p}(\mathbf x)
+                =\int\mathbf y\,\pi^\varepsilon_{q,p}(d\mathbf y\mid\mathbf x),
+                \qquad
+                T^\varepsilon_{q,q}(\mathbf x)
+                =\int\mathbf x'\,\pi^\varepsilon_{q,q}(d\mathbf x'\mid\mathbf x).
+                \]
+            </div>
+
+            <p>By the envelope theorem, the optimal coupling need not be differentiated explicitly. For the cross-transport term, the spatial gradient of the first variation is</p>
+
+            <div class="formula-card">
+                \[
+                \nabla\frac{\delta\mathrm{OT}_{\varepsilon_{\mathrm{OT}}}(\cdot,p)}
+                {\delta q}(q)(\mathbf x)
+                =\int(\mathbf x-\mathbf y)
+                \pi^\varepsilon_{q,p}(d\mathbf y\mid\mathbf x)
+                =\mathbf x-T^\varepsilon_{q,p}(\mathbf x).
+                \]
+            </div>
+
+            <p>The self-transport term appears twice because \(q\) occupies both arguments; symmetry cancels the factor \(1/2\) in Equation (12). Therefore</p>
+
+            <div class="formula-card">
+                \[
+                \nabla\frac{\delta S_{\varepsilon_{\mathrm{OT}}}(\cdot,p)}
+                {\delta q}(q)(\mathbf x)
+                =T^\varepsilon_{q,q}(\mathbf x)
+                -T^\varepsilon_{q,p}(\mathbf x).
+                \]
+            </div>
+
+            <p>Negating it yields the exact Sinkhorn-WGF velocity:</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \boldsymbol\xi^\varepsilon_{q,p}(\mathbf x)
+                =T^\varepsilon_{q,p}(\mathbf x)
+                -T^\varepsilon_{q,q}(\mathbf x).}
+                \]
+                <span class="equation-label" id="eq-wflow-field">(13)</span>
+            </div>
+
+            <p>The first map says where real mass lies relative to the current generated sample. The second asks how the generated batch transports to itself; subtracting it removes the bias introduced by softened transport and supplies self-interaction. W-Flow estimates both maps from batches, then regresses toward \(\mathbf x+\eta\boldsymbol\xi^\varepsilon_{q,p}(\mathbf x)\).</p>
+
+            <div class="callout">
+                <strong>One-line unification</strong>
+                \[
+                \text{DMD}=\text{KL-WGF on noisy marginals }q_t,
+                \qquad
+                \text{W-Flow}=\text{Sinkhorn-WGF on the clean law }q.
+                \]
+                The energy and field estimator differ; the functional → field → Jacobian pipeline is the same.
+            </div>
+
+            <h2 id="drift">6. Drifting Models build the arrows directly in feature space</h2>
+
+            <p>Drifting Models reverse the order of reasoning. Instead of choosing a global objective and deriving its arrows, they begin by constructing useful arrows from neighboring real and generated samples. A frozen visual encoder \(\phi\) first maps images into a semantic feature space, where distance is more meaningful than raw pixel distance. For a generated feature \(\mathbf u=\phi(G_\theta(\mathbf z))\), they construct</p>
+
+            <div class="formula-card">
+                \[
+                \widetilde{\mathbf u}
+                =\operatorname{sg}\!\left[
+                \mathbf u+\eta\mathbf V_{\phi_\#p,\phi_\#q}(\mathbf u)
+                \right],
+                \qquad
+                \mathcal L_{\mathrm{drift}}
+                =\|\phi(G_\theta(\mathbf z))-\widetilde{\mathbf u}\|^2,
+                \]
+                <span class="equation-label">(14)</span>
+            </div>
+
+            <p>and backpropagate through the frozen encoder to the generator. This is the same detached-target wrapper as Equation (7). The remaining question is whether the chosen \(\mathbf V\) is the gradient field of a known global objective.</p>
+
+            <h3>The cleanest connection: a local average is a score estimator</h3>
+
+            <p>Take one generated feature \(\mathbf u\). Average nearby real features, giving closer neighbors more weight; do the same with a separate generated batch. With a Gaussian weighting rule, those local averages have an exact connection to scores. Let \(p\) be the target feature distribution and \(q\) the generated feature distribution, and define</p>
+
+            <div class="formula-card">
+                \[
+                k_h(\mathbf u,\mathbf v)
+                =\exp\!\left(-\frac{\|\mathbf u-\mathbf v\|^2}{2h^2}\right),
+                \]
+                \[
+                M_r^h(\mathbf u)
+                =\frac{\mathbb E_{\mathbf v\sim r}
+                [k_h(\mathbf u,\mathbf v)\mathbf v]}
+                {\mathbb E_{\mathbf v\sim r}
+                [k_h(\mathbf u,\mathbf v)]},
+                \qquad r\in\{p,q\}.
+                \]
+                <span class="equation-label">(15)</span>
+            </div>
+
+            <p>Let \(Z_r^h(\mathbf u)=\mathbb E_{\mathbf v\sim r}[k_h(\mathbf u,\mathbf v)]\). Up to a constant independent of \(\mathbf u\), \(Z_r^h\) is the Gaussian-smoothed density \(r_h\). Differentiate:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \nabla_{\mathbf u}\log r_h(\mathbf u)
+                &=\frac{\nabla_{\mathbf u}Z_r^h(\mathbf u)}
+                {Z_r^h(\mathbf u)}\\
+                &=\frac{
+                \mathbb E_{\mathbf v\sim r}[
+                \nabla_{\mathbf u}k_h(\mathbf u,\mathbf v)]}
+                {\mathbb E_{\mathbf v\sim r}[k_h(\mathbf u,\mathbf v)]}\\
+                &=\frac{
+                \mathbb E_{\mathbf v\sim r}[
+                k_h(\mathbf u,\mathbf v)(\mathbf v-\mathbf u)/h^2]}
+                {\mathbb E_{\mathbf v\sim r}[k_h(\mathbf u,\mathbf v)]}\\
+                &=\frac{M_r^h(\mathbf u)-\mathbf u}{h^2}.
+                \end{aligned}
+                \]
+                <span class="equation-label" id="eq-kde-score">(16)</span>
+            </div>
+
+            <p>Equation (16) says something intuitive: the vector from \(\mathbf u\) to its local weighted average points uphill in the smoothed density. It is a nonparametric score estimate. Subtract the generated-neighborhood vector from the real-neighborhood vector:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \mathbf V_{p,q}(\mathbf u)
+                &=
+                \bigl(M_p^h(\mathbf u)-\mathbf u\bigr)
+                -\bigl(M_q^h(\mathbf u)-\mathbf u\bigr)\\
+                &=M_p^h(\mathbf u)-M_q^h(\mathbf u)\\
+                &=\boxed{
+                h^2\bigl(
+                \nabla\log p_h(\mathbf u)
+                -\nabla\log q_h(\mathbf u)
+                \bigr).}
+                \end{aligned}
+                \]
+                <span class="equation-label" id="eq-drift-score">(17)</span>
+            </div>
+
+            <p>This is exactly the familiar target-score minus self-score shape, now estimated from neighbors instead of denoisers. The real neighborhood attracts the sample; subtracting the generated neighborhood prevents the whole batch from following its own density and makes the field vanish when the two local distributions agree.</p>
+
+            <h3>Why this does not make every Drift update “the same as DMD”</h3>
+
+            <p>Equation (17) is the precise reason the methods look related. It becomes the same field as DMD only when all of the following match:</p>
+
+            <ul>
+                <li>the query is distributed according to the same smoothed \(q_t\) whose score appears in the KL objective;</li>
+                <li>the Gaussian kernel bandwidth represents the same corruption scale;</li>
+                <li>target and model scores live in the same space;</li>
+                <li>the update is contracted through the corresponding Jacobian with the same stop-gradient convention.</li>
+            </ul>
+
+            <div class="pitfall">
+                <strong>A useful equilibrium field is not automatically the WGF of a known energy</strong>
+                Changing the kernel, normalization, feature scaling, or neighborhood rule may preserve \(\mathbf V_{p,q}=0\) at \(p=q\) while destroying descent of any known global functional. Even applying \(\nabla\log p_h-\nabla\log q_h\) directly to clean particles is not automatically the exact WGF of \(\mathrm{KL}(q_h\|p_h)\) viewed as a functional of the clean law \(q\): the smoothing operator must be pulled back in the first variation.
+            </div>
+
+            <p>So the practical placement is precise. Drifting Models share DMD's target-minus-self idea and W-Flow's detached regression implementation. Their strong image model also uses semantic features and multiple scales, because raw pixels give a poor notion of similarity. But unless the practical field is derived from a scalar objective, it is best described as a carefully designed field that stops at the right equilibrium—not automatically as “DMD without a diffusion model” or as a Sinkhorn/KL gradient flow.</p>
+
+            <h2>7. The comparison that survives the algebra</h2>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th></th><th>DMD</th><th>W-Flow</th><th>Drifting Models</th></tr></thead>
+                    <tbody>
+                        <tr><td>Starting point</td><td>Noisy marginal KL</td><td>Sinkhorn divergence</td><td>Designed equilibrium field</td></tr>
+                        <tr><td>Field</td><td>\(s_{p_t}-s_{q_t}\)</td><td>\(T^\varepsilon_{q,p}-T^\varepsilon_{q,q}\)</td><td>Target neighborhood minus model neighborhood</td></tr>
+                        <tr><td>Estimator</td><td>Teacher and fake denoisers</td><td>Mini-batch Sinkhorn plans</td><td>Kernel/feature-space batch statistics</td></tr>
+                        <tr><td>Comparison space</td><td>Gaussian-noised image/latent marginals</td><td>Usually clean sample space</td><td>Pretrained semantic feature space</td></tr>
+                        <tr><td>Explicit global functional</td><td>Yes</td><td>Yes</td><td>Not required for the practical field</td></tr>
+                        <tr><td>Generator update</td><td>Field–Jacobian contraction</td><td>Detached field-step regression</td><td>Detached feature-target regression</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>The useful unification is therefore not “all three are the same method.” It is a shared workflow:</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{
+                \text{choose or design a population field}
+                \;\longrightarrow\;
+                \text{move generated particles}
+                \;\longrightarrow\;
+                \text{project that motion through the generator}.}
+                \]
+            </div>
+
+            <p>DMD and W-Flow derive the field from explicit energies under Wasserstein geometry. Drifting Models begin with a useful field in a learned representation. The Gaussian mean-shift special case exposes why the formulas can look identical; the first-variation and pullback conditions explain why the methods are not interchangeable in general.</p>
+
+            <section class="references">
+                <h2>References</h2>
+                <p>[1] Yin et al. “One-step Diffusion with Distribution Matching Distillation.” CVPR 2024.</p>
+                <p>[2] Han et al. “One-Step Generative Modeling via Wasserstein Gradient Flows.” 2026.</p>
+                <p>[3] Deng et al. “Generative Modeling via Drifting.” 2026.</p>
+                <p>[4] Gretton et al. “On the Wasserstein Gradient Flow Interpretation of Drifting Models.” 2026.</p>
+            </section>
+
+            <div class="next-post">
+                <a href="distributional-distillation-methods.html"><i class="fas fa-arrow-left"></i> Part II · What the methods estimate</a>
+                <a href="../index.html#blogs">Back to all posts <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </article>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                throwOnError: false,
+                trust: true
+            });
+        });
+    </script>
+</body>
+</html>
