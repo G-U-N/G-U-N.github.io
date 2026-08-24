@@ -229,6 +229,10 @@
             border: 3px solid var(--bg-subtle);
             box-shadow: var(--shadow-md);
             transition: opacity 0.16s ease, transform 0.16s ease;
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         #profile-pic img.is-changing {
@@ -1260,7 +1264,7 @@
             <div id="profile">
                 <div class="profile-header">
                     <div id="profile-pic">
-                        <img src="assets/images/profile.jpg" alt="Fu-Yun Wang" title="Hover for another portrait"/>
+                        <img src="assets/images/profile.jpg" alt="Fu-Yun Wang" title="Hover or tap for another portrait"/>
                     </div>
                     <div class="profile-header-text">
                         <div id="profile-name">Fu-Yun Wang</div>
@@ -1833,7 +1837,17 @@
                 }, 110);
             };
 
-            portrait.addEventListener("mouseenter", swapPortrait);
+            if (window.PointerEvent) {
+                portrait.addEventListener("pointerenter", event => {
+                    if (event.pointerType === "mouse") swapPortrait();
+                });
+                portrait.addEventListener("pointerup", event => {
+                    if (event.pointerType !== "mouse") swapPortrait();
+                });
+            } else {
+                portrait.addEventListener("mouseenter", swapPortrait);
+                portrait.addEventListener("touchend", swapPortrait, { passive: true });
+            }
         })();
 
         // Collapsible sections
