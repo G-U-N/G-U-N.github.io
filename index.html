@@ -221,12 +221,19 @@
         }
 
         #profile-pic img {
-            width: 200px;
-            height: 200px;
+            width: min(200px, 100%);
+            height: auto;
+            aspect-ratio: 1;
             border-radius: 50%;
             object-fit: cover;
             border: 3px solid var(--bg-subtle);
             box-shadow: var(--shadow-md);
+            transition: opacity 0.16s ease, transform 0.16s ease;
+        }
+
+        #profile-pic img.is-changing {
+            opacity: 0.28;
+            transform: scale(0.97);
         }
 
         .profile-header-text {
@@ -289,7 +296,7 @@
 
         .social-links {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(12, minmax(0, 1fr));
             gap: 0.5rem;
             margin-top: auto;
             padding-top: 1rem;
@@ -311,7 +318,10 @@
             color: var(--text-primary);
             text-decoration: none;
             white-space: nowrap;
+            grid-column: span 3;
         }
+
+        .social-links > :nth-child(n+5) { grid-column: span 4; }
 
         .social-links a:hover,
         .social-links button:hover {
@@ -909,16 +919,6 @@
             font-family: inherit;
         }
 
-        /* Clustrmaps */
-        .clustrmaps-container {
-            text-align: center;
-            margin: 2rem 0;
-            padding: 1.5rem;
-            background: var(--bg-card);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-        }
-
         /* Responsive */
         @media (max-width: 1024px) {
             .hero-grid { grid-template-columns: 1fr; }
@@ -930,8 +930,16 @@
 
         @media (max-width: 768px) {
             .profile-header { flex-direction: column; text-align: center; }
-            #profile-pic img { width: 160px; height: 160px; }
+            #profile-pic img { width: min(160px, 100%); }
             .social-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .social-links a,
+            .social-links button,
+            .social-links > :nth-child(n+5) { grid-column: span 1; }
+            .social-links > :last-child {
+                grid-column: 1 / -1;
+                width: calc(50% - 0.25rem);
+                justify-self: center;
+            }
             .publication-item { grid-template-columns: 1fr; }
             .three-col-grid { grid-template-columns: 1fr; }
             .container { padding: 0 1rem; }
@@ -1011,6 +1019,10 @@
         @media print {
             header { position: static; }
             .collapsible-content { display: block !important; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #profile-pic img { transition: none; }
         }
         /* ===== GuppyLM Fish Pet Widget ===== */
         .guppy-pet {
@@ -1236,8 +1248,8 @@
         <nav>
             <a href="#profile"><i class="fas fa-home"></i> Home</a>
             <a href="#research-summary"><i class="fas fa-flask"></i> Research</a>
-            <a href="#selected-publications"><i class="fas fa-book"></i> Publications</a>
             <a href="#experience"><i class="fas fa-user"></i> About</a>
+            <a href="#selected-publications"><i class="fas fa-book"></i> Publications</a>
         </nav>
     </header>
 
@@ -1248,7 +1260,7 @@
             <div id="profile">
                 <div class="profile-header">
                     <div id="profile-pic">
-                        <img src="assets/images/profile.jpg" alt="Fu-Yun Wang"/>
+                        <img src="assets/images/profile.jpg" alt="Fu-Yun Wang" title="Hover for another portrait"/>
                     </div>
                     <div class="profile-header-text">
                         <div id="profile-name">Fu-Yun Wang</div>
@@ -1265,12 +1277,13 @@
                 He works on <strong>post-training</strong>.
                 Currently vibing with <strong>world model and agentic stuff</strong>.
                     </p>
-                    <p class="job-market-note">Job market 2027 · always happy to chat about interesting research projects.</p>
+                    <p class="job-market-note">2027 job market · open to industry research opportunities.</p>
                 </div>
 
                 <div class="social-links">
                     <a href="https://github.com/g-u-n" target="_blank"><i class="fab fa-github"></i> GitHub</a>
                     <a href="https://scholar.google.com/citations?user=R15m3J4AAAAJ" target="_blank"><i class="fas fa-graduation-cap"></i> Scholar</a>
+                    <a href="https://www.linkedin.com/in/fywang0126" target="_blank" rel="noopener noreferrer"><i class="fab fa-linkedin"></i> LinkedIn</a>
                     <a href="mailto:fywang@link.cuhk.edu.hk"><i class="fas fa-envelope"></i> Email</a>
                     <a href="https://www.xiaohongshu.com/user/profile/6436e0a9000000001400f7e1" target="_blank"><i class="fas fa-book-open"></i> RedNote</a>
                     <a href="https://huggingface.co/wangfuyun" target="_blank"><i class="fas fa-smile"></i> HF 🤗</a>
@@ -1371,6 +1384,27 @@
         <div class="section" id="blogs">
             <h1><i class="fas fa-book-open"></i> Latest Posts</h1>
             <div class="latest-post-list">
+                <a class="latest-post" href="blogs/scaling-long-context-attention.html">
+                    <div>
+                        <h3>Scaling Long-Context Attention I: Exact Blocks, Rings, and Sparsity</h3>
+                        <p>Why Flash, Ring, and sparse attention share blocks but change three different contracts.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a class="latest-post" href="blogs/scaling-long-context-linear-delta.html">
+                    <div>
+                        <h3>Scaling Long-Context Attention II: Linear Attention and DeltaNet</h3>
+                        <p>From a fixed associative state to the exact chunkwise DeltaNet derivation.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
+                <a class="latest-post" href="blogs/scaling-long-context-memory.html">
+                    <div>
+                        <h3>Scaling Long-Context Attention III: TTT, LaCT, and MLA</h3>
+                        <p>What long-context models store, when they update it, and how MLA changes at decode.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
                 <a class="latest-post" href="blogs/distributional-distillation.html">
                     <div>
                         <h3>Distributional Distillation I: From a Marginal KL to Two Scores</h3>
@@ -1558,7 +1592,7 @@
                         <a href="https://g-u-n.github.io/projects/consolver/" class="research-proj-title">Image Diffusion Preview with Consistency Solver</a>
                         <div class="publication-authors"><strong>Fu-Yun Wang</strong>, Hao Zhou, Liangzhe Yuan, Sanghyun Woo, Boqing Gong, Bohyung Han, Ming-Hsuan Yang, Han Zhang, Yukun Zhu, Ting Liu, Long Zhao</div>
                         <div class="publication-affiliations">Google DeepMind · CUHK · Seoul National University</div>
-                        <div class="publication-venue"><strong>CVPR 2026</strong> <span class="badge">Highlight</span></div>
+                        <div class="publication-venue"><strong>CVPR 2026</strong> <span class="badge">Highlight</span> <span class="badge">Tencent Qingyun Travel Grant</span></div>
                         <div class="highlight">A learnable high-order ODE solver for fast, faithful diffusion previews and consistent full-step refinement, reducing interaction time by nearly <strong>50%</strong>.</div>
                         <div class="publication-links">
                             <a href="https://g-u-n.github.io/projects/consolver/" target="_blank"><i class="fas fa-link"></i> Project</a>
@@ -1754,14 +1788,56 @@
             </div>
         </div>
 
-        <div class="clustrmaps-container">
-            <a href="https://clustrmaps.com/site/1bnts" title="Visit tracker">
-                <img src="//www.clustrmaps.com/map_v2.png?d=CDfFGbXsSkbODpLYvxuFm3Ivejv6Ju6FkxS1dau4g-8&cl=ffffff" width="350px" style="border-radius: 8px; box-shadow: var(--shadow-sm);"/>
-            </a>
-        </div>
+        <!-- Future gallery: Research Sketchbook / Visual Notes -->
     </div>
 
     <script>
+        // Random portrait on page load and every hover.
+        (() => {
+            const portrait = document.querySelector("#profile-pic img");
+            if (!portrait) return;
+
+            const portraits = [
+                "assets/images/profile.jpg",
+                "assets/images/profile_f.png",
+                "assets/images/profile_g.png",
+                "assets/images/profile_d.png"
+            ];
+
+            portraits.forEach(src => {
+                const image = new Image();
+                image.src = src;
+            });
+
+            let current = Math.floor(Math.random() * portraits.length);
+            let changing = false;
+            portrait.src = portraits[current];
+
+            const pickAnother = () => {
+                let next;
+                do {
+                    next = Math.floor(Math.random() * portraits.length);
+                } while (next === current);
+                return next;
+            };
+
+            const swapPortrait = () => {
+                if (changing) return;
+                const next = pickAnother();
+
+                changing = true;
+                portrait.classList.add("is-changing");
+                window.setTimeout(() => {
+                    current = next;
+                    portrait.src = portraits[current];
+                    portrait.classList.remove("is-changing");
+                    window.setTimeout(() => { changing = false; }, 160);
+                }, 110);
+            };
+
+            portrait.addEventListener("mouseenter", swapPortrait);
+        })();
+
         // Collapsible sections
         var coll = document.getElementsByClassName("collapsible-header");
         for (let i = 0; i < coll.length; i++) {
