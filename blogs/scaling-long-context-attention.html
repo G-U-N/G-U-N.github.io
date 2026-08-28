@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A derivation-first guide to FlashAttention, Ring Attention, and sparse attention: the same block computation unit, but three different mathematical contracts.">
+    <title>Scaling Long-Context Attention I: Exact Blocks, Rings, and Sparsity — Fu-Yun Wang</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="distributional-distillation.css">
+    <link rel="stylesheet" href="scaling-long-context-attention.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <main class="container">
+        <header class="blog-header">
+            <a href="../index.html#blogs" class="back-link"><i class="fas fa-arrow-left"></i> Back to all posts</a>
+            <div class="eyebrow">Scaling Long-Context Attention · Part I</div>
+            <h1>Exact Blocks, Rings, and Sparsity</h1>
+            <p class="dek">FlashAttention, Ring Attention, and sparse attention all talk about blocks. But a block is only a unit of work: Flash changes where exact work happens, Ring changes which device performs it, and sparsity changes which terms enter the answer.</p>
+            <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical and systems notes</div>
+        </header>
+
+        <nav class="series-nav" aria-label="Scaling long-context attention series">
+            <a href="scaling-long-context-attention.html" aria-current="page"><strong>I · Blocks, rings, and sparsity</strong>Exact tiled attention, distributed blocks, and sparse normalized sums</a>
+            <a href="scaling-long-context-memory.html"><strong>II · Compressing the KV cache</strong>From MHA and GQA to MLA and latent-space decoding</a>
+            <a href="scaling-long-context-linear-delta.html"><strong>III · Recurrent and learned memory</strong>Linear attention, DeltaNet, TTT, and LaCT</a>
+        </nav>
+
+        <article class="blog-content">
+            <div class="toc">
+                <strong>This article follows six questions</strong>
+                <ol>
+                    <li><a href="#one-matrix">What does it mean to “block” attention?</a></li>
+                    <li><a href="#online-softmax">Why can FlashAttention be exact without storing the score matrix?</a></li>
+                    <li><a href="#backward">How does backward recover probabilities?</a></li>
+                    <li><a href="#ring">Why is Ring Attention distributed, not sparse?</a></li>
+                    <li><a href="#sparse-sum">Where does sparse attention actually approximate the answer?</a></li>
+                    <li><a href="#contracts">Why are selection and aggregation different decisions?</a></li>
+                </ol>
+            </div>
+
+            <h2 id="gpu-model">Before the blocks: a minimal GPU model</h2>
+
+            <p>Modern GPUs are complicated machines: they have several cache levels, schedulers, memory controllers, and many kinds of execution units. That full diagram is unnecessary here. For attention, one abstraction does most of the explanatory work.</p>
+
+            <p>On the accelerators used to train large models, the large off-chip global memory is usually <strong>high-bandwidth memory (HBM)</strong>, shared by many <strong>streaming multiprocessors (SMs)</strong>. Each SM combines powerful arithmetic units with a much smaller amount of on-chip storage: a register file and shared memory implemented with SRAM. HBM is not slow in an absolute sense; its bandwidth is one reason GPUs are fast. But it is farther from the arithmetic units and more expensive to access than registers or shared SRAM. The useful picture is therefore one large, comparatively slow store connected to many compute-rich units with small, fast working spaces.</p>
+
+            <figure class="plot-figure latex-figure figure-wide">
+                <a href="figures/attention-gpu-memory-model.png" aria-label="Open the full-resolution schematic of HBM and streaming multiprocessors">
+                    <img src="figures/attention-gpu-memory-model.png" alt="A simplified GPU diagram with one large shared HBM store above several streaming multiprocessors, each containing a small fast register and shared-SRAM working set beside high-throughput compute units." width="2095" height="965" loading="eager" decoding="async">
+                </a>
+                <figcaption>The deliberately simplified GPU model used in this article. Real devices contain additional caches and control hardware; see NVIDIA's <a href="https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/" target="_blank" rel="noopener">CUDA programming model</a>. The HBM-versus-on-chip emphasis follows the <a href="https://arxiv.org/abs/2205.14135" target="_blank" rel="noopener">FlashAttention</a> cost model.</figcaption>
+            </figure>
+
+            <p>An SM therefore works on <em>tiles</em>. It loads a small tile from HBM, reuses that tile while it is nearby, and eventually stores a result back to HBM. The whole tensor need not fit on chip, but performance depends heavily on how often its pieces cross that boundary. Many GPU kernels are best understood as different schedules for this load–compute–store loop.</p>
+
+            <h2 id="one-matrix">1. One attention matrix, three meanings of “block”</h2>
+
+            <p>For one attention head, let \(Q,K,V\in\mathbb R^{L\times d}\). Standard attention is</p>
+
+            <div class="formula-card">
+                \[
+                S=\frac{QK^\top}{\sqrt d},\qquad
+                P_{ij}=\frac{e^{S_{ij}}}{\sum_k e^{S_{ik}}},\qquad
+                O=PV.
+                \]
+                <span class="equation-label">(1)</span>
+            </div>
+
+            <p>Batches and multiple heads are omitted for now: they add indices but do not change the memory argument. Both \(S\) and \(P\) have shape \(L\times L\). There are \(L^2\) query–key pairs and each dot product costs \(O(d)\), so exact dense attention performs \(\Theta(L^2d)\) arithmetic.</p>
+
+            <h3>How conventional attention materializes \(S\) and \(P\)</h3>
+
+            <p>No SM needs to hold the entire score matrix. The matrix multiplications are themselves tiled: many SMs load small pieces of \(Q\) and \(K\), compute score tiles, and collectively produce \(S\). In a conventional three-stage implementation, however, the complete intermediate matrices still live in HBM between kernels:</p>
+
+            <ol class="compact-list">
+                <li>the \(QK^\top\) kernel computes score tiles and <strong>writes \(S\)</strong> to HBM;</li>
+                <li>the softmax kernel <strong>reads \(S\)</strong>, normalizes each row, and <strong>writes \(P\)</strong>;</li>
+                <li>the \(PV\) kernel <strong>reads \(P\)</strong> and multiplies it by \(V\) to produce \(O\).</li>
+            </ol>
+
+            <div class="formula-card">
+                \[
+                \underbrace{\operatorname{write}(S)}_{L^2}
+                +\underbrace{\operatorname{read}(S)}_{L^2}
+                +\underbrace{\operatorname{write}(P)}_{L^2}
+                +\underbrace{\operatorname{read}(P)}_{L^2}.
+                \]
+            </div>
+
+            <p>Even this idealized baseline performs at least four \(L^2\)-sized intermediate transfers across the HBM boundary. The count deliberately omits the smaller \(O(Ld)\) reads and writes of \(Q,K,V,O\); a real softmax may also take additional passes. The point is not that the GPU cannot compute a large attention matrix. It can compute it tile by tile. The inefficiency is materializing \(S\) and \(P\) in HBM and moving them again for the next stage.</p>
+
+            <h3>FlashAttention changes the schedule, not the answer</h3>
+
+            <p>FlashAttention uses a more careful schedule. It keeps one query tile and a small running softmax state on chip, streams through key/value tiles, computes one temporary score tile, immediately folds that tile into the running normalization and output, and then discards it. After all key/value tiles have been visited, it writes the final output tile to HBM; training also saves only \(O(L)\) row statistics for backward. The full \(S\) and \(P\) matrices are never materialized there.</p>
+
+            <p>This does <em>not</em> make dense attention subquadratic: it still evaluates every allowed query–key pair and performs the same \(\Theta(L^2d)\) arithmetic. Nor is it an approximation. Its gain comes from eliminating the avoidable \(L^2\)-sized intermediate traffic. Online softmax is the algebraic trick that makes this streaming schedule exact; Section 2 will derive it.</p>
+
+            <p>This is the first meaning of a block: a tile chosen so that a useful working set fits on chip. Ring Attention and sparse attention reuse the same computational unit, but give “block” different system and mathematical roles.</p>
+
+            <figure class="plot-figure latex-figure figure-wide">
+                <a href="figures/attention-block-semantics.png" aria-label="Open the full-resolution comparison of the pair sets, execution schedules, and normalization contracts used by Flash, Ring, and sparse attention">
+                    <img src="figures/attention-block-semantics.png" alt="A three-row comparison of causal attention contracts. Diagonal blocks retain an intra-tile triangular mask. FlashAttention streams all causally required block pairs through on-chip memory; Ring Attention rotates KV blocks while skipping fully masked work; sparse attention routes a selected support and either renormalizes on it or estimates a full omitted softmax state from the query, compressed KV information, and router statistics." width="2222" height="1534" loading="eager" decoding="async">
+                </a>
+                <figcaption>Each local \(Q\times KV\) tile returns a mergeable softmax state \((m,\ell,A)\), and diagonal tiles retain an intra-tile causal mask. Flash and Ring merge all causally required block pairs into exact causal attention. Sparse routing instead changes the support: it can renormalize exactly on that selected support, or combine its exact selected state with an estimated omitted state.</figcaption>
+            </figure>
+
+            <div class="plain-summary">
+                <strong>The distinction to keep</strong>
+                <p><strong>FlashAttention:</strong> same pairs and same softmax, but a better memory schedule. <strong>Ring Attention:</strong> same pairs and same softmax, but KV blocks move across devices. <strong>Block-sparse attention:</strong> some pairs are not evaluated exactly, so the mathematical result changes unless their contribution is approximated elsewhere.</p>
+            </div>
+
+            <h2 id="online-softmax">2. FlashAttention: merge exact partial softmaxes</h2>
+
+            <p>Take one query row. Instead of loading every logit at once, split its keys and values into blocks. Suppose earlier blocks have already been summarized by three quantities:</p>
+
+            <ul class="compact-list">
+                <li>\(m\): the largest logit seen so far;</li>
+                <li>\(\ell=\sum_k e^{s_k-m}\): the softmax denominator measured relative to \(m\);</li>
+                <li>\(A=\sum_k e^{s_k-m}V_k\): the unnormalized value sum on the same scale.</li>
+            </ul>
+
+            <p>A new block arrives with logits \(s_k\) and values \(V_k\). Its largest logit may exceed the old maximum, so first choose the new common scale</p>
+
+            <div class="formula-card">
+                \[
+                m'=\max\!\left(m,\max_{k\in\mathrm{new}} s_k\right).
+                \]
+            </div>
+
+            <p>The old sums were measured relative to \(m\), while the new block must be measured relative to \(m'\). Multiplying the old sums by \(e^{m-m'}\) simply changes units:</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{\begin{aligned}
+                \ell'&=e^{m-m'}\ell+\sum_{k\in\mathrm{new}} e^{s_k-m'},\\
+                A'&=e^{m-m'}A+\sum_{k\in\mathrm{new}} e^{s_k-m'}V_k.
+                \end{aligned}}
+                \]
+                <span class="equation-label">(2)</span>
+            </div>
+
+            <p>To see why this is exact, expand the rescaled old-state contribution:</p>
+
+            <div class="formula-card">
+                \[
+                e^{m-m'}\ell
+                =e^{m-m'}\sum_{k\in\mathrm{old}}e^{s_k-m}
+                =\sum_{k\in\mathrm{old}}e^{s_k-m'}.
+                \]
+            </div>
+
+            <p>The new-block terms in Equation (2) already use the same offset \(m'\), so the two pieces add to the exact numerator and denominator over everything seen so far.</p>
+
+            <p>The same reasoning can be stated as a merge invariant. After processing an index set \(\mathcal I\),</p>
+
+            <div class="formula-card">
+                \[
+                m_{\mathcal I}=\max_{k\in\mathcal I}s_k,\qquad
+                \ell_{\mathcal I}
+                =e^{-m_{\mathcal I}}\sum_{k\in\mathcal I}e^{s_k},
+                \]
+                \[
+                A_{\mathcal I}
+                =e^{-m_{\mathcal I}}\sum_{k\in\mathcal I}e^{s_k}V_k.
+                \]
+                <span class="equation-label">(2a)</span>
+            </div>
+
+            <p>For disjoint sets \(\mathcal I\) and \(\mathcal J\), choose \(m'=\max(m_{\mathcal I},m_{\mathcal J})\), rescale both states to that common maximum, and add their \(\ell\) and \(A\) terms. The result satisfies the same invariant for \(\mathcal I\cup\mathcal J\). Thus \((m,\ell,A)\) is a mergeable sufficient statistic for the exact partial numerator and denominator—the same algebra Ring Attention will reuse across devices.</p>
+
+            <h3>A three-logit numerical check</h3>
+
+            <p>Suppose the first tile contains logits \(1000\) and \(999\), with scalar values \(2\) and \(4\). Direct exponentiation would overflow, but the tile state is</p>
+
+            <div class="formula-card">
+                \[
+                m=1000,\qquad
+                \ell=1+e^{-1},\qquad
+                A=2+4e^{-1}.
+                \]
+            </div>
+
+            <p>A second tile contains logit \(1001\) and value \(10\). The new maximum is \(m'=1001\), so the old state is multiplied by \(e^{-1}\):</p>
+
+            <div class="formula-card">
+                \[
+                \ell'=e^{-1}(1+e^{-1})+1,\qquad
+                A'=e^{-1}(2+4e^{-1})+10.
+                \]
+            </div>
+
+            <p>Dividing \(A'/\ell'\) is exactly the softmax-weighted average of the three values at logits \(999,1000,1001\). The large common offset never appears in an exponential.</p>
+
+            <p>After rescaling, the old block and new block are expressed with the same exponent offset, so their sums can be added normally. After the final block,</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{O=\frac{A}{\ell}},\qquad
+                \operatorname{LSE}=m+\log\ell.
+                \]
+                <span class="equation-label">(3)</span>
+            </div>
+
+            <p>Nothing has been dropped or approximated. The blocks are only a numerically stable way to merge pieces of the same softmax.</p>
+
+            <figure class="plot-figure latex-figure figure-wide">
+                <a href="figures/attention-flash-flow.png" aria-label="Open the full-resolution FlashAttention forward and backward dataflow figure">
+                    <img src="figures/attention-flash-flow.png" alt="A LaTeX figure showing a resident query tile and online softmax state while key-value tiles stream during forward, followed by two complementary tiled traversals during backward." width="1579" height="505" loading="lazy" decoding="async">
+                </a>
+                <figcaption>Forward keeps \(Q_i,m_i,\ell_i,A_i\) resident while streaming \(K_j,V_j\). Backward reconstructs each probability tile, then uses one traversal owned by key blocks and another owned by query blocks.</figcaption>
+            </figure>
+
+            <h3>What the forward kernel keeps on chip</h3>
+
+            <p>In a minimal Triton program, one program instance owns a query tile. The query tile and the three online-softmax states live for the whole loop; each key/value tile dies after one iteration. That lifetime—not a special approximation—is the essence of the memory saving.</p>
+
+            <details class="code-fold">
+                <summary>Annotated minimal Triton forward</summary>
+                <pre><code>import torch
+import triton
+import triton.language as tl
+
+@triton.jit
+def _flash_fwd(Q, K, V, O, LSE,
+               stride_b: tl.constexpr, stride_h: tl.constexpr,
+               H: tl.constexpr, L: tl.constexpr, D: tl.constexpr,
+               SCALE: tl.constexpr, CAUSAL: tl.constexpr,
+               BM: tl.constexpr, BN: tl.constexpr):
+    tl.static_assert((D == 64) | (D == 128))
+    q_block = tl.program_id(0)
+    bh = tl.program_id(1)
+    b, h = bh // H, bh % H
+    base = b * stride_b + h * stride_h
+
+    im = q_block * BM + tl.arange(0, BM)
+    jn = tl.arange(0, BN)
+    kd = tl.arange(0, D)
+    q_ptr = Q + base + im[:, None] * D + kd[None, :]
+    q = tl.load(q_ptr, mask=im[:, None] &lt; L, other=0.0)
+
+    # These states remain resident for the entire KV loop.
+    m = tl.full([BM], -float("inf"), tl.float32)
+    ell = tl.zeros([BM], tl.float32)
+    acc = tl.zeros([BM, D], tl.float32)
+
+    for start_n in range(0, L, BN):
+        n = start_n + jn
+        k_ptr = K + base + n[:, None] * D + kd[None, :]
+        v_ptr = V + base + n[:, None] * D + kd[None, :]
+        k = tl.load(k_ptr, mask=n[:, None] &lt; L, other=0.0)
+        v = tl.load(v_ptr, mask=n[:, None] &lt; L, other=0.0)
+
+        score = tl.dot(q, tl.trans(k)) * SCALE
+        visible = (im[:, None] &lt; L) &amp; (n[None, :] &lt; L)
+        if CAUSAL:
+            visible &amp;= im[:, None] &gt;= n[None, :]
+        score = tl.where(visible, score, -1.0e6)
+
+        m_new = tl.maximum(m, tl.max(score, axis=1))
+        alpha = tl.exp(m - m_new)
+        p = tl.exp(score - m_new[:, None])
+        acc = acc * alpha[:, None] + tl.dot(p.to(q.dtype), v)
+        ell = ell * alpha + tl.sum(p, axis=1)
+        m = m_new
+
+    out = acc / ell[:, None]
+    o_ptr = O + base + im[:, None] * D + kd[None, :]
+    tl.store(o_ptr, out, mask=im[:, None] &lt; L)
+    tl.store(LSE + bh * L + im, m + tl.log(ell), mask=im &lt; L)
+
+def flash_forward(q, k, v, causal=False):
+    assert q.is_cuda and q.is_contiguous()
+    assert q.shape == k.shape == v.shape
+    assert q.dtype in (torch.float16, torch.bfloat16)
+    B, H, L, D = q.shape
+    assert D in (64, 128)
+    o = torch.empty_like(q)
+    lse = torch.empty((B, H, L), device=q.device, dtype=torch.float32)
+    grid = (triton.cdiv(L, 64), B * H)
+    _flash_fwd[grid](
+        q, k, v, o, lse, q.stride(0), q.stride(1),
+        H=H, L=L, D=D, SCALE=D ** -0.5, CAUSAL=causal,
+        BM=64, BN=64, num_warps=4, num_stages=2)
+    return o, lse</code></pre>
+            </details>
+
+            <p><a href="https://arxiv.org/abs/2504.17577" target="_blank" rel="noopener">TileLang</a> can express the same algorithm with explicit shared-memory buffers, fragments, copies, GEMMs, reductions, and pipeline annotations. The programming model changes; Equations (2)–(3) do not.</p>
+
+            <details class="code-fold">
+                <summary>The same recurrence in compact TileLang form</summary>
+                <pre><code>import tilelang
+import tilelang.language as T
+
+@tilelang.jit(out_idx=[3])
+def flash_tile(batch, heads, length, dim, causal,
+               input_dtype="float16", BM=64, BN=64,
+               stages=2, threads=128):
+    assert dim in (64, 128)
+    dtype = T.float16 if input_dtype == "float16" else T.bfloat16
+    scale = dim ** -0.5 * 1.44269504  # exp2 scale
+    shape = [batch, heads, length, dim]
+
+    @T.prim_func
+    def main(Q: T.Tensor(shape, dtype),
+             K: T.Tensor(shape, dtype),
+             V: T.Tensor(shape, dtype),
+             O: T.Tensor(shape, dtype)):
+        with T.Kernel(T.ceildiv(length, BM), heads, batch,
+                      threads=threads) as (qb, h, b):
+            q = T.alloc_shared([BM, dim], dtype)
+            k = T.alloc_shared([BN, dim], dtype)
+            v = T.alloc_shared([BN, dim], dtype)
+            out = T.alloc_shared([BM, dim], dtype)
+            score = T.alloc_fragment([BM, BN], T.float32)
+            prob = T.alloc_fragment([BM, BN], dtype)
+            acc = T.alloc_fragment([BM, dim], T.float32)
+            m = T.alloc_fragment([BM], T.float32)
+            m_old = T.alloc_fragment([BM], T.float32)
+            alpha = T.alloc_fragment([BM], T.float32)
+            ell = T.alloc_fragment([BM], T.float32)
+            tile_sum = T.alloc_fragment([BM], T.float32)
+
+            T.copy(Q[b, h, qb * BM:(qb + 1) * BM, :], q)
+            T.fill(acc, 0)
+            T.fill(ell, 0)
+            T.fill(m, -T.infinity(T.float32))
+
+            end = (T.min(T.ceildiv(length, BN),
+                         T.ceildiv((qb + 1) * BM, BN))
+                   if causal else T.ceildiv(length, BN))
+            for kb in T.Pipelined(end, num_stages=stages):
+                T.copy(K[b, h, kb * BN:(kb + 1) * BN, :], k)
+                for i, j in T.Parallel(BM, BN):
+                    qi, kj = qb * BM + i, kb * BN + j
+                    valid = (qi &lt; length) and (kj &lt; length)
+                    if causal:
+                        valid = valid and (qi &gt;= kj)
+                    score[i, j] = T.if_then_else(
+                        valid, 0, -T.infinity(T.float32))
+                T.gemm(q, k, score, transpose_B=True,
+                       policy=T.GemmWarpPolicy.FullRow)
+
+                T.copy(m, m_old)
+                T.reduce_max(score, m, dim=1, clear=True)
+                for i in T.Parallel(BM):
+                    m[i] = T.max(m[i], m_old[i])
+                    alpha[i] = T.exp2((m_old[i] - m[i]) * scale)
+                for i, j in T.Parallel(BM, BN):
+                    score[i, j] = T.exp2((score[i, j] - m[i]) * scale)
+                T.reduce_sum(score, tile_sum, dim=1, clear=True)
+                for i in T.Parallel(BM):
+                    ell[i] = ell[i] * alpha[i] + tile_sum[i]
+                for i, j in T.Parallel(BM, dim):
+                    acc[i, j] *= alpha[i]
+                T.copy(score, prob)
+                T.copy(V[b, h, kb * BN:(kb + 1) * BN, :], v)
+                T.gemm(prob, v, acc, policy=T.GemmWarpPolicy.FullRow)
+
+            for i, j in T.Parallel(BM, dim):
+                acc[i, j] /= ell[i]
+            T.copy(acc, out)
+            T.copy(out, O[b, h, qb * BM:(qb + 1) * BM, :])
+
+    return main</code></pre>
+            </details>
+
+            <h2 id="backward">3. Backward: spend arithmetic to save \(L^2\) memory</h2>
+
+            <p>Here \(L^2\) means memory that grows quadratically with sequence length, not the GPU's L2 cache. Start by keeping the complete forward chain in view:</p>
+
+            <div class="formula-card">
+                \[
+                S=\alpha QK^\top+M,\qquad
+                P=\operatorname{softmax}(S),\qquad
+                O=PV,
+                \]
+                \[
+                Q,K\in\mathbb R^{L\times d_k},\qquad
+                V,O\in\mathbb R^{L\times d_v},\qquad
+                \alpha=\frac{1}{\sqrt{d_k}}.
+                \]
+            </div>
+
+            <p>The mask \(M\) is zero on visible pairs and \(-\infty\) on forbidden pairs. Let \(\mathcal L\) be the final loss, and use the common deep-learning shorthand</p>
+
+            <div class="formula-card">
+                \[
+                dX\equiv\frac{\partial\mathcal L}{\partial X}.
+                \]
+            </div>
+
+            <p>Thus \(dO\) is the upstream gradient—PyTorch's <code>grad_output</code>, not a small perturbation. Backward must turn \(dO\) into \(dQ,dK,dV\).</p>
+
+            <h3>First pretend that forward saved the full \(P\)</h3>
+
+            <p>For query \(i\), the output is \(O_i=\sum_jP_{ij}V_j\). A value vector \(V_j\) contributes to every query output, so its gradient collects all of those paths:</p>
+
+            <div class="formula-card">
+                \[
+                dV_j=\sum_iP_{ij}dO_i,
+                \qquad\boxed{dV=P^\top dO}.
+                \]
+            </div>
+
+            <p>The scalar \(P_{ij}\) multiplies vector \(V_j\) inside \(O_i\), so its gradient is their inner product with the upstream direction:</p>
+
+            <div class="formula-card">
+                \[
+                dP_{ij}=\langle dO_i,V_j\rangle=dO_iV_j^\top,
+                \qquad\boxed{dP=dOV^\top}.
+                \]
+            </div>
+
+            <p>If forward had stored \(P\), these two steps would be immediate. But \(P\) has shape \(L\times L\). FlashAttention deliberately does not write that full matrix to HBM, so backward must recover only the probability tiles it currently needs.</p>
+
+            <h3>Deriving the row-softmax gradient</h3>
+
+            <p>Softmax is row-wise. Fix query row \(i\), write \(p_j=P_{ij}\) and \(s_j=S_{ij}\), and temporarily suppress the row index:</p>
+
+            <div class="formula-card">
+                \[
+                p_j=\frac{e^{s_j}}{\sum_\ell e^{s_\ell}},\qquad
+                \frac{\partial p_j}{\partial s_k}
+                =p_j\bigl(\mathbf 1[j=k]-p_k\bigr).
+                \]
+            </div>
+
+            <p>Every \(p_j\) depends on \(s_k\) through the shared denominator, so every path contributes to \(ds_k\):</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                ds_k
+                &=\sum_jdp_j\frac{\partial p_j}{\partial s_k}\\
+                &=\sum_jdp_jp_j\bigl(\mathbf 1[j=k]-p_k\bigr)\\
+                &=dp_kp_k-p_k\sum_jp_jdp_j\\
+                &=p_k\left(dp_k-\sum_jp_jdp_j\right).
+                \end{aligned}
+                \]
+            </div>
+
+            <p>Restoring the row and column indices, define one scalar per query row:</p>
+
+            <div class="formula-card">
+                \[
+                D_i=\sum_jP_{ij}dP_{ij},\qquad
+                \boxed{dS_{ij}=P_{ij}\bigl(dP_{ij}-D_i\bigr)}.
+                \]
+                <span class="equation-label">(4)</span>
+            </div>
+
+            <p>The subtraction handles the coupling introduced by normalization. For example, if every \(dP_{ij}\) in a row equals the same constant \(c\), then \(D_i=\sum_jP_{ij}c=c\), so every \(dS_{ij}=P_{ij}(c-c)=0\). This is exactly right: because \(\sum_jP_{ij}=1\), assigning the same gradient to every probability creates no effective logit direction.</p>
+
+            <h3>Why \(D_i\) does not require the saved probability row</h3>
+
+            <p>The definition of \(D_i\) still appears to require \(P_i\). Substitute the value-mixture gradient \(dP_{ij}=dO_iV_j^\top\):</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                D_i
+                &=\sum_jP_{ij}dP_{ij}\\
+                &=\sum_jP_{ij}\bigl(dO_iV_j^\top\bigr)\\
+                &=dO_i\left(\sum_jP_{ij}V_j\right)^\top\\
+                &=\boxed{dO_iO_i^\top}
+                =\boxed{\sum_rO_{ir}dO_{ir}}.
+                \end{aligned}
+                \]
+                <span class="equation-label">(4a)</span>
+            </div>
+
+            <p>This removes the first apparent need for \(P\): a small preprocessing kernel computes \(D_i\) from the saved output \(O_i\) and upstream gradient \(dO_i\).</p>
+
+            <h3>Reconstructing a probability tile without saving \(P\)</h3>
+
+            <p>Computing \(dS_{ij}\) still requires the local probability \(P_{ij}\). Backward can cheaply recompute a score tile from \(Q\) and \(K\), but softmax normalization depends on <em>all</em> visible keys in that query row—not just the current tile. That missing row normalizer is exactly why forward deliberately saves LSE.</p>
+
+            <p>For the keys \(\mathcal A(i)\) visible to query \(i\),</p>
+
+            <div class="formula-card">
+                \[
+                \operatorname{LSE}_i
+                =\log\sum_{j\in\mathcal A(i)}e^{S_{ij}}
+                =m_i+\log\ell_i.
+                \]
+            </div>
+
+            <p>The second equality is Equation (3): online softmax has already computed the stable row maximum \(m_i\) and rescaled sum \(\ell_i\). Saving their combined log-normalizer costs only one scalar per query row. Backward can then recover any unmasked probability directly:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                P_{ij}
+                &=\frac{e^{S_{ij}}}{\sum_{\ell\in\mathcal A(i)}e^{S_{i\ell}}}\\
+                &=\exp\!\left(S_{ij}-\log\sum_{\ell\in\mathcal A(i)}e^{S_{i\ell}}\right)\\
+                &=\boxed{\exp\!\left(S_{ij}-\operatorname{LSE}_i\right)}.
+                \end{aligned}
+                \]
+            </div>
+
+            <p>Masked positions remain zero. For query rows \(I\) and key rows \(J\), the kernel recomputes only</p>
+
+            <div class="formula-card">
+                \[
+                S_{I,J}=\alpha Q_IK_J^\top+M_{I,J},\qquad
+                P_{I,J}=\exp\!\left(S_{I,J}-\operatorname{LSE}_I[:,\mathrm{None}]\right).
+                \]
+            </div>
+
+            <div class="callout">
+                <strong>The full \(S\) and \(P\) are never stored.</strong>
+                Forward creates one temporary score tile, merges it into \((m,\ell,A)\), and discards it. Backward recreates one \(S\) tile and one \(P\) tile, uses them immediately, and discards them. Beyond the required inputs \(Q,K,V\), forward retains \(O\in\mathbb R^{L\times d_v}\) and the length-\(L\) LSE vector for backward; no \(L\times L\) tensor is written to HBM.
+            </div>
+
+            <h3>From \(dS\) to \(dQ\) and \(dK\)</h3>
+
+            <p>Once a probability tile has been reconstructed, backward computes \(dP_{I,J}=dO_IV_J^\top\), broadcasts the precomputed \(D_I\) across its key columns, and forms \(dS_{I,J}=P_{I,J}\odot(dP_{I,J}-D_I[:,\mathrm{None}])\). Since \(M\) does not depend on \(Q,K\), the remaining matrix-product gradients are</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{dQ=\alpha\,dSK},\qquad
+                \boxed{dK=\alpha\,dS^\top Q}.
+                \]
+                \[
+                dQ_i=\alpha\sum_jdS_{ij}K_j,\qquad
+                dK_j=\alpha\sum_idS_{ij}Q_i.
+                \]
+                <span class="equation-label">(5)</span>
+            </div>
+
+            <h3>Putting the backward tile computation together</h3>
+
+            <p>The preprocessing step computes \(D_i=dO_iO_i^\top\) once per query row. Each subsequent query–KV tile interaction then follows the same short chain:</p>
+
+            <ol class="compact-list">
+                <li>reload the current \(Q,K,V,dO\) tiles;</li>
+                <li>recompute \(S=\alpha QK^\top+M\);</li>
+                <li>load the saved row LSE and reconstruct \(P=\exp(S-\operatorname{LSE})\);</li>
+                <li>compute \(dP=dOV^\top\) and \(dS=P\odot(dP-D)\);</li>
+                <li>accumulate this tile's contributions to \(dQ,dK,dV\), then discard \(S,P,dP,dS\).</li>
+            </ol>
+
+            <p>The extra \(QK^\top\) and exponential work replaces writing and rereading quadratic intermediates. On modern GPUs, that trade is usually favorable because matrix multiplication is fast while moving an \(L\times L\) tensor through HBM is expensive.</p>
+
+            <p>Backward must use the same scale and mask as forward. Otherwise LSE normalizes a different set of logits and the kernel computes the gradient of a different function.</p>
+
+            <h3>The ownership conflict between \(dQ\) and \(dK,dV\)</h3>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Gradient tile</th><th>Reduction direction</th><th>Race-free owner</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>\(dQ_I\)</td><td>All KV tiles \(J\)</td><td>One program owns query tile \(I\)</td></tr>
+                        <tr><td>\(dK_J\)</td><td>All query tiles \(I\)</td><td>One program owns key tile \(J\)</td></tr>
+                        <tr><td>\(dV_J\)</td><td>All query tiles \(I\)</td><td>One program owns value tile \(J\)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>The <a href="https://triton-lang.org/main/getting-started/tutorials/06-fused-attention.html" target="_blank" rel="noopener">official Triton fused-attention tutorial</a> resolves the opposing reductions with two logical traversals inside its backward kernel: a KV-owned traversal finishes \(dK,dV\), and a query-owned traversal finishes \(dQ\). This recomputes local \(S,P,dP,dS\) twice but avoids atomics. It is an implementation choice, not a law of FlashAttention: FlashAttention-2 instead uses KV ownership and atomically accumulates partial \(dQ\).</p>
+
+            <details class="code-fold">
+                <summary>Runnable Triton backward: preprocess, dK/dV, then dQ</summary>
+                <pre><code>@triton.jit
+def _flash_bwd_preprocess(O, DO, Delta,
+                          stride_b: tl.constexpr, stride_h: tl.constexpr,
+                          H: tl.constexpr, L: tl.constexpr, D: tl.constexpr,
+                          BLOCK: tl.constexpr):
+    block = tl.program_id(0)
+    bh = tl.program_id(1)
+    b, h = bh // H, bh % H
+    base = b * stride_b + h * stride_h
+    rows = block * BLOCK + tl.arange(0, BLOCK)
+    dims = tl.arange(0, D)
+
+    o = tl.load(O + base + rows[:, None] * D + dims[None, :],
+                mask=rows[:, None] &lt; L, other=0.0)
+    do = tl.load(DO + base + rows[:, None] * D + dims[None, :],
+                 mask=rows[:, None] &lt; L, other=0.0).to(tl.float32)
+    delta = tl.sum(o * do, axis=1)  # D_i = &lt;O_i, dO_i&gt;
+    tl.store(Delta + bh * L + rows, delta, mask=rows &lt; L)
+
+
+@triton.jit
+def _flash_bwd(Q, K, V, DO, DQ, DK, DV, LSE, Delta,
+               stride_b: tl.constexpr, stride_h: tl.constexpr,
+               H: tl.constexpr, L: tl.constexpr, D: tl.constexpr,
+               SCALE: tl.constexpr, CAUSAL: tl.constexpr,
+               BLOCK: tl.constexpr):
+    tile = tl.program_id(0)
+    bh = tl.program_id(1)
+    b, h = bh // H, bh % H
+    base = b * stride_b + h * stride_h
+    in_tile = tl.arange(0, BLOCK)
+    dims = tl.arange(0, D)
+
+    # Traversal 1: this program owns one KV tile.
+    cols = tile * BLOCK + in_tile
+    k = tl.load(K + base + cols[:, None] * D + dims[None, :],
+                mask=cols[:, None] &lt; L, other=0.0)
+    v = tl.load(V + base + cols[:, None] * D + dims[None, :],
+                mask=cols[:, None] &lt; L, other=0.0)
+    dk = tl.zeros([BLOCK, D], tl.float32)
+    dv = tl.zeros([BLOCK, D], tl.float32)
+
+    for start_m in range(0, L, BLOCK):
+        rows = start_m + in_tile
+        q = tl.load(Q + base + rows[:, None] * D + dims[None, :],
+                    mask=rows[:, None] &lt; L, other=0.0)
+        do = tl.load(DO + base + rows[:, None] * D + dims[None, :],
+                     mask=rows[:, None] &lt; L, other=0.0)
+        lse = tl.load(LSE + bh * L + rows, mask=rows &lt; L, other=0.0)
+        delta = tl.load(Delta + bh * L + rows, mask=rows &lt; L, other=0.0)
+
+        scores = tl.dot(q, tl.trans(k)) * SCALE
+        visible = (rows[:, None] &lt; L) &amp; (cols[None, :] &lt; L)
+        if CAUSAL:
+            visible = visible &amp; (rows[:, None] &gt;= cols[None, :])
+        scores = tl.where(visible, scores, -1.0e6)
+        p = tl.where(visible, tl.exp(scores - lse[:, None]), 0.0)
+        dp = tl.dot(do, tl.trans(v)).to(tl.float32)
+        ds = p * (dp - delta[:, None])
+
+        dv += tl.dot(tl.trans(p.to(q.dtype)), do)
+        dk += tl.dot(tl.trans(ds.to(q.dtype)), q) * SCALE
+
+    tl.store(DK + base + cols[:, None] * D + dims[None, :], dk,
+             mask=cols[:, None] &lt; L)
+    tl.store(DV + base + cols[:, None] * D + dims[None, :], dv,
+             mask=cols[:, None] &lt; L)
+
+    # Traversal 2: the same program id now owns one query tile.
+    rows = tile * BLOCK + in_tile
+    q = tl.load(Q + base + rows[:, None] * D + dims[None, :],
+                mask=rows[:, None] &lt; L, other=0.0)
+    do = tl.load(DO + base + rows[:, None] * D + dims[None, :],
+                 mask=rows[:, None] &lt; L, other=0.0)
+    lse = tl.load(LSE + bh * L + rows, mask=rows &lt; L, other=0.0)
+    delta = tl.load(Delta + bh * L + rows, mask=rows &lt; L, other=0.0)
+    dq = tl.zeros([BLOCK, D], tl.float32)
+
+    for start_n in range(0, L, BLOCK):
+        cols = start_n + in_tile
+        k = tl.load(K + base + cols[:, None] * D + dims[None, :],
+                    mask=cols[:, None] &lt; L, other=0.0)
+        v = tl.load(V + base + cols[:, None] * D + dims[None, :],
+                    mask=cols[:, None] &lt; L, other=0.0)
+
+        scores = tl.dot(q, tl.trans(k)) * SCALE
+        visible = (rows[:, None] &lt; L) &amp; (cols[None, :] &lt; L)
+        if CAUSAL:
+            visible = visible &amp; (rows[:, None] &gt;= cols[None, :])
+        scores = tl.where(visible, scores, -1.0e6)
+        p = tl.where(visible, tl.exp(scores - lse[:, None]), 0.0)
+        dp = tl.dot(do, tl.trans(v)).to(tl.float32)
+        ds = p * (dp - delta[:, None])
+        dq += tl.dot(ds.to(q.dtype), k) * SCALE
+
+    tl.store(DQ + base + rows[:, None] * D + dims[None, :], dq,
+             mask=rows[:, None] &lt; L)
+
+
+def flash_backward(q, k, v, o, lse, do, causal=False):
+    B, H, L, D = q.shape
+    dq, dk, dv = torch.empty_like(q), torch.empty_like(k), torch.empty_like(v)
+    delta = torch.empty((B, H, L), device=q.device, dtype=torch.float32)
+    block = 64
+    grid = (triton.cdiv(L, block), B * H)
+
+    _flash_bwd_preprocess[grid](
+        o, do, delta, q.stride(0), q.stride(1),
+        H=H, L=L, D=D, BLOCK=block, num_warps=4)
+    _flash_bwd[grid](
+        q, k, v, do, dq, dk, dv, lse, delta,
+        q.stride(0), q.stride(1),
+        H=H, L=L, D=D, SCALE=D ** -0.5, CAUSAL=causal,
+        BLOCK=block, num_warps=4, num_stages=2)
+    return dq, dk, dv</code></pre>
+            </details>
+
+            <p>FlashAttention has now solved the quadratic-intermediate problem on one accelerator: score and probability tiles are streamed through a small on-chip working set instead of being materialized in HBM. It does not eliminate memory that grows linearly with the sequence, however. The \(Q,K,V\) tensors and training activations still grow with \(L\), so a sufficiently long sequence eventually exceeds one device's memory. The mergeable softmax state suggests the next step: keep a query block local, but stream KV blocks across devices rather than only from local HBM.</p>
+
+            <h2 id="ring">4. Ring Attention: move blocks, keep the dense sum</h2>
+
+            <p>This limit is becoming practical as training horizons grow far beyond ordinary document lengths. A long-running agent can accumulate tool traces, observations, actions, and memory into a trajectory approaching millions of tokens. Video expands even faster under patch tokenization. For illustration, 30 seconds of 1280-by-720 video at 24 frames per second produces</p>
+
+            <div class="formula-card">
+                \[
+                \frac{1280}{16}\times\frac{720}{16}\times
+                \frac{30\times24}{2}
+                =80\times45\times360
+                \approx1.30\text{ million tokens}
+                \]
+            </div>
+
+            <p>under 16-by-16 spatial patches and two-frame tubelets. This is an order-of-magnitude example, not a universal conversion: video VAEs, spatial and temporal downsampling, patch sizes, and tubelet sizes all change the actual token count. The systems problem remains the same once the resulting sequence no longer fits comfortably on one accelerator.</p>
+
+            <p><a href="https://arxiv.org/abs/2310.01889" target="_blank" rel="noopener">Ring Attention</a> partitions that sequence across \(G\) devices. Device \(g\) keeps its local query block \(Q_g\) stationary. Its current \(K,V\) block is the moving object: the device computes attention between \(Q_g\) and that block, merges the result into its online-softmax state, and passes the KV block one hop to the next device. The blocks move in one direction around the ring rather than back and forth. After \(G\) steps, every query block has met every allowed KV block.</p>
+
+            <div class="formula-card">
+                \[
+                (m_g,\ell_g,A_g)
+                \xrightarrow{(K_0,V_0)}
+                \xrightarrow{(K_1,V_1)}\cdots
+                \xrightarrow{(K_{G-1},V_{G-1})}
+                O_g=\frac{A_g}{\ell_g}.
+                \]
+            </div>
+
+            <p>Each step uses the same merge rule in Equation (2). Communication changes the order in which KV blocks arrive, but exact partial softmax statistics can be merged in any block order. Ring Attention therefore extends the sequence across devices and overlaps communication with block computation; it does not reduce the total dense pair set by itself.</p>
+
+            <p>More formally, suppose two devices or two ring steps produce partial states \((m_a,\ell_a,A_a)\) and \((m_b,\ell_b,A_b)\) for disjoint KV blocks. Their associative merge is</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                m_{a\cup b}&=\max(m_a,m_b),\\
+                \ell_{a\cup b}
+                &=e^{m_a-m_{a\cup b}}\ell_a
+                  +e^{m_b-m_{a\cup b}}\ell_b,\\
+                A_{a\cup b}
+                &=e^{m_a-m_{a\cup b}}A_a
+                  +e^{m_b-m_{a\cup b}}A_b.
+                \end{aligned}
+                \]
+                <span class="equation-label">(5a)</span>
+            </div>
+
+            <p>Because this operator summarizes the union of two index sets, merging blocks in ring order or local-memory order produces the same real-arithmetic result. A causal implementation can skip blocks that lie entirely in the future and mask the one block that crosses the diagonal. Communication is useful only when sending the next KV block is overlapped by enough attention work on the current block; otherwise the exact mathematics remains correct but scaling stalls on the interconnect.</p>
+
+            <div class="pitfall">
+                <strong>“Block attention” is not automatically sparse attention</strong>
+                FlashAttention blocks an exact matrix for memory locality. Ring Attention distributes those exact blocks. A block-sparse method is different because some allowed blocks never contribute exactly to the numerator or denominator.
+            </div>
+
+            <h2 id="sparse-sum">5. Sparse attention: approximate one normalized sum</h2>
+
+            <p>FlashAttention gives us something useful beyond a faster dense kernel: it packages attention into \(Q\)-tile by \(KV\)-tile units. Dense FlashAttention still visits every allowed tile, but if an entire KV tile is unlikely to matter for a query tile, the schedule can omit it and avoid its memory loads and matrix multiplications altogether.</p>
+
+            <p>Why might this help on a long sequence? Attention is often concentrated rather than uniform. After softmax, a small number of tokens or blocks may carry most of the probability mass, while many distant tokens contribute almost nothing. As the context grows, computing every query–key pair becomes increasingly wasteful if only a small fraction materially changes the output.</p>
+
+            <p>There is an immediate catch: the important positions are unknown until the query is compared with the keys. Computing the full \(QK^\top\) matrix merely to decide what to skip would save nothing. Sparse attention therefore needs a <strong>selector</strong> (or router): a cheaper scoring mechanism that predicts which tokens or blocks deserve the full attention computation.</p>
+
+            <p>The selected items are then evaluated exactly with their full keys and values. For everything else, a method must make a second decision: drop it, preserve a coarse version through another path, or approximate its missing contribution. These are separate questions—<em>where should exact computation go?</em> and <em>what should happen to what was not selected?</em></p>
+
+            <p>The approximation can now be stated precisely. For one query \(i\), let \(\mathcal A_i\) be all keys allowed by causal and semantic masks, and define \(s_{ij}=q_i^\top k_j/\sqrt d\). Dense attention is one fraction:</p>
+
+            <div class="formula-card">
+                \[
+                D_i=\sum_{j\in\mathcal A_i}e^{s_{ij}},\qquad
+                N_i=\sum_{j\in\mathcal A_i}e^{s_{ij}}v_j,\qquad
+                o_i=\frac{N_i}{D_i}.
+                \]
+                <span class="equation-label">(6)</span>
+            </div>
+
+            <p>Partition the allowed keys into blocks \(B_1,\ldots,B_M\). This alone introduces no approximation:</p>
+
+            <div class="formula-card">
+                \[
+                D_i=\sum_bD_{ib},\quad D_{ib}=\sum_{j\in B_b}e^{s_{ij}},
+                \qquad
+                N_i=\sum_bN_{ib},\quad N_{ib}=\sum_{j\in B_b}e^{s_{ij}}v_j.
+                \]
+            </div>
+
+            <p>The selector chooses an exact set \(E_i\), often a union of selected blocks and a mandatory local window. The omitted set is \(U_i=\mathcal A_i\setminus E_i\), so</p>
+
+            <div class="formula-card">
+                \[
+                N_i=N_{i,E}+N_{i,U},\qquad D_i=D_{i,E}+D_{i,U}.
+                \]
+                <span class="equation-label">(7)</span>
+            </div>
+
+            <p>This split reveals two possible errors. The <strong>selection error</strong> comes from failing to place important tokens in \(E_i\). The <strong>aggregation error</strong> comes from how the method handles \(N_{i,U}\) and \(D_{i,U}\) after selection. A good router does not answer the second question.</p>
+
+            <h3>Why the sparse unit is usually a block</h3>
+
+            <p>FlashAttention has already turned dense attention into a loop over query tiles and KV tiles. Let \(Q_a\in\mathbb R^{B_Q\times d}\) be one query tile and \((K_b,V_b)\) one KV tile. A dense kernel visits every causally allowed tile \(b\), computes</p>
+
+            <div class="formula-card">
+                \[
+                S_{ab}=\frac{Q_aK_b^\top}{\sqrt d},\qquad
+                m_{ab}=\operatorname{rowmax}(S_{ab}),
+                \]
+                \[
+                \ell_{ab}=\operatorname{rowsum}e^{S_{ab}-m_{ab}},\qquad
+                A_{ab}=e^{S_{ab}-m_{ab}}V_b,
+                \]
+                \[
+                (m_a,\ell_a,A_a)
+                \leftarrow
+                \operatorname{Merge}\!\left(
+                (m_a,\ell_a,A_a),(m_{ab},\ell_{ab},A_{ab})
+                \right),
+                \]
+            </div>
+
+            <p>and merges the tile into the running online-softmax state \((m_a,\ell_a,A_a)\). Block-sparse attention changes the outer loop:</p>
+
+            <div class="formula-card">
+                \[
+                \underbrace{b\in\{1,\ldots,M\}}_{\text{dense FlashAttention}}
+                \qquad\longrightarrow\qquad
+                \underbrace{b\in\mathcal C_a}_{\text{block-sparse attention}},
+                \]
+                <span class="equation-label">(7a)</span>
+            </div>
+
+            <p>If \(b\notin\mathcal C_a\), the kernel can skip loading \(K_b,V_b\), skip the \(Q_aK_b^\top\) GEMM, and skip the \(P_{ab}V_b\) GEMM. This is why deleting a whole tile can produce real speed, whereas scattering zeros inside every tile usually does not: the dense tile still has to be loaded and multiplied.</p>
+
+            <p>With \(n_Q=L/B_Q\) query tiles, \(n_K=L/B_K\) KV tiles, and \(r\) selected KV tiles per query tile, the number of tile pairs falls from approximately \(n_Qn_K\) to \(n_Qr\). The selector is useful only if finding \(\mathcal C_a\) and gathering its KV blocks costs less than the skipped tile work.</p>
+
+            <p>Inside every selected tile, the computation is still ordinary FlashAttention. The sparse approximation lies in the tile schedule: under drop-and-renormalize, only selected tiles are merged into the online-softmax numerator and denominator. NSA, HiLS, and PISA keep the same blockwise execution unit but define additional paths for coarse information, hierarchical mass, or the omitted tail.</p>
+
+            <div class="pitfall">
+                <strong>Not every selector is block-granular</strong>
+                DSA assigns a score to every previous token and selects individual token positions with top-\(k\); it is logically token-wise even if its kernel batches the resulting work. NSA, HiLS, PISA, and many GPU-oriented sparse kernels instead select contiguous blocks because those blocks map directly to FlashAttention-style loads and GEMMs. “Sparse” describes the chosen pair set; “block sparse” additionally requires that set to be selected in block-shaped units.
+            </div>
+
+            <p>The selector must score something cheaper than the full \(QK^\top\) matrix. It may use a fixed block statistic, a learned compressed block, or a separate low-dimensional token indexer.</p>
+
+            <h3>Fixed pooling: a cheap proxy, not the true block mass</h3>
+
+            <p>For a mean-pooled block proxy, define</p>
+
+            <div class="formula-card">
+                \[
+                \bar k_b=\frac{1}{|B_b|}\sum_{j\in B_b}k_j,\qquad
+                r_{ib}=\frac{q_i^\top\bar k_b}{\sqrt d},\qquad
+                \mathcal C_i=\operatorname{TopK}_b(r_{ib},m).
+                \]
+                <span class="equation-label">(7b)</span>
+            </div>
+
+            <p>Let \(B=|B_b|\), and write the mean logit in block \(b\) as</p>
+
+            <div class="formula-card">
+                \[
+                \bar s_{ib}
+                =\frac1B\sum_{j\in B_b}s_{ij}
+                =\frac{q_i^\top\bar k_b}{\sqrt d}.
+                \]
+            </div>
+
+            <p>What is the block’s “true score”? For one query, \(s_{ij}\) is token \(j\)’s logit before softmax, so \(e^{s_{ij}}\) is its unnormalized attention weight. The whole block contributes</p>
+
+            <div class="formula-card">
+                \[
+                A_{ib}=\sum_{j\in B_b}e^{s_{ij}},
+                \qquad
+                f_b(q_i)=\log A_{ib}.
+                \]
+            </div>
+
+            <p>To see when mean pooling is accurate, write each logit as its block mean plus a deviation:</p>
+
+            <div class="formula-card">
+                \[
+                s_{ij}=\bar s_{ib}+\epsilon_{ij},
+                \qquad
+                \frac1B\sum_{j\in B_b}\epsilon_{ij}=0.
+                \]
+                \[
+                \boxed{
+                f_b(q_i)
+                =\bar s_{ib}+\log B+
+                \log\!\left(\frac1B
+                \sum_{j\in B_b}e^{\epsilon_{ij}}\right)
+                }.
+                \]
+            </div>
+
+            <p>If the logits inside the block are similar, every \(\epsilon_{ij}\) is close to zero. Then every \(e^{\epsilon_{ij}}\) is close to \(1\), so the last logarithm is close to zero. For equal-sized blocks, \(\log B\) is also the same constant. The exact block score is therefore approximately \(\bar s_{ib}+\log B\), and ranking by the pooled score \(\bar s_{ib}\) gives almost the same order.</p>
+
+            <p>The approximation becomes worse as the logits spread out. For small deviations, the omitted term is approximately</p>
+
+            <div class="formula-card compact-formula">
+                \[
+                \log\!\left(\frac1B\sum_j e^{\epsilon_{ij}}\right)
+                \approx\frac{1}{2B}\sum_j\epsilon_{ij}^2.
+                \]
+            </div>
+
+            <p>So mean pooling is reliable for a homogeneous block, but it can miss a block containing one unusually relevant token: exponentiation gives that token much more weight, while the arithmetic mean dilutes it among the other tokens.</p>
+
+            <h3>DSA: a distilled per-token indexer</h3>
+
+            <p><a href="https://arxiv.org/abs/2512.02556" target="_blank" rel="noopener">DSA</a> treats selection as a teacher–student problem. Dense attention is the teacher; a lighter, token-wise <em>lightning indexer</em> is the student. Instead of using the expensive main-attention scores to choose tokens, the indexer projects each token into a cheaper indexing space and predicts which positions the teacher would consider important.</p>
+
+            <p>Each previous token \(j\) has one index key \(k^I_j\in\mathbb R^{d_I}\). Query \(i\) has \(H^I\) indexer query heads \(q^I_{i,a}\in\mathbb R^{d_I}\) and scalar weights \(w^I_{i,a}\). Their votes are combined into one score for token \(j\):</p>
+
+            <div class="formula-card">
+                \[
+                I_{ij}
+                =\sum_{a=1}^{H^I}w^I_{i,a}
+                \operatorname{ReLU}\!\left((q^I_{i,a})^\top k^I_j\right),
+                \qquad
+                E_i=\operatorname{TopK}_j(I_{ij},k).
+                \]
+                <span class="equation-label">(7c)</span>
+            </div>
+
+            <p>The indexer is therefore an attention-like scorer with fewer heads and a cheaper feature space than DSA's main attention computation. It is not a smaller attention layer. It has no value aggregation and produces no contextualized output; all indexer heads only vote on one token-ranking score, after which top-\(k\) returns the positions that the main attention should evaluate exactly.</p>
+
+            <p>The top-\(k\) operation is a discrete choice: small score changes usually leave the selected set unchanged, and crossing a selection boundary changes it abruptly. Ordinary backpropagation through membership therefore does not provide a useful training signal for the indexer. DSA supplies an explicit target instead.</p>
+
+            <p>During dense warm-up, the model still runs full attention. Let \(p^{(h)}_{ij}\) be its attention probability from head \(h\). DSA sums the probabilities across heads and normalizes them along the sequence to obtain one teacher distribution \(t_i\). The indexer is trained to match that distribution:</p>
+
+            <div class="formula-card">
+                \[
+                t_{ij}
+                =\frac{\sum_h p^{(h)}_{ij}}
+                       {\sum_{\ell\in\mathcal A_i}\sum_h p^{(h)}_{i\ell}},
+                \qquad
+                \widehat p_i=\operatorname{Softmax}(I_i),
+                \]
+                \[
+                \boxed{\mathcal L_{\mathrm{index}}
+                =\sum_i\operatorname{KL}(t_i\,\|\,\widehat p_i).}
+                \]
+                <span class="equation-label">(7d)</span>
+            </div>
+
+            <p>The teacher target is therefore not one particular attention head: it represents the total importance assigned to each token across all heads. After warm-up, sparse training activates top-\(k\) retrieval and continues adapting the model and indexer. DSA then drops \(U_i\) and applies ordinary softmax only to the selected tokens.</p>
+
+            <h2 id="contracts">6. After selection: what happens to the unselected mass?</h2>
+
+            <p>Once \(E_i\) is fixed, several mathematically different outputs remain possible.</p>
+
+            <div class="contract-grid">
+                <div class="contract-card">
+                    <h3>Drop and renormalize</h3>
+                    <span class="mini-formula">\(\widetilde o_i=N_{i,E}/D_{i,E}\)</span>
+                    <p>Unselected mass becomes zero, and all remaining probability is redistributed over selected tokens. This is exact softmax on \(E_i\), not the selected portion of dense softmax.</p>
+                </div>
+                <div class="contract-card">
+                    <h3>Separately normalized branches</h3>
+                    <span class="mini-formula">\(\widetilde o_i=\sum_b g_{i,b}o_{i,b}\)</span>
+                    <p>Compressed, selected, and local branches normalize separately, then learned gates combine their outputs. NSA uses this contract.</p>
+                </div>
+                <div class="contract-card">
+                    <h3>Hierarchical mass</h3>
+                    <span class="mini-formula">\(\widetilde o_i=\sum_b\pi_{ib}\sum_j\rho_{ij\mid b}v_j\)</span>
+                    <p>A block-level distribution controls mass across selected chunks, while exact logits normalize within each chunk. Unselected chunks still have zero mass.</p>
+                </div>
+                <div class="contract-card">
+                    <h3>Shared tail correction</h3>
+                    <span class="mini-formula">\(\widetilde o_i=(N_E+\widehat N_U)/(D_E+\widehat D_U)\)</span>
+                    <p>Selected terms are exact and omitted terms are approximated inside the same numerator and denominator. PISA explicitly follows this route.</p>
+                </div>
+            </div>
+
+            <p>The first contract is common in masking systems such as <a href="https://pytorch.org/blog/flexattention/" target="_blank" rel="noopener">FlexAttention</a> and learned selection such as DSA. <a href="https://arxiv.org/abs/2502.11089" target="_blank" rel="noopener">Native Sparse Attention</a> uses independently normalized compression, selection, and local branches. HiLS introduces hierarchical normalization, while PISA estimates the missing tail so exact and approximate terms share one denominator.</p>
+
+            <h3>Exactly what drop-and-renormalize changes</h3>
+
+            <p>Define the exact softmax output within each subset:</p>
+
+            <div class="formula-card">
+                \[
+                o_{i,E}=\frac{N_{i,E}}{D_{i,E}},\qquad
+                o_{i,U}=\frac{N_{i,U}}{D_{i,U}},\qquad
+                \lambda_i=\frac{D_{i,E}}{D_{i,E}+D_{i,U}}.
+                \]
+            </div>
+
+            <p>The dense output can then be decomposed without approximation:</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{o_i=\lambda_i o_{i,E}+(1-\lambda_i)o_{i,U}.}
+                \]
+                <span class="equation-label">(8)</span>
+            </div>
+
+            <p>Drop-and-renormalize returns \(\widetilde o_i=o_{i,E}\). Therefore its exact error relative to dense attention is</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{\widetilde o_i-o_i
+                =(1-\lambda_i)(o_{i,E}-o_{i,U}).}
+                \]
+                <span class="equation-label">(9)</span>
+            </div>
+
+            <p>Two things must be small: the omitted probability mass \(1-\lambda_i\), or the difference between selected and omitted value averages. Selecting tokens with large logits helps the first condition, but the output error also depends on values.</p>
+
+            <p>A tiny example makes renormalization visible. Suppose three logits are all zero and their scalar values are \(0,3,9\). Dense attention outputs \(4\). If the router selects the first two tokens, their dense probabilities were \(1/3\) each, but selected-set softmax changes them to \(1/2\) each and outputs \(1.5\). The missing token is not merely removed; its \(1/3\) probability mass is redistributed.</p>
+
+            <h3>NSA: a compressed path for routing and memory</h3>
+
+            <p><a href="https://arxiv.org/abs/2502.11089" target="_blank" rel="noopener">NSA</a> first maps a contiguous, possibly overlapping KV block to a learned compressed token:</p>
+
+            <div class="formula-card">
+                \[
+                \widetilde k_b=\phi_K(K_{B_b}),\qquad
+                \widetilde v_b=\phi_V(V_{B_b}),
+                \]
+                \[
+                p^{\mathrm{cmp}}_{ib}
+                =\operatorname{Softmax}_b\!\left(
+                \frac{q_i^\top\widetilde k_b}{\sqrt d}\right),
+                \qquad
+                \mathcal C_i=\operatorname{TopKBlocks}(p^{\mathrm{cmp}}_i).
+                \]
+                <span class="equation-label">(10)</span>
+            </div>
+
+            <p>The compressed score is reused to choose contiguous blocks of the original KV sequence for fine-grained attention. When compression blocks overlap or use a different size from selection blocks, their scores are aggregated by temporal overlap. Under GQA, query heads sharing one physical KV cache also share the block choice, avoiding a union of unrelated gathers.</p>
+
+            <p>NSA computes separately normalized compressed, selected, and sliding-window outputs, then mixes them:</p>
+
+            <div class="formula-card">
+                \[
+                \widetilde o_i^{\mathrm{NSA}}
+                =\sigma(g_{i,c})o_{i,\mathrm{cmp}}
+                +\sigma(g_{i,s})o_{i,\mathrm{selected}}
+                +\sigma(g_{i,w})o_{i,\mathrm{window}}.
+                \]
+                <span class="equation-label">(10a)</span>
+            </div>
+
+            <p>The gates do not have to sum to one, and each \(o\) was produced by its own denominator. A compressed block value is therefore a real information path, not merely a routing summary. Because that path affects the language-model output, \(\phi_K,\phi_V\), and the gates can learn from the LM loss without a dense-attention teacher. Hard block membership itself is still discrete; the differentiable compressed branch is what prevents the learned proxy from being an unsupervised side calculation.</p>
+
+            <p>NSA therefore does not reconstruct the missing dense numerator and denominator. Unselected raw values are absent from the selected branch, while a learned coarse representation of the full history survives through \(o_{i,\mathrm{cmp}}\).</p>
+
+            <h3>HiLS: estimating chunk mass with a landmark</h3>
+
+            <p><a href="https://arxiv.org/abs/2607.02980" target="_blank" rel="noopener">HiLS</a> inserts a landmark query \(q'_b\) for each chunk. Within that chunk, it forms</p>
+
+            <div class="formula-card">
+                \[
+                p_{bj}
+                =\frac{e^{(q'_b)^\top k_j/\sqrt d}}
+                {\sum_{\ell\in B_b}e^{(q'_b)^\top k_\ell/\sqrt d}},
+                \qquad
+                k'_b=\sum_{j\in B_b}p_{bj}k_j.
+                \]
+            </div>
+
+            <p>Recall the exact log-mass \(f_b(q)=\log\sum_{j\in B_b}e^{q^\top k_j/\sqrt d}\). Its gradient at the landmark is</p>
+
+            <div class="formula-card">
+                \[
+                \left.\nabla_qf_b(q)\right|_{q=q'_b}
+                =\frac{1}{\sqrt d}\sum_{j\in B_b}p_{bj}k_j
+                =\frac{k'_b}{\sqrt d}.
+                \]
+            </div>
+
+            <p>A first-order Taylor expansion around \(q'_b\) gives</p>
+
+            <div class="formula-card">
+                \[
+                f_b(q_i)
+                \approx f_b(q'_b)
+                +\frac{(q_i-q'_b)^\top k'_b}{\sqrt d}
+                =\frac{q_i^\top k'_b}{\sqrt d}
+                +\left[f_b(q'_b)-\frac{(q'_b)^\top k'_b}{\sqrt d}\right].
+                \]
+            </div>
+
+            <p>The bracketed intercept looks opaque until the definition of \(p_{bj}\) is substituted:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                f_b(q'_b)-\frac{(q'_b)^\top k'_b}{\sqrt d}
+                &=
+                \sum_jp_{bj}\left[
+                \log\sum_\ell e^{(q'_b)^\top k_\ell/\sqrt d}
+                -\frac{(q'_b)^\top k_j}{\sqrt d}\right]\\
+                &=-\sum_jp_{bj}\log p_{bj}
+                =H(p_b).
+                \end{aligned}
+                \]
+            </div>
+
+            <p>Therefore the router score</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{\widehat s_{ib}
+                =\frac{q_i^\top k'_b}{\sqrt d}+H(p_b)
+                \approx \log\sum_{j\in B_b}e^{s_{ij}}.}
+                \]
+                <span class="equation-label">(11)</span>
+            </div>
+
+            <p>has a precise interpretation: \(k'_b\) is the local slope of chunk log-mass and entropy is its Taylor intercept. The remaining step is not an ordinary softmax over all retrieved tokens. HiLS factorizes the probability into an exact conditional distribution inside each selected chunk and a learned distribution across chunks:</p>
+
+            <div class="formula-card">
+                \[
+                Z_{ib}=\sum_{j\in B_b}e^{s_{ij}},\qquad
+                \rho_{ij\mid b}=\frac{e^{s_{ij}}}{Z_{ib}},\qquad
+                \widehat Z_{ib}=e^{\widehat s_{ib}},
+                \]
+                \[
+                \pi_{ib}
+                =\frac{\widehat Z_{ib}}
+                       {\sum_{c\in\mathcal C_i}\widehat Z_{ic}+Z_{i,\mathrm{local}}},
+                \qquad
+                \pi_{i,\mathrm{local}}
+                =\frac{Z_{i,\mathrm{local}}}
+                       {\sum_{c\in\mathcal C_i}\widehat Z_{ic}+Z_{i,\mathrm{local}}},
+                \]
+                \[
+                \boxed{\widetilde o_i^{\mathrm{HiLS}}
+                =\sum_{b\in\mathcal C_i}\pi_{ib}
+                   \sum_{j\in B_b}\rho_{ij\mid b}v_j
+                 +\pi_{i,\mathrm{local}}o_{i,\mathrm{local}}.}
+                \]
+                <span class="equation-label">(11a)</span>
+            </div>
+
+            <p>The local window contributes its exact mass \(Z_{i,\mathrm{local}}\); a retrieved distant chunk contributes its surrogate mass \(\widehat Z_{ib}\). Because selected router scores appear in \(\pi_{ib}\), the language-model loss trains the landmark representation directly. The top-\(K\) membership remains hard, however, so unselected distant chunks receive neither output mass nor this gradient. HiLS improves how probability is allocated inside the retained set; it does not restore the dense tail.</p>
+
+            <h3>PISA: approximating the omitted tail in the same softmax</h3>
+
+            <p><a href="https://arxiv.org/abs/2602.01077" target="_blank" rel="noopener">PISA</a> keeps selected blocks exact and approximates unselected blocks inside the same numerator and denominator. Write \(k_j=\mu_b+\delta_j\), where \(\mu_b\) is a block mean. A first-order expansion gives</p>
+
+            <div class="formula-card">
+                \[
+                e^{q_i^\top k_j/\sqrt d}
+                =e^{q_i^\top\mu_b/\sqrt d}
+                 e^{q_i^\top\delta_j/\sqrt d}
+                \approx
+                e^{q_i^\top\mu_b/\sqrt d}
+                \left(1+\frac{q_i^\top\delta_j}{\sqrt d}\right).
+                \]
+            </div>
+
+            <p>Summing over a block yields</p>
+
+            <div class="formula-card">
+                \[
+                D_{ib}\approx
+                e^{q_i^\top\mu_b/\sqrt d}|B_b|,
+                \]
+                \[
+                N_{ib}\approx e^{q_i^\top\mu_b/\sqrt d}
+                \left[
+                \sum_{j\in B_b}v_j
+                +\frac{q_i^\top}{\sqrt d}
+                 \sum_{j\in B_b}\delta_jv_j^\top
+                \right].
+                \]
+                <span class="equation-label">(12)</span>
+            </div>
+
+            <p>Because \(\sum_j\delta_j=0\), the first-order denominator correction vanishes, but the value-weighted numerator correction generally does not. Define</p>
+
+            <div class="formula-card">
+                \[
+                \alpha_{ib}=e^{q_i^\top\mu_b/\sqrt d},\qquad
+                V_b^\Sigma=\sum_{j\in B_b}v_j,\qquad
+                H_b=\sum_{j\in B_b}\delta_jv_j^\top.
+                \]
+            </div>
+
+            <p>Then one unselected block contributes approximately \(\alpha_{ib}V_b^\Sigma+\alpha_{ib}q_i^\top H_b/\sqrt d\) to the numerator. This expression is mathematically cheap in pair count but hardware-unfriendly if every query must stream a different \(d\times d_v\) matrix \(H_b\) for every tail block.</p>
+
+            <p>PISA replaces those many first-order matrices by one precomputed global statistic,</p>
+
+            <div class="formula-card">
+                \[
+                \overline H=\frac1M\sum_{b=1}^{M}H_b,
+                \]
+                \[
+                \sum_{b\in U_i}\alpha_{ib}
+                    \frac{q_i^\top H_b}{\sqrt d}
+                \;\approx\;
+                \left(\sum_{b\in U_i}\alpha_{ib}\right)
+                    \frac{q_i^\top\overline H}{\sqrt d}.
+                \]
+                <span class="equation-label">(12a)</span>
+            </div>
+
+            <p>The zeroth-order term still scans compact block means and value sums, but the first-order correction now loads only one shared matrix:</p>
+
+            <div class="formula-card">
+                \[
+                \widehat D_{i,U}=|B|\sum_{b\in U_i}\alpha_{ib},
+                \]
+                \[
+                \widehat N_{i,U}
+                =\sum_{b\in U_i}\alpha_{ib}V_b^\Sigma
+                +\left(\sum_{b\in U_i}\alpha_{ib}\right)
+                 \frac{q_i^\top\overline H}{\sqrt d},
+                \]
+                \[
+                \boxed{\widetilde o_i^{\mathrm{PISA}}
+                =\frac{N_{i,E}+\widehat N_{i,U}}
+                       {D_{i,E}+\widehat D_{i,U}}.}
+                \]
+                <span class="equation-label">(12b)</span>
+            </div>
+
+            <p>Selected exact terms and approximate tail terms therefore compete in one normalization. This is mathematically different from NSA’s separately normalized compressed branch, and it is what lets PISA reuse pretrained diffusion-Transformer weights without training a new router.</p>
+
+            <p>The selector also accounts for where the global approximation is least trustworthy. A simplified covariance-aware block score is</p>
+
+            <div class="formula-card">
+                \[
+                r_{ib}^{\mathrm{PISA}}
+                =\frac{q_i^\top\mu_b}{\sqrt d}
+                 +\log\!\left(\lVert H_b-\overline H\rVert_2+\varepsilon\right).
+                \]
+                <span class="equation-label">(12c)</span>
+            </div>
+
+            <p>A block is kept exact when it has either high semantic relevance or a large deviation from the shared statistic. The corresponding error bound scales with the tail probability fraction and the maximum heterogeneity \(\max_{b\in U_i}\lVert H_b-\overline H\rVert_2\). The important conclusion is that selection and tail approximation must be designed together.</p>
+
+            <h3>Recap: the same two questions, four answers</h3>
+
+            <p>Only after seeing the mechanisms is the comparison useful. Each method must say both how it finds the exact set \(E_i\) and what becomes of the unselected set \(U_i\).</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Method</th><th>How \(E_i\) is selected</th><th>How the selector learns</th><th>What happens to \(U_i\)</th></tr></thead>
+                    <tbody>
+                        <tr><td>DSA</td><td>Low-dimensional per-token indexer</td><td>KL distillation from dense attention</td><td>Dropped; selected-set softmax</td></tr>
+                        <tr><td>NSA</td><td>Scores from learned compressed blocks</td><td>LM loss through a value-bearing compressed branch</td><td>Raw KV is skipped; coarse information survives in that branch</td></tr>
+                        <tr><td>HiLS</td><td>Landmark estimate of chunk LogSumExp</td><td>LM loss through selected inter-chunk mass</td><td>Dropped; selected chunks use hierarchical softmax</td></tr>
+                        <tr><td>PISA</td><td>Centroid relevance plus an approximation-error prior</td><td>Training-free statistics</td><td>Approximated in the same numerator and denominator</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>The selector must cost less than the tiles it skips</h3>
+
+            <p>The cost model must include router FLOPs, top-\(k\), index storage, KV gathers, and the sparse kernel—not only the surviving dot products. A mathematically sparse mask can still be slow if its selected entries require irregular memory reads or produce tiny matrix multiplications.</p>
+
+            <p>Under grouped-query attention, multiple query heads share one physical KV head. If every query head selects unrelated blocks, the actual KV load becomes the union of those sets and the memory saving can disappear. This is why hardware alignment is part of the algorithmic contract, not a final implementation detail.</p>
+
+            <div class="callout">
+                <strong>The reusable mental model</strong>
+                First write attention as one numerator divided by one denominator. Then ask three questions: Which pairs are evaluated? What represents the omitted pairs? Can those choices be executed as large, regular blocks? This separates mathematical accuracy from kernel efficiency.
+            </div>
+
+            <h2>References</h2>
+            <section class="references">
+                <div class="reference-group">
+                    <h3>Exact tiled and distributed attention</h3>
+                    <p>NVIDIA, <a href="https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/" target="_blank" rel="noopener">CUDA Refresher: The CUDA Programming Model</a>, 2020.</p>
+                    <p>Dao et al., <a href="https://arxiv.org/abs/2205.14135" target="_blank" rel="noopener">FlashAttention</a>, 2022.</p>
+                    <p>Dao, <a href="https://arxiv.org/abs/2307.08691" target="_blank" rel="noopener">FlashAttention-2</a>, 2023/2024.</p>
+                    <p>Shah et al., <a href="https://arxiv.org/abs/2407.08608" target="_blank" rel="noopener">FlashAttention-3</a>, 2024.</p>
+                    <p>Liu, Zaharia, and Abbeel, <a href="https://arxiv.org/abs/2310.01889" target="_blank" rel="noopener">Ring Attention with Blockwise Transformers</a>, 2023.</p>
+                    <p>Wang et al., <a href="https://arxiv.org/abs/2504.17577" target="_blank" rel="noopener">TileLang</a>, 2025.</p>
+                </div>
+                <div class="reference-group">
+                    <h3>Sparse-attention lineage and systems</h3>
+                    <p>Child et al., <a href="https://arxiv.org/abs/1904.10509" target="_blank" rel="noopener">Generating Long Sequences with Sparse Transformers</a>, 2019.</p>
+                    <p>Kitaev et al., <a href="https://arxiv.org/abs/2001.04451" target="_blank" rel="noopener">Reformer</a>, 2020.</p>
+                    <p>Beltagy et al., <a href="https://arxiv.org/abs/2004.05150" target="_blank" rel="noopener">Longformer</a>, 2020.</p>
+                    <p>Zaheer et al., <a href="https://arxiv.org/abs/2007.14062" target="_blank" rel="noopener">BigBird</a>, 2020.</p>
+                    <p>Roy et al., <a href="https://arxiv.org/abs/2003.05997" target="_blank" rel="noopener">Routing Transformer</a>, 2020.</p>
+                    <p>Jiang et al., <a href="https://arxiv.org/abs/2407.02490" target="_blank" rel="noopener">MInference 1.0</a>, 2024.</p>
+                    <p>Tang et al., <a href="https://arxiv.org/abs/2406.10774" target="_blank" rel="noopener">Quest</a>, 2024.</p>
+                    <p>Zhang et al., <a href="https://arxiv.org/abs/2502.18137" target="_blank" rel="noopener">SpargeAttention</a>, 2025.</p>
+                    <p>Yuan et al., <a href="https://arxiv.org/abs/2502.11089" target="_blank" rel="noopener">Native Sparse Attention</a>, 2025.</p>
+                    <p>Lu et al., <a href="https://arxiv.org/abs/2502.13189" target="_blank" rel="noopener">MoBA</a>, 2025.</p>
+                    <p>Zhang et al., <a href="https://arxiv.org/abs/2502.04507" target="_blank" rel="noopener">Sliding Tile Attention</a>, 2025.</p>
+                    <p>DeepSeek-AI, <a href="https://arxiv.org/abs/2512.02556" target="_blank" rel="noopener">DeepSeek-V3.2 / DSA</a>, 2025.</p>
+                    <p>Hu et al., <a href="https://arxiv.org/abs/2607.02980" target="_blank" rel="noopener">Hierarchical Sparse Attention Done Right</a>, 2026.</p>
+                    <p>Li et al., <a href="https://arxiv.org/abs/2602.01077" target="_blank" rel="noopener">PISA</a>, 2026.</p>
+                </div>
+            </section>
+
+            <div class="next-post">
+                <span>Next: keep exact attention, but make each cached token narrower.</span>
+                <a href="scaling-long-context-memory.html">Part II · Compressing the KV Cache <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </article>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                throwOnError: false,
+                trust: true
+            });
+        });
+    </script>
+</body>
+</html>
