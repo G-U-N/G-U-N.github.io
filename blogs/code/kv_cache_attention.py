@@ -2,7 +2,8 @@
 
 The file changes one systems axis at a time:
 
-1. ``flash_gqa_forward`` maps query heads to shared KV heads during prefill.
+1. ``flash_gqa_attention`` maps query heads to shared KV heads during training,
+   including the per-query-head dK/dV partials and grouped reduction in backward.
 2. ``grouped_decode`` packs query heads that consume the same contiguous KV tile.
 3. ``paged_grouped_decode`` changes only the KV addressing through a block table.
 4. ``mla_decode`` reuses the grouped decoder with a latent score block, a separate
@@ -147,6 +148,339 @@ def _flash_gqa_fwd_kernel(
     l_ptrs = LSE + batch * stride_lb + query_head * stride_lh + offs_m * stride_lm
     tl.store(o_ptrs, out, mask=mask_m[:, None] & mask_v[None, :])
     tl.store(l_ptrs, lse, mask=mask_m)
+
+
+@triton.jit
+def _flash_gqa_bwd_preprocess_kernel(
+    O,
+    DO,
+    DELTA,
+    stride_ob,
+    stride_oh,
+    stride_om,
+    stride_od,
+    stride_dob,
+    stride_doh,
+    stride_dom,
+    stride_dod,
+    stride_db,
+    stride_dh,
+    stride_dm,
+    M: tl.constexpr,
+    D_V: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_DV: tl.constexpr,
+):
+    batch = tl.program_id(0)
+    query_head = tl.program_id(1)
+    query_block = tl.program_id(2)
+
+    rows = query_block * BLOCK_M + tl.arange(0, BLOCK_M)
+    offs_v = tl.arange(0, BLOCK_DV)
+    mask = (rows[:, None] < M) & (offs_v[None, :] < D_V)
+    o = tl.load(
+        O
+        + batch * stride_ob
+        + query_head * stride_oh
+        + rows[:, None] * stride_om
+        + offs_v[None, :] * stride_od,
+        mask=mask,
+        other=0.0,
+    ).to(tl.float32)
+    do = tl.load(
+        DO
+        + batch * stride_dob
+        + query_head * stride_doh
+        + rows[:, None] * stride_dom
+        + offs_v[None, :] * stride_dod,
+        mask=mask,
+        other=0.0,
+    ).to(tl.float32)
+    delta = tl.sum(o * do, axis=1)
+    tl.store(
+        DELTA + batch * stride_db + query_head * stride_dh + rows * stride_dm,
+        delta,
+        mask=rows < M,
+    )
+
+
+@triton.jit
+def _flash_gqa_bwd_dkdv_kernel(
+    Q,
+    K,
+    V,
+    DO,
+    LSE,
+    DELTA,
+    PARTIAL_DK,
+    PARTIAL_DV,
+    stride_qb,
+    stride_qh,
+    stride_qm,
+    stride_qd,
+    stride_kb,
+    stride_kh,
+    stride_kn,
+    stride_kd,
+    stride_vb,
+    stride_vh,
+    stride_vn,
+    stride_vd,
+    stride_dob,
+    stride_doh,
+    stride_dom,
+    stride_dod,
+    stride_lb,
+    stride_lh,
+    stride_lm,
+    stride_db,
+    stride_dh,
+    stride_dm,
+    stride_pdkb,
+    stride_pdkh,
+    stride_pdkn,
+    stride_pdkd,
+    stride_pdvb,
+    stride_pdvh,
+    stride_pdvn,
+    stride_pdvd,
+    M: tl.constexpr,
+    N: tl.constexpr,
+    D_QK: tl.constexpr,
+    D_V: tl.constexpr,
+    GROUP_SIZE: tl.constexpr,
+    SCALE: tl.constexpr,
+    CAUSAL: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_DQK: tl.constexpr,
+    BLOCK_DV: tl.constexpr,
+):
+    batch = tl.program_id(0)
+    query_head = tl.program_id(1)
+    kv_block = tl.program_id(2)
+    kv_head = query_head // GROUP_SIZE
+
+    cols = kv_block * BLOCK_N + tl.arange(0, BLOCK_N)
+    offs_qk = tl.arange(0, BLOCK_DQK)
+    offs_v = tl.arange(0, BLOCK_DV)
+    mask_k = (cols[:, None] < N) & (offs_qk[None, :] < D_QK)
+    mask_v = (cols[:, None] < N) & (offs_v[None, :] < D_V)
+    k = tl.load(
+        K
+        + batch * stride_kb
+        + kv_head * stride_kh
+        + cols[:, None] * stride_kn
+        + offs_qk[None, :] * stride_kd,
+        mask=mask_k,
+        other=0.0,
+    )
+    v = tl.load(
+        V
+        + batch * stride_vb
+        + kv_head * stride_vh
+        + cols[:, None] * stride_vn
+        + offs_v[None, :] * stride_vd,
+        mask=mask_v,
+        other=0.0,
+    )
+    dk = tl.zeros([BLOCK_N, BLOCK_DQK], tl.float32)
+    dv = tl.zeros([BLOCK_N, BLOCK_DV], tl.float32)
+    rows_base = tl.arange(0, BLOCK_M)
+
+    for start_m in range(0, M, BLOCK_M):
+        rows = start_m + rows_base
+        q = tl.load(
+            Q
+            + batch * stride_qb
+            + query_head * stride_qh
+            + rows[:, None] * stride_qm
+            + offs_qk[None, :] * stride_qd,
+            mask=(rows[:, None] < M) & (offs_qk[None, :] < D_QK),
+            other=0.0,
+        )
+        do = tl.load(
+            DO
+            + batch * stride_dob
+            + query_head * stride_doh
+            + rows[:, None] * stride_dom
+            + offs_v[None, :] * stride_dod,
+            mask=(rows[:, None] < M) & (offs_v[None, :] < D_V),
+            other=0.0,
+        )
+        lse = tl.load(
+            LSE + batch * stride_lb + query_head * stride_lh + rows * stride_lm,
+            mask=rows < M,
+            other=0.0,
+        )
+        delta = tl.load(
+            DELTA + batch * stride_db + query_head * stride_dh + rows * stride_dm,
+            mask=rows < M,
+            other=0.0,
+        )
+
+        scores = tl.dot(q, tl.trans(k)) * SCALE
+        visible = (rows[:, None] < M) & (cols[None, :] < N)
+        if CAUSAL:
+            q_position = N - M + rows
+            visible = visible & (q_position[:, None] >= cols[None, :])
+        scores = tl.where(visible, scores, -float("inf"))
+        p = tl.exp(scores - lse[:, None])
+        p = tl.where(visible, p, 0.0)
+        dp = tl.dot(do, tl.trans(v)).to(tl.float32)
+        ds = p * (dp - delta[:, None])
+
+        dv += tl.dot(tl.trans(p.to(DO.dtype.element_ty)), do)
+        dk += tl.dot(tl.trans(ds.to(Q.dtype.element_ty)), q) * SCALE
+
+    tl.store(
+        PARTIAL_DK
+        + batch * stride_pdkb
+        + query_head * stride_pdkh
+        + cols[:, None] * stride_pdkn
+        + offs_qk[None, :] * stride_pdkd,
+        dk,
+        mask=mask_k,
+    )
+    tl.store(
+        PARTIAL_DV
+        + batch * stride_pdvb
+        + query_head * stride_pdvh
+        + cols[:, None] * stride_pdvn
+        + offs_v[None, :] * stride_pdvd,
+        dv,
+        mask=mask_v,
+    )
+
+
+@triton.jit
+def _flash_gqa_bwd_dq_kernel(
+    Q,
+    K,
+    V,
+    DO,
+    LSE,
+    DELTA,
+    DQ,
+    stride_qb,
+    stride_qh,
+    stride_qm,
+    stride_qd,
+    stride_kb,
+    stride_kh,
+    stride_kn,
+    stride_kd,
+    stride_vb,
+    stride_vh,
+    stride_vn,
+    stride_vd,
+    stride_dob,
+    stride_doh,
+    stride_dom,
+    stride_dod,
+    stride_lb,
+    stride_lh,
+    stride_lm,
+    stride_db,
+    stride_dh,
+    stride_dm,
+    stride_dqb,
+    stride_dqh,
+    stride_dqm,
+    stride_dqd,
+    M: tl.constexpr,
+    N: tl.constexpr,
+    D_QK: tl.constexpr,
+    D_V: tl.constexpr,
+    GROUP_SIZE: tl.constexpr,
+    SCALE: tl.constexpr,
+    CAUSAL: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_DQK: tl.constexpr,
+    BLOCK_DV: tl.constexpr,
+):
+    batch = tl.program_id(0)
+    query_head = tl.program_id(1)
+    query_block = tl.program_id(2)
+    kv_head = query_head // GROUP_SIZE
+
+    rows = query_block * BLOCK_M + tl.arange(0, BLOCK_M)
+    offs_qk = tl.arange(0, BLOCK_DQK)
+    offs_v = tl.arange(0, BLOCK_DV)
+    q = tl.load(
+        Q
+        + batch * stride_qb
+        + query_head * stride_qh
+        + rows[:, None] * stride_qm
+        + offs_qk[None, :] * stride_qd,
+        mask=(rows[:, None] < M) & (offs_qk[None, :] < D_QK),
+        other=0.0,
+    )
+    do = tl.load(
+        DO
+        + batch * stride_dob
+        + query_head * stride_doh
+        + rows[:, None] * stride_dom
+        + offs_v[None, :] * stride_dod,
+        mask=(rows[:, None] < M) & (offs_v[None, :] < D_V),
+        other=0.0,
+    )
+    lse = tl.load(
+        LSE + batch * stride_lb + query_head * stride_lh + rows * stride_lm,
+        mask=rows < M,
+        other=0.0,
+    )
+    delta = tl.load(
+        DELTA + batch * stride_db + query_head * stride_dh + rows * stride_dm,
+        mask=rows < M,
+        other=0.0,
+    )
+    dq = tl.zeros([BLOCK_M, BLOCK_DQK], tl.float32)
+    cols_base = tl.arange(0, BLOCK_N)
+
+    for start_n in range(0, N, BLOCK_N):
+        cols = start_n + cols_base
+        k = tl.load(
+            K
+            + batch * stride_kb
+            + kv_head * stride_kh
+            + cols[:, None] * stride_kn
+            + offs_qk[None, :] * stride_kd,
+            mask=(cols[:, None] < N) & (offs_qk[None, :] < D_QK),
+            other=0.0,
+        )
+        v = tl.load(
+            V
+            + batch * stride_vb
+            + kv_head * stride_vh
+            + cols[:, None] * stride_vn
+            + offs_v[None, :] * stride_vd,
+            mask=(cols[:, None] < N) & (offs_v[None, :] < D_V),
+            other=0.0,
+        )
+
+        scores = tl.dot(q, tl.trans(k)) * SCALE
+        visible = (rows[:, None] < M) & (cols[None, :] < N)
+        if CAUSAL:
+            q_position = N - M + rows
+            visible = visible & (q_position[:, None] >= cols[None, :])
+        scores = tl.where(visible, scores, -float("inf"))
+        p = tl.exp(scores - lse[:, None])
+        p = tl.where(visible, p, 0.0)
+        dp = tl.dot(do, tl.trans(v)).to(tl.float32)
+        ds = p * (dp - delta[:, None])
+        dq += tl.dot(ds.to(Q.dtype.element_ty), k) * SCALE
+
+    tl.store(
+        DQ
+        + batch * stride_dqb
+        + query_head * stride_dqh
+        + rows[:, None] * stride_dqm
+        + offs_qk[None, :] * stride_dqd,
+        dq,
+        mask=(rows[:, None] < M) & (offs_qk[None, :] < D_QK),
+    )
 
 
 @triton.jit
@@ -691,6 +1025,177 @@ def flash_gqa_forward(
     return out, lse
 
 
+def reduce_grouped_kv_grads(partial_dk: torch.Tensor, partial_dv: torch.Tensor, hkv: int):
+    """Reduce per-query-head dK/dV contributions into shared KV heads."""
+    b, hq = partial_dk.shape[:2]
+    if hq % hkv:
+        raise ValueError("H_q must be divisible by H_kv")
+    group = hq // hkv
+    dk = partial_dk.reshape(b, hkv, group, *partial_dk.shape[2:]).sum(dim=2)
+    dv = partial_dv.reshape(b, hkv, group, *partial_dv.shape[2:]).sum(dim=2)
+    return dk, dv
+
+
+def flash_gqa_backward(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    out: torch.Tensor,
+    lse: torch.Tensor,
+    do: torch.Tensor,
+    *,
+    scale: float | None = None,
+    causal: bool = False,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """FlagAttention-style full-sequence GQA backward.
+
+    dK and dV are first produced per query head, then reduced across the query
+    heads that share each KV head.  This intentionally mirrors FlagAttention's
+    simple, readable ownership scheme rather than a fused production reduction.
+    """
+    b, hq, hkv, m, n, dv = _check_qkv(q, k, v)
+    if causal and m > n:
+        raise ValueError("bottom-right causal alignment requires S_q <= S_kv")
+    dqk = q.shape[-1]
+    expected_o = (b, hq, m, dv)
+    if out.shape != expected_o or do.shape != expected_o:
+        raise ValueError(f"out and do must have shape {expected_o}")
+    if lse.shape != (b, hq, m) or lse.dtype != torch.float32:
+        raise ValueError("lse must be a float32 tensor with shape [B, H_q, M]")
+    if out.device != q.device or do.device != q.device or lse.device != q.device:
+        raise ValueError("out, do, and lse must be on the same device as Q")
+    if out.dtype != v.dtype or do.dtype != v.dtype:
+        raise ValueError("out and do must use V's dtype")
+
+    scale = float(scale if scale is not None else 1.0 / math.sqrt(dqk))
+    delta = torch.empty((b, hq, m), device=q.device, dtype=torch.float32)
+    dq = torch.empty_like(q)
+    partial_dk = torch.empty((b, hq, n, dqk), device=k.device, dtype=k.dtype)
+    partial_dv = torch.empty((b, hq, n, dv), device=v.device, dtype=v.dtype)
+
+    block_m, block_n = 64, 64
+    block_dqk = _power_of_two_block(dqk)
+    block_dv = _power_of_two_block(dv)
+    preprocess_grid = (b, hq, triton.cdiv(m, block_m))
+    _flash_gqa_bwd_preprocess_kernel[preprocess_grid](
+        out,
+        do,
+        delta,
+        *out.stride(),
+        *do.stride(),
+        *delta.stride(),
+        M=m,
+        D_V=dv,
+        BLOCK_M=block_m,
+        BLOCK_DV=block_dv,
+        num_warps=4,
+    )
+
+    dkdv_grid = (b, hq, triton.cdiv(n, block_n))
+    _flash_gqa_bwd_dkdv_kernel[dkdv_grid](
+        q,
+        k,
+        v,
+        do,
+        lse,
+        delta,
+        partial_dk,
+        partial_dv,
+        *q.stride(),
+        *k.stride(),
+        *v.stride(),
+        *do.stride(),
+        *lse.stride(),
+        *delta.stride(),
+        *partial_dk.stride(),
+        *partial_dv.stride(),
+        M=m,
+        N=n,
+        D_QK=dqk,
+        D_V=dv,
+        GROUP_SIZE=hq // hkv,
+        SCALE=scale,
+        CAUSAL=causal,
+        BLOCK_M=block_m,
+        BLOCK_N=block_n,
+        BLOCK_DQK=block_dqk,
+        BLOCK_DV=block_dv,
+        num_warps=4,
+        num_stages=2,
+    )
+
+    dq_grid = (b, hq, triton.cdiv(m, block_m))
+    _flash_gqa_bwd_dq_kernel[dq_grid](
+        q,
+        k,
+        v,
+        do,
+        lse,
+        delta,
+        dq,
+        *q.stride(),
+        *k.stride(),
+        *v.stride(),
+        *do.stride(),
+        *lse.stride(),
+        *delta.stride(),
+        *dq.stride(),
+        M=m,
+        N=n,
+        D_QK=dqk,
+        D_V=dv,
+        GROUP_SIZE=hq // hkv,
+        SCALE=scale,
+        CAUSAL=causal,
+        BLOCK_M=block_m,
+        BLOCK_N=block_n,
+        BLOCK_DQK=block_dqk,
+        BLOCK_DV=block_dv,
+        num_warps=4,
+        num_stages=2,
+    )
+    dk, dv_out = reduce_grouped_kv_grads(partial_dk, partial_dv, hkv)
+    return dq, dk, dv_out
+
+
+class _FlashGQAAttention(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, q, k, v, scale, causal):
+        scale_value = float(scale if scale is not None else 1.0 / math.sqrt(q.shape[-1]))
+        out, lse = flash_gqa_forward(q, k, v, scale=scale_value, causal=causal)
+        ctx.save_for_backward(q, k, v, out, lse)
+        ctx.scale = scale_value
+        ctx.causal = causal
+        return out
+
+    @staticmethod
+    def backward(ctx, do):
+        q, k, v, out, lse = ctx.saved_tensors
+        dq, dk, dv = flash_gqa_backward(
+            q,
+            k,
+            v,
+            out,
+            lse,
+            do,
+            scale=ctx.scale,
+            causal=ctx.causal,
+        )
+        return dq, dk, dv, None, None
+
+
+def flash_gqa_attention(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    *,
+    scale: float | None = None,
+    causal: bool = False,
+) -> torch.Tensor:
+    """Differentiable full-sequence MHA/GQA/MQA attention."""
+    return _FlashGQAAttention.apply(q, k, v, scale, causal)
+
+
 @dataclass(frozen=True)
 class _DecodeShape:
     batch: int
@@ -1060,17 +1565,6 @@ def mla_absorbed_reference(q_content, q_rope, c_kv, k_rope, w_uk, w_uv, *, scale
     return q_absorbed, latent, out
 
 
-def reduce_grouped_kv_grads(partial_dk: torch.Tensor, partial_dv: torch.Tensor, hkv: int):
-    """Reduce per-query-head dK/dV contributions into shared KV heads."""
-    b, hq = partial_dk.shape[:2]
-    if hq % hkv:
-        raise ValueError("H_q must be divisible by H_kv")
-    group = hq // hkv
-    dk = partial_dk.reshape(b, hkv, group, *partial_dk.shape[2:]).sum(dim=2)
-    dv = partial_dv.reshape(b, hkv, group, *partial_dv.shape[2:]).sum(dim=2)
-    return dk, dv
-
-
 def _pack_pages(x: torch.Tensor, page_size: int, physical_pages: int):
     b, h, n, d = x.shape
     logical_pages = triton.cdiv(n, page_size)
@@ -1101,6 +1595,25 @@ def run_correctness_checks(dtype=torch.float16):
         ref, ref_lse = attention_reference(q, k, v, scale=0.125, causal=True)
         torch.testing.assert_close(got, ref, atol=3e-2, rtol=3e-2)
         torch.testing.assert_close(got_lse, ref_lse, atol=3e-2, rtol=3e-2)
+
+    # Full-sequence backward: MHA, GQA, and MQA with D_qk != D_v and M != N.
+    grad_atol = 8e-2 if dtype == torch.bfloat16 else 5e-2
+    for hq, hkv, causal in ((4, 4, False), (4, 2, True), (4, 1, True)):
+        q0 = torch.randn((1, hq, 17, 64), device=device, dtype=dtype) * 0.4
+        k0 = torch.randn((1, hkv, 23, 64), device=device, dtype=dtype) * 0.4
+        v0 = torch.randn((1, hkv, 23, 48), device=device, dtype=dtype) * 0.4
+        do = torch.randn((1, hq, 17, 48), device=device, dtype=dtype) * 0.4
+
+        q_ref, k_ref, v_ref = [x.detach().clone().requires_grad_(True) for x in (q0, k0, v0)]
+        out_ref, _ = attention_reference(q_ref, k_ref, v_ref, scale=0.125, causal=causal)
+        grads_ref = torch.autograd.grad(out_ref, (q_ref, k_ref, v_ref), do)
+
+        q_tri, k_tri, v_tri = [x.detach().clone().requires_grad_(True) for x in (q0, k0, v0)]
+        out_tri = flash_gqa_attention(q_tri, k_tri, v_tri, scale=0.125, causal=causal)
+        grads_tri = torch.autograd.grad(out_tri, (q_tri, k_tri, v_tri), do)
+        torch.testing.assert_close(out_tri, out_ref, atol=3e-2, rtol=3e-2)
+        for got_grad, ref_grad in zip(grads_tri, grads_ref):
+            torch.testing.assert_close(got_grad, ref_grad, atol=grad_atol, rtol=grad_atol)
 
     b, hq, hkv, n, d = 2, 32, 8, 257, 64
     q = torch.randn((b, hq, d), device=device, dtype=dtype)
