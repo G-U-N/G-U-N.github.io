@@ -823,6 +823,7 @@ acc = acc * alpha[:, None] + tl.dot(p.to(V.dtype.element_ty), v)
             <p>The companion code checks the attention-side algebra by comparing materialized per-head K/V with the absorbed latent path. It then runs the same grouped split-KV kernel at the real 512+64/512 feature widths. The kernel returns \(\bar c_{t,r}\); the absorbed output projection remains an ordinary matrix multiplication outside attention.</p>
 
             <p><a href="code/kv_cache_attention.py"><i class="fas fa-code"></i> Open the complete runnable Triton implementation</a></p>
+            <p><a href="https://colab.research.google.com/github/G-U-N/G-U-N.github.io/blob/master/blogs/code/kv_cache_attention_colab.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open the KV-cache attention notebook in Google Colab"></a></p>
 
             <h2 id="compare">7. Cache and Compute Costs: smaller records, the same dense pair count</h2>
 
