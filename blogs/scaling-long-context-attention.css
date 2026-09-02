@@ -120,9 +120,62 @@
     font-weight: 700;
 }
 
+.colab-callout {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    align-items: center;
+    max-width: 720px;
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 1px solid #f6c26b;
+    border-radius: 12px;
+    color: var(--text-primary);
+    background: #fff9ed;
+    text-decoration: none;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.colab-callout:hover {
+    border-color: #e99a22;
+    box-shadow: 0 8px 22px rgba(154, 93, 16, 0.12);
+    transform: translateY(-1px);
+}
+
+.colab-callout img {
+    display: block;
+    width: 117px;
+    height: auto;
+}
+
+.colab-callout span { min-width: 0; }
+
+.colab-callout strong,
+.colab-callout small {
+    display: block;
+}
+
+.colab-callout strong {
+    margin-bottom: 3px;
+    font-size: 0.94rem;
+}
+
+.colab-callout small {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.colab-callout > i {
+    color: #d97706;
+    font-size: 0.9rem;
+}
+
 @media (max-width: 700px) {
     .contract-grid { grid-template-columns: 1fr; }
     .code-fold pre { font-size: 0.7rem; }
     .latex-figure.figure-wide,
     .latex-figure.figure-medium { max-width: 100%; }
+    .colab-callout { grid-template-columns: 1fr auto; }
+    .colab-callout img { grid-column: 1 / -1; }
 }

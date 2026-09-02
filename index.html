@@ -1015,6 +1015,23 @@
 
         .latest-post:hover h3 { color: var(--primary-color); }
 
+        .latest-post .colab-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-left: 0.45rem;
+            padding: 0.18rem 0.45rem;
+            border: 1px solid #f6c26b;
+            border-radius: 999px;
+            color: #a15c08;
+            background: #fff8e8;
+            font-size: 0.68rem;
+            font-weight: 700;
+            line-height: 1;
+            vertical-align: 0.12rem;
+            white-space: nowrap;
+        }
+
         @media (max-width: 600px) {
             .latest-post { grid-template-columns: 1fr; gap: 0.4rem; }
             .latest-post-list { max-height: calc(6 * 8rem); }
@@ -1397,7 +1414,7 @@
                 </a>
                 <a class="latest-post" href="blogs/scaling-long-context-kv-cache.html">
                     <div>
-                        <h3>Scaling Long-Context Attention II: From MHA to MLA</h3>
+                        <h3>Scaling Long-Context Attention II: From MHA to MLA <span class="colab-label"><i class="fas fa-laptop-code" aria-hidden="true"></i> Colab notebook</span></h3>
                         <p>How MHA, GQA, MQA, split-KV, Paged Attention, and MLA reshape the KV cache and its decode kernels.</p>
                     </div>
                     <span>Read <i class="fas fa-arrow-right"></i></span>
@@ -1432,14 +1449,14 @@
                 </a>
                 <a class="latest-post" href="blogs/consolver-theory.html">
                     <div>
-                        <h3>Theoretical Analysis of ConsistencySolver</h3>
+                        <h3>Theoretical Analysis of ConsistencySolver (CVPR 2026 Highlight)</h3>
                         <p>A numerical-analysis view of ConsistencySolver, deriving its learnable update rule from PF-ODEs and linear multistep methods.</p>
                     </div>
                     <span>Read <i class="fas fa-arrow-right"></i></span>
                 </a>
                 <a class="latest-post" href="blogs/rectified-diffusion-theory.html">
                     <div>
-                        <h3>Theoretical Analysis of Rectified Diffusion</h3>
+                        <h3>Theoretical Analysis of Rectified Diffusion (ICLR 2025)</h3>
                         <p>An optimal-transport analysis extending rectification, path straightening, and O(1/K) convergence from linear flows to general diffusion schedules.</p>
                     </div>
                     <span>Read <i class="fas fa-arrow-right"></i></span>

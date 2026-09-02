@@ -21,7 +21,11 @@
             <h1>From MHA to MLA: KV Caches and Attention Kernels</h1>
             <p class="dek">Part I built FlashAttention. This article starts from the bottleneck that remains during autoregressive decode: every new token must reread a growing KV cache. We follow the concrete methods that attack it—MHA to GQA/MQA, grouped-head decode, Flash-Decoding and split-KV, Paged Attention, and finally MLA.</p>
             <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical and systems notes</div>
-            <p><a href="https://colab.research.google.com/github/G-U-N/G-U-N.github.io/blob/master/blogs/code/kv_cache_attention_colab.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open the KV-cache attention notebook in Google Colab"></a></p>
+            <a class="colab-callout" href="https://colab.research.google.com/github/G-U-N/G-U-N.github.io/blob/master/blogs/code/kv_cache_attention_colab.ipynb" target="_blank" rel="noopener">
+                <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open the KV-cache attention notebook in Google Colab">
+                <span><strong>Run the complete Triton kernels step by step</strong><small>The notebook follows the article from GQA backward through grouped decode, split-KV, Paged Attention, and MLA.</small></span>
+                <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            </a>
         </header>
 
         <nav class="series-nav" aria-label="Scaling long-context attention series">
