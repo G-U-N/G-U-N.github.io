@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A kernel-first guide to KV-cache systems, from MHA, GQA, and MQA to split-KV decoding, paged attention, and absorbed MLA.">
+    <title>Scaling Long-Context Attention II: From MHA to MLA — Fu-Yun Wang</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="distributional-distillation.css">
+    <link rel="stylesheet" href="scaling-long-context-attention.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <main class="container">
+        <header class="blog-header">
+            <a href="../index.html#blogs" class="back-link"><i class="fas fa-arrow-left"></i> Back to all posts</a>
+            <div class="eyebrow">Scaling Long-Context Attention · Part II</div>
+            <h1>From MHA to MLA: KV Caches and Attention Kernels</h1>
+            <p class="dek">Part I built FlashAttention. This article starts from the bottleneck that remains during autoregressive decode: every new token must reread a growing KV cache. We follow the concrete methods that attack it—MHA to GQA/MQA, grouped-head decode, Flash-Decoding and split-KV, Paged Attention, and finally MLA.</p>
+            <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical and systems notes</div>
+        </header>
+
+        <nav class="series-nav" aria-label="Scaling long-context attention series">
+            <a href="scaling-long-context-attention.html"><strong>I · Blocks, rings, and sparsity</strong>Exact tiled attention, distributed blocks, and sparse normalized sums</a>
+            <a href="scaling-long-context-kv-cache.html" aria-current="page"><strong>II · KV caches and kernels</strong>MHA, GQA, MQA, split-KV, paging, and MLA</a>
+            <a href="scaling-long-context-recurrent-memory.html"><strong>III · Recurrent and learned memory</strong>Linear attention, DeltaNet, TTT, and LaCT</a>
+        </nav>
+
+        <article class="blog-content">
+            <div class="toc">
+                <strong>Methods and kernels</strong>
+                <ol>
+                    <li><a href="#decode-bottleneck">KV Cache: why decode becomes bandwidth-bound</a></li>
+                    <li><a href="#grouped-heads">MHA, GQA, and MQA: sharing K/V heads</a></li>
+                    <li><a href="#decode-parallelism">Grouped-Head Decoding: reusing each K/V load</a></li>
+                    <li><a href="#split-kv">Flash-Decoding: splitting a long KV sequence</a></li>
+                    <li><a href="#paged">Paged Attention: mapping logical tokens to physical blocks</a></li>
+                    <li><a href="#mla-cache">Multi-Head Latent Attention (MLA): expanding for training and absorbing for decode</a></li>
+                    <li><a href="#compare">Cache and Compute Costs: smaller records, the same dense pair count</a></li>
+                </ol>
+            </div>
+
+            <h2 id="decode-bottleneck">1. KV Cache: why decode becomes bandwidth-bound</h2>
+
+            <p>In <a href="scaling-long-context-attention.html">Part I</a>, we introduced FlashAttention as a way to avoid materializing the full \(L\times L\) score and probability matrices. That solves a major training and prefill problem, but autoregressive decode has a different shape. After the prompt, the model generates one token at a time. At step \(t\), it forms one new query while every attention layer must reread the keys and values of the entire prefix.</p>
+
+            <p>For one layer, the decode tensors have the rough shape</p>
+
+            <div class="formula-card">
+                \[
+                Q_{\mathrm{new}}:[B,H_q,1,d_h],
+                \qquad
+                K_{\mathrm{cache}},V_{\mathrm{cache}}:[B,H_{kv},L,d_h].
+                \]
+            </div>
+
+            <p>The query side contains only one row, but the cache grows with context length \(L\). For MHA, where \(H_{kv}=H_q\), one decode step reads roughly \(2LH_qd_h\) cached elements per layer to produce one token. Across many layers and concurrently served sequences, the cache occupies substantial HBM capacity and its repeated reads consume substantial bandwidth. Meanwhile, \(S_q=1\) removes the large query-row dimension that kept the prefill kernel busy.</p>
+
+            <p>This gives us three concrete problems rather than one vague “attention bottleneck”:</p>
+
+            <ul>
+                <li><strong>Cache capacity and bandwidth:</strong> how many numbers must each past token retain and reread?</li>
+                <li><strong>KV reuse inside a decode program:</strong> when several query heads share one KV head, can one load serve all of them?</li>
+                <li><strong>Decode parallelism:</strong> how do we create enough independent GPU work when there is only one new query token?</li>
+            </ul>
+
+            <p>We will attack them in that order. GQA and MQA reduce the number of cached KV heads. Grouped-head kernels reuse one loaded KV tile across several query heads. Flash-Decoding and split-KV divide a long prefix among more programs. Paged Attention stores variable-length caches without reserving one contiguous maximum-length buffer per request. MLA then compresses each cached token into a learned latent and changes the shape of the decode kernel.</p>
+
+            <h2 id="grouped-heads">2. MHA, GQA, and MQA: sharing K/V heads</h2>
+
+            <p>GQA uses the same head-sharing rule in training, prefill, and decode, but those stages do not have the same kernel shape. We find it useful to separate them before touching any code:</p>
+
+            <table class="blog-table">
+                <thead>
+                    <tr><th>Stage</th><th>Query</th><th>Keys and values</th><th>Kernel in this article</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Training</td><td>\(Q:[B,H_q,L,D_{qk}]\)</td><td>\(K:[B,H_{kv},L,D_{qk}]\)<br>\(V:[B,H_{kv},L,D_v]\)</td><td>Full-sequence FlashAttention forward and backward</td></tr>
+                    <tr><td>Inference prefill</td><td>\(Q:[B,H_q,L_{prompt},D_{qk}]\)</td><td>\(K:[B,H_{kv},L_{prompt},D_{qk}]\)<br>\(V:[B,H_{kv},L_{prompt},D_v]\)</td><td>The same full-sequence forward kernel</td></tr>
+                    <tr><td>Inference decode</td><td>\(Q:[B,H_q,1,D_{qk}]\)</td><td>\(K:[B,H_{kv},L_{cache},D_{qk}]\)<br>\(V:[B,H_{kv},L_{cache},D_v]\)</td><td>The grouped-head kernel in Section 3</td></tr>
+                </tbody>
+            </table>
+
+            <p>This section handles the first two rows. We start from the MHA FlashAttention kernel in Part I and change it into a full-sequence GQA/MQA kernel. Section 3 will keep the same attention formula but reorganize the programs for \(S_q=1\).</p>
+
+            <h3>Head sharing changes which K/V head each query head reads</h3>
+
+            <p>The model uses the same head mapping in every stage. Its memory consequence is easiest to see during decode: at step \(t\), we append the new key and value to the cache, and every later step will reread those records. GQA and MQA reduce how many complete KV heads we retain for each token.</p>
+
+            <p>Let \(H_q\) be the number of query heads, \(H_{kv}\) the number of KV heads, and</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{G=\frac{H_q}{H_{kv}}},
+                \qquad
+                \boxed{h_{kv}(h_q)=\left\lfloor\frac{h_q}{G}\right\rfloor}.
+                \]
+                <span class="equation-label">(1)</span>
+            </div>
+
+            <p>MHA is the endpoint \(G=1\): every query head has its own K/V head. MQA is the other endpoint \(H_{kv}=1\): every query head shares the same K/V. GQA fills the interval. For example, \(H_q=8,H_{kv}=2\) gives \(G=4\): query heads \(0,1,2,3\) read KV head 0, while query heads \(4,5,6,7\) read KV head 1.</p>
+
+            <p>With head width \(d_h\) and context length \(L\), the cached element count falls from</p>
+
+            <div class="formula-card">
+                \[
+                N_{\mathrm{MHA}}=2LH_qd_h
+                \qquad\text{to}\qquad
+                \boxed{N_{\mathrm{GQA}}=2LH_{kv}d_h}.
+                \]
+                <span class="equation-label">(2)</span>
+            </div>
+
+            <p>Every query head still scores all \(L\) allowed positions. We have compressed the head axis of the cache, not sparsified the time axis.</p>
+
+            <p>The head mapping appears directly in the attention equations:</p>
+
+            <div class="formula-card">
+                \[
+                S_{b,h_q}=\alpha Q_{b,h_q}K_{b,h_{kv}(h_q)}^\top,
+                \qquad
+                O_{b,h_q}=\operatorname{softmax}(S_{b,h_q})V_{b,h_{kv}(h_q)}.
+                \]
+            </div>
+
+            <p>For \(H_q=8,H_{kv}=2\), query heads 0 through 3 therefore read the same K/V head 0, but they still produce four different score matrices because their Q heads differ.</p>
+
+            <h3>Start with the Part I MHA kernel and patch the head index</h3>
+
+            <p>Part I assigned one program to one query tile from one query head. The full-sequence GQA kernel keeps that ownership and writes its grid in tensor-axis order as <code>(batch, query_head, query_block)</code>. One program still streams all KV tiles for its query tile. The important change is visible near the top of the complete kernel:</p>
+
+            <div class="formula-card">
+                \[
+                \texttt{query\_head}=h_q,
+                \qquad
+                \texttt{kv\_head}=\left\lfloor\frac{h_q}{G}\right\rfloor.
+                \]
+            </div>
+
+            <p>Q and O are addressed with <code>query_head</code>; K and V are addressed with <code>kv_head</code>. The score calculation and online-softmax recurrence are the same ones we already built in Part I. We keep the entire kernel below so that the changed pointers can be read in context.</p>
+
+            <details class="code-fold" open>
+                <summary>Complete Triton kernel: full-sequence MHA/GQA/MQA forward</summary>
+<pre><code>@triton.jit
+def _flash_gqa_fwd_kernel(
+    Q, K, V, O, LSE,
+    stride_qb, stride_qh, stride_qm, stride_qd,
+    stride_kb, stride_kh, stride_kn, stride_kd,
+    stride_vb, stride_vh, stride_vn, stride_vd,
+    stride_ob, stride_oh, stride_om, stride_od,
+    stride_lb, stride_lh, stride_lm,
+    M: tl.constexpr,
+    N: tl.constexpr,
+    D_QK: tl.constexpr,
+    D_V: tl.constexpr,
+    GROUP_SIZE: tl.constexpr,
+    SCALE: tl.constexpr,
+    CAUSAL: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_DQK: tl.constexpr,
+    BLOCK_DV: tl.constexpr,
+):
+    batch = tl.program_id(0)
+    query_head = tl.program_id(1)
+    query_block = tl.program_id(2)
+
+    # GQA patch: Q/O keep query_head; K/V use the shared kv_head.
+    kv_head = query_head // GROUP_SIZE
+
+    offs_m = query_block * BLOCK_M + tl.arange(0, BLOCK_M)
+    offs_n_base = tl.arange(0, BLOCK_N)
+    offs_qk = tl.arange(0, BLOCK_DQK)
+    offs_v = tl.arange(0, BLOCK_DV)
+    mask_m = offs_m &lt; M
+    mask_qk = offs_qk &lt; D_QK
+    mask_v = offs_v &lt; D_V
+
+    q_ptrs = (
+        Q
+        + batch * stride_qb
+        + query_head * stride_qh
+        + offs_m[:, None] * stride_qm
+        + offs_qk[None, :] * stride_qd
+    )
+    q = tl.load(q_ptrs, mask=mask_m[:, None] &amp; mask_qk[None, :], other=0.0)
+
+    # The online-softmax state is unchanged from Part I.
+    m_i = tl.full([BLOCK_M], -float("inf"), tl.float32)
+    l_i = tl.zeros([BLOCK_M], tl.float32)
+    acc = tl.zeros([BLOCK_M, BLOCK_DV], tl.float32)
+
+    for start_n in range(0, N, BLOCK_N):
+        offs_n = start_n + offs_n_base
+        mask_n = offs_n &lt; N
+
+        # K and V use kv_head rather than query_head.
+        k_ptrs = (
+            K
+            + batch * stride_kb
+            + kv_head * stride_kh
+            + offs_n[None, :] * stride_kn
+            + offs_qk[:, None] * stride_kd
+        )
+        v_ptrs = (
+            V
+            + batch * stride_vb
+            + kv_head * stride_vh
+            + offs_n[:, None] * stride_vn
+            + offs_v[None, :] * stride_vd
+        )
+        k = tl.load(
+            k_ptrs,
+            mask=mask_qk[:, None] &amp; mask_n[None, :],
+            other=0.0,
+        )
+        v = tl.load(
+            v_ptrs,
+            mask=mask_n[:, None] &amp; mask_v[None, :],
+            other=0.0,
+        )
+
+        scores = tl.dot(q, k) * SCALE
+        scores = tl.where(mask_n[None, :], scores, -float("inf"))
+        if CAUSAL:
+            # Bottom-right alignment also covers a cached prefix when N &gt; M.
+            q_position = N - M + offs_m
+            scores = tl.where(
+                q_position[:, None] &gt;= offs_n[None, :],
+                scores,
+                -float("inf"),
+            )
+
+        m_new = tl.maximum(m_i, tl.max(scores, axis=1))
+        alpha = tl.exp(m_i - m_new)
+        p = tl.exp(scores - m_new[:, None])
+        acc = acc * alpha[:, None] + tl.dot(p.to(V.dtype.element_ty), v)
+        l_i = l_i * alpha + tl.sum(p, axis=1)
+        m_i = m_new
+
+    out = acc / l_i[:, None]
+    lse = m_i + tl.log(l_i)
+    o_ptrs = (
+        O
+        + batch * stride_ob
+        + query_head * stride_oh
+        + offs_m[:, None] * stride_om
+        + offs_v[None, :] * stride_od
+    )
+    l_ptrs = (
+        LSE
+        + batch * stride_lb
+        + query_head * stride_lh
+        + offs_m * stride_lm
+    )
+    tl.store(o_ptrs, out, mask=mask_m[:, None] &amp; mask_v[None, :])
+    tl.store(l_ptrs, lse, mask=mask_m)
+</code></pre>
+            </details>
+
+            <p>The launch grid is <code>(B, H_q, ceil(M / BLOCK_M))</code>, so <code>program_id(1)</code> is still one query head rather than a group of heads:</p>
+
+            <details class="code-fold">
+                <summary>Triton launcher: the same kernel instantiates MHA, GQA, or MQA</summary>
+<pre><code>group_size = hq // hkv
+grid = (b, hq, triton.cdiv(m, block_m))
+
+_flash_gqa_fwd_kernel[grid](
+    q, k, v, out, lse,
+    *q.stride(), *k.stride(), *v.stride(),
+    *out.stride(), *lse.stride(),
+    M=m, N=n, D_QK=dqk, D_V=dv,
+    GROUP_SIZE=group_size,
+    SCALE=scale, CAUSAL=causal,
+    BLOCK_M=block_m, BLOCK_N=block_n,
+    BLOCK_DQK=triton.next_power_of_2(dqk),
+    BLOCK_DV=triton.next_power_of_2(dv),
+    num_warps=4, num_stages=2,
+)
+</code></pre>
+            </details>
+
+            <h3>Training backward adds a reduction across shared query heads</h3>
+
+            <p>Part I already covered why \(dQ\) and \(dK,dV\) prefer opposing tile ownership. Head sharing adds one more fact: all \(G\) query heads mapped to a KV head contribute to the same \(dK\) and \(dV\). A simple implementation first computes per-query-head partials and then performs</p>
+
+            <div class="formula-card">
+                \[
+                dK_{h_{kv}}=\sum_{h_q\in\mathcal G(h_{kv})}dK_{h_q}^{\mathrm{partial}},
+                \qquad
+                dV_{h_{kv}}=\sum_{h_q\in\mathcal G(h_{kv})}dV_{h_q}^{\mathrm{partial}}.
+                \]
+                <span class="equation-label">(3)</span>
+            </div>
+
+            <details class="code-fold">
+                <summary>Complete helper: reduce Part I's per-query-head dK/dV partials</summary>
+<pre><code>def reduce_grouped_kv_grads(partial_dk, partial_dv, hkv):
+    b, hq = partial_dk.shape[:2]
+    if hq % hkv:
+        raise ValueError("H_q must be divisible by H_kv")
+
+    group = hq // hkv
+    dk = partial_dk.reshape(
+        b, hkv, group, *partial_dk.shape[2:]
+    ).sum(dim=2)
+    dv = partial_dv.reshape(
+        b, hkv, group, *partial_dv.shape[2:]
+    ).sum(dim=2)
+    return dk, dv
+</code></pre>
+            </details>
+
+            <p>This reduction belongs to training. Prefill and decode only run the forward path. It is the only new backward idea we need here; probability reconstruction and the softmax derivative are unchanged from Part I.</p>
+
+            <p>Putting the forward and backward discussion together, the <a href="code/kv_cache_attention.py">runnable implementation</a> accepts \(Q[B,H_q,M,D_{qk}]\), \(K[B,H_{kv},N,D_{qk}]\), and \(V[B,H_{kv},N,D_v]\). Setting \(H_{kv}=H_q\), an intermediate divisor, or 1 instantiates MHA, GQA, or MQA. The separate \(D_{qk}\) and \(D_v\) parameters merely avoid assuming that the score width and value width are equal; they are not part of the GQA patch.</p>
+
+            <h2 id="decode-parallelism">3. Grouped-Head Decoding: reusing each K/V load</h2>
+
+            <p>The Section 2 kernel is the right shape for training and prefill because it has many query rows to tile. It is mathematically correct when \(M=1\), but then its grid becomes <code>(B, H_q, 1)</code>: every program owns one query head and independently streams the whole KV cache.</p>
+
+            <p>Consider the same \(H_q=8,H_{kv}=2,G=4\) example. Running the full-sequence kernel with one query token gives this schedule:</p>
+
+<pre><code>program q0  ─┐
+program q1  ├─ each loads every tile of KV head 0
+program q2  │
+program q3  ─┘
+program q4  ─┐
+program q5  ├─ each loads every tile of KV head 1
+program q6  │
+program q7  ─┘
+</code></pre>
+
+            <p>The cache is four times smaller than MHA, but each shared KV tile is still loaded four times. During one-token decode, we can instead make one program own a tile of query heads inside one KV group:</p>
+
+<pre><code>program 0: [q0, q1, q2, q3] × KV head 0
+program 1: [q4, q5, q6, q7] × KV head 1
+</code></pre>
+
+            <p>The query-head tile becomes the M dimension of one matrix multiplication:</p>
+
+            <div class="formula-card">
+                \[
+                \underbrace{Q_{\mathcal G}}_{B_H\times D_{qk}}
+                \underbrace{K_{h_{kv},J}^{\top}}_{D_{qk}\times B_N}
+                \longrightarrow
+                \underbrace{S_{\mathcal G,J}}_{B_H\times B_N}.
+                \]
+                <span class="equation-label">(4)</span>
+            </div>
+
+            <p><code>BLOCK_H</code> is the number of query-head rows that one program can process together. In our \(G=4\) example, each program has four valid rows and reuses every K/V tile across those four query heads. With MHA, each KV group contains only one query head, so only one row is valid. If a group is smaller than <code>BLOCK_H</code>, the remaining rows are simply masked out.</p>
+
+            <details class="code-fold" open>
+                <summary>Complete Triton kernel: grouped-head one-token decode</summary>
+<pre><code>@triton.jit
+def _grouped_decode_kernel(
+    Q, K, V, SEQ_LENS, O, LSE,
+    stride_qb, stride_qh, stride_qd,
+    stride_kb, stride_kh, stride_kn, stride_kd,
+    stride_vb, stride_vh, stride_vn, stride_vd,
+    stride_ob, stride_oh, stride_od,
+    stride_lb, stride_lh,
+    N: tl.constexpr,
+    H_Q: tl.constexpr,
+    H_KV: tl.constexpr,
+    GROUP_SIZE: tl.constexpr,
+    D_QK: tl.constexpr,
+    D_V: tl.constexpr,
+    SCALE: tl.constexpr,
+    BLOCK_H: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_DQK: tl.constexpr,
+    BLOCK_DV: tl.constexpr,
+):
+    batch = tl.program_id(0)
+    head_tile = tl.program_id(1)
+
+    # One program owns a query-head tile inside exactly one KV group.
+    tiles_per_kv = tl.cdiv(GROUP_SIZE, BLOCK_H)
+    kv_head = head_tile // tiles_per_kv
+    tile_in_group = head_tile - kv_head * tiles_per_kv
+    query_heads = (
+        kv_head * GROUP_SIZE
+        + tile_in_group * BLOCK_H
+        + tl.arange(0, BLOCK_H)
+    )
+    mask_h = (
+        (query_heads &lt; (kv_head + 1) * GROUP_SIZE)
+        &amp; (query_heads &lt; H_Q)
+        &amp; (kv_head &lt; H_KV)
+    )
+
+    offs_qk = tl.arange(0, BLOCK_DQK)
+    offs_v = tl.arange(0, BLOCK_DV)
+    mask_qk = offs_qk &lt; D_QK
+    mask_v = offs_v &lt; D_V
+
+    q_ptrs = (
+        Q
+        + batch * stride_qb
+        + query_heads[:, None] * stride_qh
+        + offs_qk[None, :] * stride_qd
+    )
+    q = tl.load(
+        q_ptrs,
+        mask=mask_h[:, None] &amp; mask_qk[None, :],
+        other=0.0,
+    )
+
+    valid_n = tl.load(SEQ_LENS + batch)
+    m_i = tl.where(
+        mask_h,
+        tl.full([BLOCK_H], -float("inf"), tl.float32),
+        0.0,
+    )
+    l_i = tl.zeros([BLOCK_H], tl.float32)
+    acc = tl.zeros([BLOCK_H, BLOCK_DV], tl.float32)
+    offs_n_base = tl.arange(0, BLOCK_N)
+
+    # K and V have no query-head axis inside this loop. Each tile is loaded once.
+    for start_n in range(0, N, BLOCK_N):
+        offs_n = start_n + offs_n_base
+        mask_n = offs_n &lt; valid_n
+        k_ptrs = (
+            K
+            + batch * stride_kb
+            + kv_head * stride_kh
+            + offs_n[None, :] * stride_kn
+            + offs_qk[:, None] * stride_kd
+        )
+        v_ptrs = (
+            V
+            + batch * stride_vb
+            + kv_head * stride_vh
+            + offs_n[:, None] * stride_vn
+            + offs_v[None, :] * stride_vd
+        )
+        k = tl.load(
+            k_ptrs,
+            mask=mask_qk[:, None] &amp; mask_n[None, :],
+            other=0.0,
+        )
+        v = tl.load(
+            v_ptrs,
+            mask=mask_n[:, None] &amp; mask_v[None, :],
+            other=0.0,
+        )
+
+        scores = tl.dot(q, k) * SCALE
+        scores = tl.where(
+            mask_h[:, None] &amp; mask_n[None, :],
+            scores,
+            -float("inf"),
+        )
+
+        m_new = tl.maximum(m_i, tl.max(scores, axis=1))
+        alpha = tl.exp(m_i - m_new)
+        p = tl.exp(scores - m_new[:, None])
+        acc = acc * alpha[:, None] + tl.dot(p.to(V.dtype.element_ty), v)
+        l_i = l_i * alpha + tl.sum(p, axis=1)
+        m_i = m_new
+
+    out = acc / l_i[:, None]
+    lse = m_i + tl.log(l_i)
+    o_ptrs = (
+        O
+        + batch * stride_ob
+        + query_heads[:, None] * stride_oh
+        + offs_v[None, :] * stride_od
+    )
+    l_ptrs = LSE + batch * stride_lb + query_heads * stride_lh
+    tl.store(o_ptrs, out, mask=mask_h[:, None] &amp; mask_v[None, :])
+    tl.store(l_ptrs, lse, mask=mask_h)
+</code></pre>
+            </details>
+
+            <p>The corresponding grid is</p>
+
+            <div class="formula-card">
+                \[
+                \bigl(B,\ H_{kv}\lceil G/B_H\rceil\bigr).
+                \]
+            </div>
+
+            <p>This kernel is decode-specific: Q has shape \([B,H_q,D_{qk}]\), with no query-sequence axis. It does not replace the Section 2 kernel for training or prefill. We group query heads so that one program can load each shared K/V tile once and reuse it across several query heads. This reduces redundant K/V reads, but it also reduces the amount of independent parallel work: in the eight-head example, eight head programs become two heavier programs. Fewer programs do not guarantee a faster kernel; the saved memory traffic may help a bandwidth-bound decode, while the lost parallelism may leave part of the GPU idle. The next section introduces split-KV to recover parallelism from the long KV sequence without giving up reuse within each query-head tile.</p>
+
+            <h2 id="split-kv">4. Flash-Decoding: splitting a long KV sequence</h2>
+
+            <p>Head packing still may not create enough programs when the batch is small and \(H_{kv}\) is tiny. A long context contains another parallel axis, so <a href="https://crfm.stanford.edu/2023/10/12/flashdecoding.html" target="_blank" rel="noopener">Flash-Decoding</a> divides the KV sequence into \(S\) intervals. Stage 1 launches one program for each</p>
+
+            <div class="formula-card">
+                \[
+                (\text{batch},\ \text{query-head tile},\ \text{KV split}).
+                \]
+            </div>
+
+            <p>Each program runs an ordinary online-softmax loop over only its interval and writes a normalized partial output \(O_s\) and \(L_s=\operatorname{LSE}_s\). To see how we can combine them, consider one query head and let \(\mathcal A_s\) be the keys assigned to split \(s\). Its local softmax denominator and output are</p>
+
+            <div class="formula-card">
+                \[
+                Z_s=\sum_{j\in\mathcal A_s}e^{S_j}=e^{L_s},
+                \qquad
+                O_s=\frac{1}{Z_s}\sum_{j\in\mathcal A_s}e^{S_j}V_j.
+                \]
+            </div>
+
+            <p>The full denominator is just the sum of the disjoint local denominators:</p>
+
+            <div class="formula-card">
+                \[
+                Z=\sum_{s=1}^{S}Z_s=\sum_{s=1}^{S}e^{L_s},
+                \qquad
+                L=\log Z.
+                \]
+            </div>
+
+            <p>The full output can therefore be regrouped by split:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                O
+                &=\frac{1}{Z}\sum_{s=1}^{S}\sum_{j\in\mathcal A_s}e^{S_j}V_j\\
+                &=\sum_{s=1}^{S}\frac{Z_s}{Z}
+                  \left(\frac{1}{Z_s}\sum_{j\in\mathcal A_s}e^{S_j}V_j\right)\\
+                &=\boxed{\sum_{s=1}^{S}e^{L_s-L}O_s}.
+                \end{aligned}
+                \]
+                <span class="equation-label">(5)</span>
+            </div>
+
+            <p>The coefficient \(e^{L_s-L}=Z_s/Z\) is the fraction of the full softmax denominator contributed by split \(s\). In other words, the final result is a weighted average of the locally normalized outputs, where a split with more total softmax mass receives more weight.</p>
+
+            <details class="code-fold" open>
+                <summary>Complete Triton kernel: combine partial LSEs and outputs</summary>
+<pre><code>@triton.jit
+def _combine_splits_kernel(
+    PARTIAL_O, PARTIAL_LSE, O, LSE,
+    stride_pob, stride_poh, stride_pos, stride_pod,
+    stride_plb, stride_plh, stride_pls,
+    stride_ob, stride_oh, stride_od,
+    stride_lb, stride_lh,
+    D_V: tl.constexpr,
+    NUM_SPLITS: tl.constexpr,
+    BLOCK_DV: tl.constexpr,
+):
+    batch = tl.program_id(0)
+    head = tl.program_id(1)
+    offs_dv = tl.arange(0, BLOCK_DV)
+    mask_dv = offs_dv &lt; D_V
+
+    max_lse = -float("inf")
+    for split in range(0, NUM_SPLITS):
+        part_lse = tl.load(
+            PARTIAL_LSE
+            + batch * stride_plb
+            + head * stride_plh
+            + split * stride_pls
+        )
+        max_lse = tl.maximum(max_lse, part_lse)
+
+    denom = 0.0
+    acc = tl.zeros([BLOCK_DV], tl.float32)
+    for split in range(0, NUM_SPLITS):
+        part_lse = tl.load(
+            PARTIAL_LSE
+            + batch * stride_plb
+            + head * stride_plh
+            + split * stride_pls
+        )
+        weight = tl.exp(part_lse - max_lse)
+        part_o = tl.load(
+            PARTIAL_O
+            + batch * stride_pob
+            + head * stride_poh
+            + split * stride_pos
+            + offs_dv * stride_pod,
+            mask=mask_dv,
+            other=0.0,
+        )
+        denom += weight
+        acc += weight * part_o
+
+    out = acc / denom
+    final_lse = max_lse + tl.log(denom)
+    tl.store(
+        O + batch * stride_ob + head * stride_oh + offs_dv * stride_od,
+        out,
+        mask=mask_dv,
+    )
+    tl.store(LSE + batch * stride_lb + head * stride_lh, final_lse)
+</code></pre>
+            </details>
+
+            <p>Split-KV trades an intermediate buffer and a small combine kernel for more parallel work. It is not always beneficial: if \(B\times H_{kv}\times\lceil G/B_H\rceil\) already launches enough blocks, splitting can add overhead. Our teaching wrapper therefore exposes <code>num_splits</code> explicitly. A production runtime instead chooses it from batch size, head tiles, context length, and the number of SMs.</p>
+
+            <h2 id="paged">5. Paged Attention: mapping logical tokens to physical blocks</h2>
+
+            <p>A contiguous cache lets logical token \(j\) load \(K[j]\) and \(V[j]\) directly. Serving systems cannot reserve every request’s maximum context as one dense interval without severe fragmentation. <a href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener">Paged Attention</a> divides each request into logical pages and maps those pages to a shared physical pool.</p>
+
+            <p>For page size \(P\), a logical token index becomes</p>
+
+            <div class="formula-card">
+                \[
+                b_{\mathrm{logical}}=\left\lfloor\frac{j}{P}\right\rfloor,
+                \qquad
+                r=j\bmod P,
+                \qquad
+                b_{\mathrm{physical}}=\operatorname{block\_table}[i,b_{\mathrm{logical}}].
+                \]
+                <span class="equation-label">(6)</span>
+            </div>
+
+            <details class="code-fold" open>
+                <summary>Actual Triton: translate logical KV positions before loading</summary>
+<pre><code>logical_n = start_n + tl.arange(0, BLOCK_N)
+logical_page = logical_n // PAGE_SIZE
+page_offset = logical_n - logical_page * PAGE_SIZE
+
+physical_page = tl.load(
+    BLOCK_TABLE + batch * stride_btb + logical_page * stride_btn,
+    mask=logical_n &lt; split_end,
+    other=0,
+)
+
+k = tl.load(
+    K
+    + physical_page[None, :] * stride_kp
+    + page_offset[None, :] * stride_kt
+    + kv_head * stride_kh
+    + offs_dc[:, None] * stride_kd,
+    mask=mask_dc[:, None] &amp; mask_n[None, :],
+    other=0.0,
+)
+</code></pre>
+            </details>
+
+            <p>After that load, score computation, online softmax, split ownership, and combine are byte-for-byte the same ideas. This is why we introduce paging after the contiguous split-KV kernel: we can see precisely which layer changed.</p>
+
+            <h2 id="mla-cache">6. Multi-Head Latent Attention (MLA): expanding for training and absorbing for decode</h2>
+
+            <p>MHA, GQA, and MQA cache already projected keys and values. MLA starts one step earlier: it maps each hidden state \(h_j\in\mathbb R^d\) to one shared latent vector</p>
+
+            <div class="formula-card">
+                \[
+                \boxed{c_j^{KV}=W^{DKV}h_j\in\mathbb R^{d_c}}.
+                \]
+                <span class="equation-label">(7)</span>
+            </div>
+
+            <p>The word “latent” can make this vector sound tiny. In a representative DeepSeek-style configuration, \(d_c=512\). The important fact is not that 512 is small in isolation; it is that \(c_j^{KV}\) has no head axis. One latent is shared by every attention head, whereas ordinary MHA retains a separate key and value for every head.</p>
+
+            <h3>Training and prefill expand the latent into multi-head K/V</h3>
+
+            <p>For training—and usually for a long-prompt prefill—we first up-project the shared latent into a content key and a value for every head. To keep the cache argument focused, we use the simplified query projection \(q_{t,r}^C=W_r^Qh_t\). Official MLA implementations may split the query path into down- and up-projections, but that detail does not change the K/V-cache transformation we want to understand here. Letting \(r\) index the query head, we have</p>
+
+            <div class="formula-card">
+                \[
+                q_{t,r}^{C}=W_r^Qh_t,
+                \qquad
+                k_{j,r}^{C}=W_r^{UK}c_j^{KV},
+                \qquad
+                v_{j,r}=W_r^{UV}c_j^{KV}.
+                \]
+                <span class="equation-label">(8)</span>
+            </div>
+
+            <p>The rotary path is asymmetric. In the same simplified query notation, each query head has its own projection \(W_r^{QR}\), while the key side uses one shared projection \(W^{KR}\):</p>
+
+            <div class="formula-card">
+                \[
+                q_{t,r}^R=\operatorname{RoPE}_t\!\left(W_r^{QR}h_t\right)
+                \in\mathbb R^{d_R},
+                \qquad
+                W_r^{QR}\in\mathbb R^{d_R\times d},
+                \]
+                \[
+                \boxed{k_j^R=\operatorname{RoPE}_j\!\left(W^{KR}h_j\right)}
+                \in\mathbb R^{d_R},
+                \qquad
+                W^{KR}\in\mathbb R^{d_R\times d}.
+                \]
+                \[
+                q_{t,r}=[q_{t,r}^C;q_{t,r}^R],
+                \qquad
+                k_{j,r}=[k_{j,r}^C;k_j^R].
+                \]
+            </div>
+
+            <p>The contrast is visible in the weights themselves: \(W_r^{QR}\) carries the head index \(r\), whereas neither \(W^{KR}\) nor \(k_j^R\) does. Every attention head therefore has its own rotary query but uses the same rotary key for token \(j\). After we append that shared feature to each expanded content key, the attention operator sees ordinary multi-head tensors. A representative call has \(Q,K:[B,S,H_q,192]\) and \(V:[B,S,H_q,128]\), so we can use an MHA-shaped FlashAttention kernel. Training has no persistent KV cache. During prefill, we may materialize these expanded K/V tensors for the attention calculation, but we retain only one \(c_j^{KV}\) and one \(k_j^R\) per token for later decode steps.</p>
+
+            <h3>Decode would waste work by expanding the entire history</h3>
+
+            <p>At decode time there is only one new query but a long history of cached latents. Reconstructing \(k_{j,r}^{C}\) and \(v_{j,r}\) for every past token and every head would repeat both up-projections at every generation step. Matrix associativity lets us move those two projections to the much smaller query and output sides instead. This transformation is what “weight absorption” means.</p>
+
+            <h3>The key up-projection is absorbed into the query matrix</h3>
+
+            <p>For the content score, substitute the two projections before changing the order of multiplication:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                (q_{t,r}^{C})^\top k_{j,r}^{C}
+                &=(W_r^Qh_t)^\top(W_r^{UK}c_j^{KV})\\
+                &=\left(\underbrace{(W_r^{UK})^\top W_r^Q}_{W_r^{Q,\mathrm{abs}}}h_t\right)^\top c_j^{KV}.
+                \end{aligned}
+                \]
+                <span class="equation-label">(9)</span>
+            </div>
+
+            <p>We can precompute the combined matrix \(W_r^{Q,\mathrm{abs}}=(W_r^{UK})^\top W_r^Q\) once with the model weights. Decode then produces one absorbed query \(\widehat q_{t,r}^{C}=W_r^{Q,\mathrm{abs}}h_t\) for each head and compares it directly with the shared latent sequence. The query side is still multi-head; only the key side has become one shared head.</p>
+
+            <h3>The value up-projection is absorbed into the output matrix</h3>
+
+            <p>The other absorption becomes clear only after we include the normal attention output projection. Partition \(W^O\) into one block \(W_r^O\) per head, and define the latent result returned by attention as \(\bar c_{t,r}=\sum_j a_{tjr}c_j^{KV}\). The original path is</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                u_t
+                &=\sum_r W_r^O\left(\sum_j a_{tjr}W_r^{UV}c_j^{KV}\right)\\
+                &=\sum_r\underbrace{W_r^OW_r^{UV}}_{W_r^{O,\mathrm{abs}}}
+                  \underbrace{\left(\sum_j a_{tjr}c_j^{KV}\right)}_{\bar c_{t,r}}\\
+                &=\sum_r W_r^{O,\mathrm{abs}}\bar c_{t,r}.
+                \end{aligned}
+                \]
+                <span class="equation-label">(10)</span>
+            </div>
+
+            <p>We can therefore precompute \(W_r^{O,\mathrm{abs}}=W_r^OW_r^{UV}\). The attention kernel returns a weighted sum of the shared latent for each query head, and the absorbed output matrix maps those latent results back to the model width. No historical value needs to be expanded per head.</p>
+
+            <h3>RoPE remains outside the absorbed matrices</h3>
+
+            <p>The two absorptions above work because their matrices are independent of token position. RoPE applies a different rotation at each position, so it cannot be folded into one fixed matrix for every query-key pair. MLA keeps a separate rotary query \(q_{t,r}^R\) for every query head and caches one shared rotary key \(k_j^R\). The decode score is</p>
+
+            <div class="formula-card">
+                \[
+                S_{tjr}=\alpha\left[
+                (\widehat q_{t,r}^{C})^\top c_j^{KV}
+                +(q_{t,r}^{R})^\top k_j^R
+                \right].
+                \]
+                <span class="equation-label">(11)</span>
+            </div>
+
+            <figure class="plot-figure latex-figure figure-wide">
+                <a href="figures/attention-mla-dual-path.png" aria-label="Open the full-resolution MLA training and absorbed decode graph">
+                    <img src="figures/attention-mla-dual-path.png" alt="A tensor graph showing MLA expanding a headless latent into multi-head keys and values for training, then combining the query and key matrices and the value and output matrices for MQA-shaped decode." width="2200" height="1127" loading="lazy" decoding="async">
+                </a>
+                <figcaption>The weights do not change between the two paths. Training and prefill expand the headless latent into per-head K/V tensors. Decode precombines \((W_r^{UK})^\top W_r^Q\) on the query side and \(W_r^OW_r^{UV}\) on the output side, leaving one shared latent K/V stream inside attention.</figcaption>
+            </figure>
+
+            <h3 id="mla-kernel">The absorbed path becomes an asymmetric MQA kernel</h3>
+
+            <p>After absorption, the attention-kernel boundary is now concrete:</p>
+
+            <div class="formula-card">
+                \[
+                \widehat Q^C:[B,H_q,D_c],
+                \quad Q^R:[B,H_q,D_R],
+                \]
+                \[
+                K^C=V^C=c^{KV}:[B,1,S,D_c],
+                \quad K^R:[B,1,S,D_R].
+                \]
+                <span class="equation-label">(12)</span>
+            </div>
+
+            <p>This is MQA-shaped: all query heads stream the same latent K/V record, while each head retains its own absorbed query and therefore its own attention distribution. It is slightly asymmetric because the score contracts both the content and rotary blocks, whereas the output is a weighted sum of only the latent content block.</p>
+
+            <p>In a representative DeepSeek-style configuration, the kernel widths are</p>
+
+            <div class="formula-card">
+                \[
+                D_c=512,
+                \qquad
+                D_R=64,
+                \qquad
+                \boxed{D_{qk}=D_c+D_R=576},
+                \qquad
+                \boxed{D_v=D_c=512}.
+                \]
+                <span class="equation-label">(13)</span>
+            </div>
+
+            <p>Padding a concatenated 576-vector to the next power of two would create a 1024-wide dot product. We instead keep the latent and RoPE blocks separate, add their two score contributions, and size the output accumulator from \(D_v\):</p>
+
+            <details class="code-fold" open>
+                <summary>Actual Triton: independent content, RoPE, and value widths</summary>
+<pre><code>offs_dc = tl.arange(0, BLOCK_DC)      # 512 useful lanes for MLA
+offs_dpe = tl.arange(0, BLOCK_DPE)   # 64 useful lanes
+offs_dv = tl.arange(0, BLOCK_DV)     # 512 output lanes
+
+q = tl.load(q_ptrs,
+            mask=mask_h[:, None] &amp; mask_dc[None, :], other=0.0)
+q_pe = tl.load(qpe_ptrs,
+               mask=mask_h[:, None] &amp; mask_dpe[None, :], other=0.0)
+k = tl.load(k_ptrs,
+            mask=mask_dc[:, None] &amp; mask_n[None, :], other=0.0)
+k_pe = tl.load(kpe_ptrs,
+               mask=mask_dpe[:, None] &amp; mask_n[None, :], other=0.0)
+v = tl.load(v_ptrs,
+            mask=mask_n[:, None] &amp; mask_dv[None, :], other=0.0)
+
+scores = tl.dot(q, k) * SCALE
+if D_PE &gt; 0:
+    scores = scores + tl.dot(q_pe, k_pe) * SCALE
+acc = acc * alpha[:, None] + tl.dot(p.to(V.dtype.element_ty), v)
+</code></pre>
+            </details>
+
+            <p>The same generalized decode kernel supports two input layouts. For ordinary MHA/GQA/MQA, RoPE has already been applied while Q and K are prepared, so the kernel receives one complete Q vector and one complete K vector and computes a single dot product. For absorbed MLA, content and rotary features remain separate: the kernel computes \((\widehat q_r^C)^\top c_j^{KV}\) and \((q_r^R)^\top k_j^R\), adds the two score contributions, and uses the same \(c_j^{KV}\) as the shared value.</p>
+
+            <div class="plain-summary">
+                <strong>The scale belongs to the model, not the absorbed vector width</strong>
+                <p>Projection absorption changes the coordinates used by the dot product, not the attention function. We pass the model’s original softmax scale explicitly. We must not silently replace it with \(1/\sqrt{576}\) merely because the absorbed kernel consumes 576 score features; a representative DeepSeek MLA configuration retains the scale associated with its original 192-wide query/key head.</p>
+            </div>
+
+            <p>The companion code checks the attention-side algebra by comparing materialized per-head K/V with the absorbed latent path. It then runs the same grouped split-KV kernel at the real 512+64/512 feature widths. The kernel returns \(\bar c_{t,r}\); the absorbed output projection remains an ordinary matrix multiplication outside attention.</p>
+
+            <p><a href="code/kv_cache_attention.py"><i class="fas fa-code"></i> Open the complete runnable Triton implementation</a></p>
+
+            <h2 id="compare">7. Cache and Compute Costs: smaller records, the same dense pair count</h2>
+
+            <p>We can connect the methods in this article by following one cached position \(j\) through a decode program:</p>
+
+            <div class="formula-card">
+                \[
+                \underbrace{(\text{query-head tile},\ \text{KV interval})}_{\text{program ownership}}
+                \longrightarrow
+                \underbrace{j}_{\text{logical token}}
+                \longrightarrow
+                \underbrace{\operatorname{address}(j)}_{\text{contiguous or paged}}
+                \longrightarrow
+                \underbrace{\operatorname{record}_j}_{\text{K/V or MLA latent}}
+                \longrightarrow
+                \underbrace{(S_j,V_j)}_{\text{score and value}}
+                \longrightarrow
+                \underbrace{(m,\ell,A)}_{\text{online-softmax state}}.
+                \]
+            </div>
+
+            <p>Grouped-head decoding chooses the query-head tile, and Flash-Decoding chooses the KV interval. A contiguous or paged cache resolves the address of token \(j\). MHA, GQA, MQA, and MLA determine the record loaded from that address. The program then folds the resulting score and value contribution into the same online-softmax state.</p>
+
+            <h3>Reducing cache width does not reduce the number of query-token pairs</h3>
+
+            <div class="table-wrap">
+                <table class="symbol-table">
+                    <thead><tr><th>Mode</th><th>Cached elements</th><th>Dense decode pairs</th><th>Kernel view</th></tr></thead>
+                    <tbody>
+                        <tr><td>MHA</td><td>\(2LH_qd_h\)</td><td>\(LH_q\)</td><td>One valid query row per KV head tile</td></tr>
+                        <tr><td>GQA</td><td>\(2LH_{kv}d_h\)</td><td>\(LH_q\)</td><td>\(G\) query rows may reuse one KV tile</td></tr>
+                        <tr><td>MQA</td><td>\(2Ld_h\)</td><td>\(LH_q\)</td><td>All query heads share one KV stream</td></tr>
+                        <tr><td>MLA decode</td><td>\(L(d_c+d_R)\)</td><td>\(LH_q\)</td><td>MQA-shaped latent/rotary scores, latent values</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>A concrete comparison: Llama 3.1 405B and DeepSeek-V3</h3>
+
+            <p>We can put the four cache formats on the same accounting axis by using published dimensions from Llama 3.1 405B and DeepSeek-V3. Llama 3.1 405B has model width 16,384, 128 query heads, and 8 KV heads. Its ordinary head dimension is therefore \(d_h=16384/128=128\), and each cached K and V head contains 128 values. DeepSeek-V3 also has 128 query heads, but its expanded MLA view uses a 128-dimensional content key, a 64-dimensional rotary key, and a 128-dimensional value. Its absorbed decode path instead caches only \(c_j^{KV}\in\mathbb R^{512}\) and the shared \(k_j^R\in\mathbb R^{64}\).</p>
+
+            <p>The table counts one bf16 cache, for one sequence, in one layer, at \(L=128{,}000\). The MHA and MQA rows keep Llama’s 128-dimensional K/V heads and change only the number of KV heads, so those two endpoints are directly comparable with Llama’s actual GQA row:</p>
+
+            <div class="table-wrap">
+                <table class="symbol-table">
+                    <thead><tr><th>Mode</th><th>Reference dimensions</th><th>Cached values per token</th><th>Cache at 128K</th></tr></thead>
+                    <tbody>
+                        <tr><td>MHA endpoint</td><td>128 KV heads, \(D_k=D_v=128\)</td><td>\(128(128+128)=32768\)</td><td>8.39 GB</td></tr>
+                        <tr><td>Llama 3.1 405B GQA</td><td>8 KV heads, \(D_k=D_v=128\)</td><td>\(8(128+128)=2048\)</td><td>524 MB</td></tr>
+                        <tr><td>DeepSeek-V3 MLA</td><td>\(D_c=512,D_R=64\)</td><td>\(512+64=576\)</td><td>147 MB</td></tr>
+                        <tr><td>MQA endpoint</td><td>1 KV head, \(D_k=D_v=128\)</td><td>\(128+128=256\)</td><td>65.5 MB</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>In this concrete comparison, MLA sits between GQA and MQA in cache size. It is about \(2048/576\approx3.6\) times smaller than Llama 3.1 405B’s GQA record, but \(576/256=2.25\) times larger than a 128-dimensional MQA record. MQA normally keeps the same per-head dimension as MHA or GQA; it saves cache by reducing the number of KV heads to one, not by making that head wider.</p>
+
+            <p>MLA is therefore MQA-shaped, but it does not cache an ordinary larger K/V pair. MQA stores one K and one separate V; MLA stores \(c_j^{KV}\) once and uses the same 512 values as both the content key and the latent value, then adds only the 64-value shared rotary key. That gives \(512+64=576\) cached values rather than two wide vectors.</p>
+
+            <p>We should not read MQA’s smallest number as an unconditional win. It compresses every token into one ordinary 128-dimensional K and one 128-dimensional V shared by all query heads, creating a tight information bottleneck that can noticeably degrade model quality. MLA deliberately keeps a wider 512-dimensional joint latent. During training, each head uses its own up-projection to recover a different content K and V from that latent; during decode, weight absorption preserves those head-specific transformations without expanding the cached history. MLA therefore uses more cache than MQA, but it retains substantially more representational capacity while remaining far smaller than GQA or MHA. That is the trade-off we want: MQA-shaped decoding without reducing every token to one narrow, ordinary K/V pair.</p>
+
+            <h2>References</h2>
+            <section class="references">
+                <div class="reference-group">
+                    <h3>Models and cache formats</h3>
+                    <p>Shazeer, <a href="https://arxiv.org/abs/1911.02150" target="_blank" rel="noopener">Fast Transformer Decoding: One Write-Head Is All You Need</a>, 2019.</p>
+                    <p>Ainslie et al., <a href="https://arxiv.org/abs/2305.13245" target="_blank" rel="noopener">GQA: Training Generalized Multi-Query Transformer Models</a>, 2023.</p>
+                    <p>Meta, <a href="https://arxiv.org/abs/2407.21783" target="_blank" rel="noopener">The Llama 3 Herd of Models</a>, 2024.</p>
+                    <p>DeepSeek-AI, <a href="https://arxiv.org/abs/2405.04434" target="_blank" rel="noopener">DeepSeek-V2</a>, 2024.</p>
+                    <p>DeepSeek-AI, <a href="https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/configs/config_671B.json" target="_blank" rel="noopener">DeepSeek-V3 671B inference configuration</a>, accessed 2026.</p>
+                    <p>DeepSeek-AI, <a href="https://github.com/deepseek-ai/FlashMLA/tree/15f13e5030374295491c5ce31b02d7e63a7772c6" target="_blank" rel="noopener">FlashMLA at commit 15f13e5</a>, accessed 2026.</p>
+                </div>
+                <div class="reference-group">
+                    <h3>Decode scheduling</h3>
+                    <p>Dao, Haziza, Massa, and Sizov, <a href="https://crfm.stanford.edu/2023/10/12/flashdecoding.html" target="_blank" rel="noopener">Flash-Decoding for Long-Context Inference</a>, 2023.</p>
+                    <p>Kwon et al., <a href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener">Efficient Memory Management for Large Language Model Serving with PagedAttention</a>, 2023.</p>
+                </div>
+                <div class="reference-group">
+                    <h3>Triton implementations</h3>
+                    <p>FlagOS, FlagAttention <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/flash.py" target="_blank" rel="noopener">grouped FlashAttention</a>, <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/split_kv.py" target="_blank" rel="noopener">split-KV</a>, and <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/paged.py" target="_blank" rel="noopener">paged attention</a> at commit 8225e61.</p>
+                </div>
+                <div class="reference-group">
+                    <h3>Production implementations</h3>
+                    <p>vLLM, <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/ops/triton_unified_attention.py" target="_blank" rel="noopener">unified Triton attention</a>, <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/ops/triton_decode_attention.py" target="_blank" rel="noopener">grouped split-KV decode</a>, and <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/backends/mla/triton_mla.py" target="_blank" rel="noopener">MLA backend wrapper</a> at commit 5f213ed.</p>
+                </div>
+            </section>
+
+            <div class="next-post">
+                <a href="scaling-long-context-attention.html"><i class="fas fa-arrow-left"></i> Part I · Blocks, Rings, and Sparsity</a>
+                <a href="scaling-long-context-recurrent-memory.html">Part III · Recurrent and Learned Memory <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </article>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                throwOnError: false,
+                trust: true
+            });
+        });
+    </script>
+</body>
+</html>

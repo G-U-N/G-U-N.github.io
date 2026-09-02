@@ -25,24 +25,24 @@
 
         <nav class="series-nav" aria-label="Scaling long-context attention series">
             <a href="scaling-long-context-attention.html" aria-current="page"><strong>I · Blocks, rings, and sparsity</strong>Exact tiled attention, distributed blocks, and sparse normalized sums</a>
-            <a href="scaling-long-context-memory.html"><strong>II · Compressing the KV cache</strong>MHA, MQA, GQA, and latent-space decoding</a>
-            <a href="scaling-long-context-linear-delta.html"><strong>III · Recurrent and learned memory</strong>Linear attention, DeltaNet, TTT, and LaCT</a>
+            <a href="scaling-long-context-kv-cache.html"><strong>II · KV caches and kernels</strong>MHA, GQA, MQA, split-KV, paging, and MLA</a>
+            <a href="scaling-long-context-recurrent-memory.html"><strong>III · Recurrent and learned memory</strong>Linear attention, DeltaNet, TTT, and LaCT</a>
         </nav>
 
         <article class="blog-content">
             <div class="toc">
-                <strong>This article follows six questions</strong>
+                <strong>Methods and concepts</strong>
                 <ol>
-                    <li><a href="#one-matrix">What does it mean to “block” attention?</a></li>
-                    <li><a href="#online-softmax">Why can FlashAttention be exact without storing the score matrix?</a></li>
-                    <li><a href="#backward">How does backward recover probabilities?</a></li>
-                    <li><a href="#ring">Why is Ring Attention distributed, not sparse?</a></li>
-                    <li><a href="#sparse-sum">Where does sparse attention actually approximate the answer?</a></li>
-                    <li><a href="#contracts">Why are selection and aggregation different decisions?</a></li>
+                    <li><a href="#one-matrix">Dense Attention: materializing \(S\) and \(P\)</a></li>
+                    <li><a href="#online-softmax">FlashAttention: exact online softmax</a></li>
+                    <li><a href="#backward">FlashAttention Backward: recomputing \(P\)</a></li>
+                    <li><a href="#ring">Ring Attention: rotating KV blocks across devices</a></li>
+                    <li><a href="#sparse-sum">Sparse Attention: selecting fewer query–key pairs</a></li>
+                    <li><a href="#contracts">Sparse Attention Semantics: accounting for unselected mass</a></li>
                 </ol>
             </div>
 
-            <h2 id="gpu-model">Before the blocks: a minimal GPU model</h2>
+            <h2 id="gpu-model">GPU Execution Model: why tiling matters</h2>
 
             <p>Modern GPUs are complicated machines: they have several cache levels, schedulers, memory controllers, and many kinds of execution units. That full diagram is unnecessary here. For attention, one abstraction does most of the explanatory work.</p>
 
@@ -57,7 +57,7 @@
 
             <p>An SM therefore works on <em>tiles</em>. It loads a small tile from HBM, reuses that tile while it is nearby, and eventually stores a result back to HBM. The whole tensor need not fit on chip, but performance depends heavily on how often its pieces cross that boundary. Many GPU kernels are best understood as different schedules for this load–compute–store loop.</p>
 
-            <h2 id="one-matrix">1. One attention matrix, three meanings of “block”</h2>
+            <h2 id="one-matrix">1. Dense Attention: materializing \(S\) and \(P\)</h2>
 
             <p>For one attention head, let \(Q,K,V\in\mathbb R^{L\times d}\). Standard attention is</p>
 
@@ -113,7 +113,7 @@
                 <p><strong>FlashAttention:</strong> same pairs and same softmax, but a better memory schedule. <strong>Ring Attention:</strong> same pairs and same softmax, but KV blocks move across devices. <strong>Block-sparse attention:</strong> some pairs are not evaluated exactly, so the mathematical result changes unless their contribution is approximated elsewhere.</p>
             </div>
 
-            <h2 id="online-softmax">2. FlashAttention: merge exact partial softmaxes</h2>
+            <h2 id="online-softmax">2. FlashAttention: exact online softmax</h2>
 
             <p>Take one query row. Instead of loading every logit at once, split its keys and values into blocks. Suppose earlier blocks have already been summarized by three quantities:</p>
 
@@ -368,7 +368,7 @@ def flash_tile(batch, heads, length, dim, causal,
     return main</code></pre>
             </details>
 
-            <h2 id="backward">3. Backward: spend arithmetic to save \(L^2\) memory</h2>
+            <h2 id="backward">3. FlashAttention Backward: recomputing \(P\)</h2>
 
             <p>Here \(L^2\) means memory that grows quadratically with sequence length, not the GPU's L2 cache. Start by keeping the complete forward chain in view:</p>
 
@@ -686,7 +686,7 @@ def flash_backward(q, k, v, o, lse, do, causal=False):
 
             <p>FlashAttention has now solved the quadratic-intermediate problem on one accelerator: score and probability tiles are streamed through a small on-chip working set instead of being materialized in HBM. It does not eliminate memory that grows linearly with the sequence, however. The \(Q,K,V\) tensors and training activations still grow with \(L\), so a sufficiently long sequence eventually exceeds one device's memory. The mergeable softmax state suggests the next step: keep a query block local, but stream KV blocks across devices rather than only from local HBM.</p>
 
-            <h2 id="ring">4. Ring Attention: move blocks, keep the dense sum</h2>
+            <h2 id="ring">4. Ring Attention: rotating KV blocks across devices</h2>
 
             <p>This limit is becoming practical as training horizons grow far beyond ordinary document lengths. A long-running agent can accumulate tool traces, observations, actions, and memory into a trajectory approaching millions of tokens. Video expands even faster under patch tokenization. For illustration, 30 seconds of 1280-by-720 video at 24 frames per second produces</p>
 
@@ -739,7 +739,7 @@ def flash_backward(q, k, v, o, lse, do, causal=False):
                 FlashAttention blocks an exact matrix for memory locality. Ring Attention distributes those exact blocks. A block-sparse method is different because some allowed blocks never contribute exactly to the numerator or denominator.
             </div>
 
-            <h2 id="sparse-sum">5. Sparse attention: approximate one normalized sum</h2>
+            <h2 id="sparse-sum">5. Sparse Attention: selecting fewer query–key pairs</h2>
 
             <p>FlashAttention gives us something useful beyond a faster dense kernel: it packages attention into \(Q\)-tile by \(KV\)-tile units. Dense FlashAttention still visits every allowed tile, but if an entire KV tile is unlikely to matter for a query tile, the schedule can omit it and avoid its memory loads and matrix multiplications altogether.</p>
 
@@ -931,7 +931,7 @@ def flash_backward(q, k, v, o, lse, do, causal=False):
 
             <p>The teacher target is therefore not one particular attention head: it represents the total importance assigned to each token across all heads. After warm-up, sparse training activates top-\(k\) retrieval and continues adapting the model and indexer. DSA then drops \(U_i\) and applies ordinary softmax only to the selected tokens.</p>
 
-            <h2 id="contracts">6. After selection: what happens to the unselected mass?</h2>
+            <h2 id="contracts">6. Sparse Attention Semantics: accounting for unselected mass</h2>
 
             <p>Once \(E_i\) is fixed, several mathematically different outputs remain possible.</p>
 
@@ -1278,7 +1278,7 @@ def flash_backward(q, k, v, o, lse, do, causal=False):
 
             <div class="next-post">
                 <span>Next: keep exact attention, but make each cached token narrower.</span>
-                <a href="scaling-long-context-memory.html">Part II · Compressing the KV Cache <i class="fas fa-arrow-right"></i></a>
+                <a href="scaling-long-context-kv-cache.html">Part II · KV Caches and Attention Kernels <i class="fas fa-arrow-right"></i></a>
             </div>
         </article>
     </main>
