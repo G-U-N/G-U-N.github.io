@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Theoretical Analysis of Rectified Diffusion — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- KaTeX -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -134,10 +133,6 @@
         }
         .katex { font-size: 1.05em; }
         /* References */
-        .blog-content h2:last-of-type ~ p {
-            font-size: 0.92rem;
-            color: var(--text-secondary);
-        }
         /* Responsive */
         @media (max-width: 640px) {
             .container { padding: 24px 16px 60px; }
@@ -146,7 +141,9 @@
             .katex-display { font-size: 0.85em; }
         }
     </style>
-    <link rel="stylesheet" href="blog-refinements.css">
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <div class="container">
@@ -608,13 +605,33 @@ Since the sum of $K+1$ non-negative terms is bounded by $\\mathbb E[\\|\\mathbf 
 **Remark.** Theorem 6 shows that the convergence rate of recursive rectification for general diffusion models matches that of Rectified Flow. This is a direct consequence of Theorem 3, which establishes that the choice of diffusion schedule (i.e., $\\alpha_t, \\sigma_t$) does not affect the data-noise pairing induced by the PF-ODE. The diffusion schedule only affects the *path* taken from noise to data, not the *endpoint mapping*.
 
 
-## References
-
-[1] Variational Diffusion Models
-
-[2] Score-Based Generative Modeling through Stochastic Differential Equations
-
-[3] Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow
+<section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2107.00630">Variational Diffusion Models</a></span>
+                            <span class="reference-meta">Diederik P. Kingma, Tim Salimans, Ben Poole, and Jonathan Ho. NeurIPS 2021.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2011.13456">Score-Based Generative Modeling through Stochastic Differential Equations</a></span>
+                            <span class="reference-meta">Yang Song, Jascha Sohl-Dickstein, Diederik P. Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. ICLR 2021.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2209.03003">Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow</a></span>
+                            <span class="reference-meta">Xingchao Liu, Chengyue Gong, and Qiang Liu. ICLR 2023.</span>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+<nav class="article-nav" aria-label="Blog navigation"><a href="../index.html#blogs">All posts</a></nav>
 `;
 
     document.addEventListener("DOMContentLoaded", function() {

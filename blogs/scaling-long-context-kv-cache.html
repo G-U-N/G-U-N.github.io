@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A kernel-first guide to KV-cache systems, from MHA, GQA, and MQA to split-KV decoding, paged attention, and absorbed MLA.">
     <title>Scaling Long-Context Attention II: From MHA to MLA — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <link rel="stylesheet" href="distributional-distillation.css">
     <link rel="stylesheet" href="scaling-long-context-attention.css">
-    <link rel="stylesheet" href="blog-refinements.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <main class="container">
@@ -23,7 +24,7 @@
             <p class="dek">Part I built FlashAttention. This article starts from the bottleneck that remains during autoregressive decode: every new token must reread a growing KV cache. We follow the concrete methods that attack it—MHA to GQA/MQA, grouped-head decode, Flash-Decoding and split-KV, Paged Attention, and finally MLA.</p>
             <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical and systems notes</div>
             <a class="colab-callout" href="https://colab.research.google.com/github/G-U-N/G-U-N.github.io/blob/master/blogs/code/kv_cache_attention_colab.ipynb" target="_blank" rel="noopener">
-                <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open the KV-cache attention notebook in Google Colab">
+                <span class="colab-label">Open in Colab</span>
                 <span><strong>Run the complete Triton kernels step by step</strong><small>The notebook follows the article from GQA backward through grouped decode, split-KV, Paged Attention, and MLA.</small></span>
                 <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
             </a>
@@ -890,36 +891,86 @@ acc = acc * alpha[:, None] + tl.dot(p.to(V.dtype.element_ty), v)
 
             <p>We should not read MQA’s smallest number as an unconditional win. It compresses every token into one ordinary 128-dimensional K and one 128-dimensional V shared by all query heads, creating a tight information bottleneck that can noticeably degrade model quality. MLA deliberately keeps a wider 512-dimensional joint latent. During training, each head uses its own up-projection to recover a different content K and V from that latent; during decode, weight absorption preserves those head-specific transformations without expanding the cached history. MLA therefore uses more cache than MQA, but it retains substantially more representational capacity while remaining far smaller than GQA or MHA. That is the trade-off we want: MQA-shaped decoding without reducing every token to one narrow, ordinary K/V pair.</p>
 
-            <h2>References</h2>
-            <section class="references">
-                <div class="reference-group">
-                    <h3>Models and cache formats</h3>
-                    <p>Shazeer, <a href="https://arxiv.org/abs/1911.02150" target="_blank" rel="noopener">Fast Transformer Decoding: One Write-Head Is All You Need</a>, 2019.</p>
-                    <p>Ainslie et al., <a href="https://arxiv.org/abs/2305.13245" target="_blank" rel="noopener">GQA: Training Generalized Multi-Query Transformer Models</a>, 2023.</p>
-                    <p>Meta, <a href="https://arxiv.org/abs/2407.21783" target="_blank" rel="noopener">The Llama 3 Herd of Models</a>, 2024.</p>
-                    <p>DeepSeek-AI, <a href="https://arxiv.org/abs/2405.04434" target="_blank" rel="noopener">DeepSeek-V2</a>, 2024.</p>
-                    <p>DeepSeek-AI, <a href="https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/configs/config_671B.json" target="_blank" rel="noopener">DeepSeek-V3 671B inference configuration</a>, accessed 2026.</p>
-                    <p>DeepSeek-AI, <a href="https://github.com/deepseek-ai/FlashMLA/tree/15f13e5030374295491c5ce31b02d7e63a7772c6" target="_blank" rel="noopener">FlashMLA at commit 15f13e5</a>, accessed 2026.</p>
-                </div>
-                <div class="reference-group">
-                    <h3>Decode scheduling</h3>
-                    <p>Dao, Haziza, Massa, and Sizov, <a href="https://crfm.stanford.edu/2023/10/12/flashdecoding.html" target="_blank" rel="noopener">Flash-Decoding for Long-Context Inference</a>, 2023.</p>
-                    <p>Kwon et al., <a href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noopener">Efficient Memory Management for Large Language Model Serving with PagedAttention</a>, 2023.</p>
-                </div>
-                <div class="reference-group">
-                    <h3>Triton implementations</h3>
-                    <p>FlagOS, FlagAttention <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/flash.py" target="_blank" rel="noopener">grouped FlashAttention</a>, <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/split_kv.py" target="_blank" rel="noopener">split-KV</a>, and <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/paged.py" target="_blank" rel="noopener">paged attention</a> at commit 8225e61.</p>
-                </div>
-                <div class="reference-group">
-                    <h3>Production implementations</h3>
-                    <p>vLLM, <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/ops/triton_unified_attention.py" target="_blank" rel="noopener">unified Triton attention</a>, <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/ops/triton_decode_attention.py" target="_blank" rel="noopener">grouped split-KV decode</a>, and <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/backends/mla/triton_mla.py" target="_blank" rel="noopener">MLA backend wrapper</a> at commit 5f213ed.</p>
-                </div>
+            <section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1911.02150">Fast Transformer Decoding: One Write-Head is All You Need</a></span>
+                            <span class="reference-meta">Noam Shazeer. arXiv:1911.02150, 2019.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2305.13245">GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints</a></span>
+                            <span class="reference-meta">Joshua Ainslie, James Lee-Thorp, Michiel de Jong, Yury Zemlyanskiy, Federico Lebrón, and Sumit Sanghai. EMNLP 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2407.21783">The Llama 3 Herd of Models</a></span>
+                            <span class="reference-meta">Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, et al. arXiv:2407.21783, 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2405.04434">DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model</a></span>
+                            <span class="reference-meta">DeepSeek-AI. arXiv:2405.04434, 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[5]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/configs/config_671B.json">DeepSeek-V3: 671B Inference Configuration</a></span>
+                            <span class="reference-meta">DeepSeek-AI. GitHub source file, inference/configs/config_671B.json.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[6]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://github.com/deepseek-ai/FlashMLA/tree/15f13e5030374295491c5ce31b02d7e63a7772c6">FlashMLA: Efficient Multi-head Latent Attention Kernels</a></span>
+                            <span class="reference-meta">DeepSeek-AI. GitHub repository, commit 15f13e5.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[7]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://crfm.stanford.edu/2023/10/12/flashdecoding.html">Flash-Decoding for Long-Context Inference</a></span>
+                            <span class="reference-meta">Tri Dao, Daniel Haziza, Francisco Massa, and Grigory Sizov. Stanford CRFM blog, October 12, 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[8]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2309.06180">Efficient Memory Management for Large Language Model Serving with PagedAttention</a></span>
+                            <span class="reference-meta">Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gonzalez, Hao Zhang, and Ion Stoica. SOSP 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[9]</span>
+                        <div class="reference-body">
+                            <span class="reference-title">FlagAttention: <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/flash.py" target="_blank" rel="noopener">grouped FlashAttention</a>, <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/split_kv.py" target="_blank" rel="noopener">split-KV</a>, and <a href="https://github.com/flagos-ai/FlagAttention/blob/8225e615ffec19a5481779806a03b134ff4a3b28/src/flag_attn/paged.py" target="_blank" rel="noopener">paged attention</a></span>
+                            <span class="reference-meta">FlagOS contributors. FlagAttention GitHub source files, commit 8225e61.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[10]</span>
+                        <div class="reference-body">
+                            <span class="reference-title">vLLM: <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/ops/triton_unified_attention.py" target="_blank" rel="noopener">unified Triton attention</a>, <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/ops/triton_decode_attention.py" target="_blank" rel="noopener">grouped split-KV decode</a>, and <a href="https://github.com/vllm-project/vllm/blob/5f213ed1592903b7bc38f173d320dac1b2769303/vllm/v1/attention/backends/mla/triton_mla.py" target="_blank" rel="noopener">MLA backend wrapper</a></span>
+                            <span class="reference-meta">vLLM contributors. vLLM GitHub source files, commit 5f213ed.</span>
+                        </div>
+                    </li>
+                </ol>
             </section>
 
-            <div class="next-post">
+            <nav class="article-nav" aria-label="Blog navigation">
                 <a href="scaling-long-context-attention.html"><i class="fas fa-arrow-left"></i> Part I · Blocks, Rings, and Sparsity</a>
                 <a href="scaling-long-context-recurrent-memory.html">Part III · Recurrent and Learned Memory <i class="fas fa-arrow-right"></i></a>
-            </div>
+            </nav>
         </article>
     </main>
 

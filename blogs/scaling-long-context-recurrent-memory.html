@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A step-by-step derivation from linear attention and DeltaNet to test-time training layers, their equivalence boundary, and LaCT chunk-level learning.">
     <title>Scaling Long-Context Attention III: Recurrent and Learned Memory — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <link rel="stylesheet" href="distributional-distillation.css">
     <link rel="stylesheet" href="scaling-long-context-attention.css">
-    <link rel="stylesheet" href="blog-refinements.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <main class="container">
@@ -23,7 +24,7 @@
             <p class="dek">FlashAttention, distributed and sparse execution, and KV-cache compression all make ordinary attention cheaper. But dense training is still quadratic in sequence length, and each decode step becomes more expensive as the prefix grows. Here we ask what changes if we replace that tokenwise history with a recurrent state.</p>
             <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical and systems notes</div>
             <a class="colab-callout" href="https://colab.research.google.com/github/G-U-N/G-U-N.github.io/blob/master/blogs/code/scaling_long_context_recurrent_memory_colab.ipynb" target="_blank" rel="noopener">
-                <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open the recurrent-memory notebook in Google Colab">
+                <span class="colab-label">Open in Colab</span>
                 <span><strong>Run the recurrent and chunkwise kernels step by step</strong><small>The notebook covers recurrent Linear Attention, chunked training and backward, and DeltaNet's compact-WY chunk forward.</small></span>
                 <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
             </a>
@@ -2025,27 +2026,107 @@ def _delta_state_fwd(
                 Linear Attention compresses history into a fixed associative state. DeltaNet changes each write so that it corrects the state's current prediction. TTT replaces the matrix state with a small model that learns inside the sequence. LaCT expands the update unit from one token to a chunk, and its <code>update/apply</code> order determines which tokens can influence each output.
             </div>
 
-            <h2>References</h2>
-            <section class="references">
-                <p>Katharopoulos et al., <a href="https://arxiv.org/abs/2006.16236" target="_blank" rel="noopener">Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention</a>, 2020.</p>
-                <p>Choromanski et al., <a href="https://arxiv.org/abs/2009.14794" target="_blank" rel="noopener">Rethinking Attention with Performers</a>, 2021.</p>
-                <p>Schlag, Irie, and Schmidhuber, <a href="https://arxiv.org/abs/2102.11174" target="_blank" rel="noopener">Linear Transformers Are Secretly Fast Weight Programmers</a>, 2021.</p>
-                <p>Sun et al., <a href="https://arxiv.org/abs/2307.08621" target="_blank" rel="noopener">Retentive Network</a>, 2023.</p>
-                <p>Yang et al., <a href="https://arxiv.org/abs/2312.06635" target="_blank" rel="noopener">Gated Linear Attention Transformers</a>, 2023.</p>
-                <p>Yang et al., <a href="https://arxiv.org/abs/2406.06484" target="_blank" rel="noopener">Parallelizing Linear Transformers with the Delta Rule</a>, 2024.</p>
-                <p>Bischof and Van Loan, <a href="https://doi.org/10.1137/0908009" target="_blank" rel="noopener">The WY Representation for Products of Householder Matrices</a>, 1987 (presented in 1985).</p>
-                <p>Yang, Kautz, and Hatamizadeh, <a href="https://arxiv.org/abs/2412.06464" target="_blank" rel="noopener">Gated Delta Networks</a>, 2024/2025.</p>
-                <p>Moonshot AI, <a href="https://arxiv.org/abs/2607.24653" target="_blank" rel="noopener">Kimi K3: Open Frontier Intelligence</a>, 2026.</p>
-                <p>Sun et al., <a href="https://arxiv.org/abs/2407.04620" target="_blank" rel="noopener">Learning to (Learn at Test Time): RNNs with Expressive Hidden States</a>, 2024.</p>
-                <p>Behrouz, Zhong, and Mirrokni, <a href="https://arxiv.org/abs/2501.00663" target="_blank" rel="noopener">Titans: Learning to Memorize at Test Time</a>, 2025.</p>
-                <p>Zhang et al., <a href="https://arxiv.org/abs/2505.23884" target="_blank" rel="noopener">Test-Time Training Done Right</a>, 2025.</p>
-                <p>Liu et al., <a href="https://arxiv.org/abs/2602.21204" target="_blank" rel="noopener">Test-Time Training with KV Binding Is Secretly Linear Attention</a>, 2026.</p>
+            <section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2006.16236">Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention</a></span>
+                            <span class="reference-meta">Angelos Katharopoulos, Apoorv Vyas, Nikolaos Pappas, and François Fleuret. ICML 2020.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2009.14794">Rethinking Attention with Performers</a></span>
+                            <span class="reference-meta">Krzysztof Choromanski, Valerii Likhosherstov, David Dohan, et al. ICLR 2021.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2102.11174">Linear Transformers Are Secretly Fast Weight Programmers</a></span>
+                            <span class="reference-meta">Imanol Schlag, Kazuki Irie, and Jürgen Schmidhuber. ICML 2021.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2307.08621">Retentive Network: A Successor to Transformer for Large Language Models</a></span>
+                            <span class="reference-meta">Yutao Sun, Li Dong, Shaohan Huang, Shuming Ma, Yuqing Xia, Jilong Xue, Jianyong Wang, and Furu Wei. arXiv:2307.08621, 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[5]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2312.06635">Gated Linear Attention Transformers with Hardware-Efficient Training</a></span>
+                            <span class="reference-meta">Songlin Yang, Bailin Wang, Yikang Shen, Rameswar Panda, and Yoon Kim. ICML 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[6]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2406.06484">Parallelizing Linear Transformers with the Delta Rule over Sequence Length</a></span>
+                            <span class="reference-meta">Songlin Yang, Bailin Wang, Yu Zhang, Yikang Shen, and Yoon Kim. NeurIPS 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[7]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://doi.org/10.1137/0908009">The WY Representation for Products of Householder Matrices</a></span>
+                            <span class="reference-meta">Christian Bischof and Charles Van Loan. SIAM Journal on Scientific and Statistical Computing 8(1):s2–s13, 1987.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[8]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2412.06464">Gated Delta Networks: Improving Mamba2 with Delta Rule</a></span>
+                            <span class="reference-meta">Songlin Yang, Jan Kautz, and Ali Hatamizadeh. ICLR 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[9]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2607.24653">Kimi K3: Open Frontier Intelligence</a></span>
+                            <span class="reference-meta">Kimi Team. arXiv:2607.24653, 2026.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[10]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2407.04620">Learning to (Learn at Test Time): RNNs with Expressive Hidden States</a></span>
+                            <span class="reference-meta">Yu Sun, Xinhao Li, Karan Dalal, et al. arXiv:2407.04620, 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[11]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2501.00663">Titans: Learning to Memorize at Test Time</a></span>
+                            <span class="reference-meta">Ali Behrouz, Peilin Zhong, and Vahab Mirrokni. NeurIPS 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[12]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2505.23884">Test-Time Training Done Right</a></span>
+                            <span class="reference-meta">Tianyuan Zhang, Sai Bi, Yicong Hong, Kai Zhang, Fujun Luan, Songlin Yang, Kalyan Sunkavalli, William T. Freeman, and Hao Tan. ICLR 2026.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[13]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2602.21204">Test-Time Training with KV Binding Is Secretly Linear Attention</a></span>
+                            <span class="reference-meta">Junchen Liu, Sven Elflein, Or Litany, Zan Gojcic, and Ruilong Li. ICML 2026.</span>
+                        </div>
+                    </li>
+                </ol>
             </section>
 
-            <div class="next-post">
+            <nav class="article-nav" aria-label="Blog navigation">
                 <a href="scaling-long-context-kv-cache.html"><i class="fas fa-arrow-left"></i> Part II · KV Caches and Attention Kernels</a>
                 <a href="../index.html#blogs">Back to all posts <i class="fas fa-arrow-right"></i></a>
-            </div>
+            </nav>
         </article>
     </main>
 

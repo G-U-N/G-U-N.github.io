@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,7 +16,6 @@
     <meta name="twitter:image" content="https://g-u-n.github.io/blogs/figures/rl-opd-vsd-two-gradients.png">
     <link rel="canonical" href="https://g-u-n.github.io/blogs/rl-opd-vsd.html">
     <title>RL, OPD, VSD, and GANs: One Density Ratio, Different Updates — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <link rel="stylesheet" href="distributional-distillation.css">
@@ -24,6 +23,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script type="module" src="code/rl-opd-vsd-embed.mjs"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <main class="container">
@@ -545,25 +547,123 @@ loss_ratio.backward()  # backpropagate through discriminator INTO x
 
             <section class="references" aria-labelledby="references">
                 <h2 id="references">References</h2>
-                <p id="ref-reinforce">[1] Ronald J. Williams. <a href="https://link.springer.com/article/10.1007/BF00992696">Simple statistical gradient-following algorithms for connectionist reinforcement learning.</a> <em>Machine Learning</em> 8, 229–256, 1992. The REINFORCE estimator.</p>
-                <p id="ref-gkd">[2] Rishabh Agarwal, Nino Vieillard, Yongchao Zhou, Piotr Stanczyk, Sabela Ramos, Matthieu Geist, and Olivier Bachem. <a href="https://arxiv.org/abs/2306.13649">On-Policy Distillation of Language Models: Learning from Self-Generated Mistakes.</a> ICLR 2024. See §3.1 for GKD and §5 for the distinction from sequence-level policy-gradient distillation.</p>
-                <p id="ref-minillm">[3] Yuxian Gu, Li Dong, Furu Wei, and Minlie Huang. <a href="https://arxiv.org/abs/2306.08543v2">MiniLLM: Knowledge Distillation of Large Language Models.</a> ICLR 2024; linked to the conference-era v2. See §2.1–2.2 and Appendix A.2–A.3 for reverse KL, policy gradient, and future-reward decomposition.</p>
-                <p id="ref-ppo">[4] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. <a href="https://arxiv.org/abs/1707.06347">Proximal Policy Optimization Algorithms.</a> 2017. See §3 for the clipped surrogate objective.</p>
-                <p id="ref-dpo">[5] Rafael Rafailov, Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher D. Manning, and Chelsea Finn. <a href="https://arxiv.org/abs/2305.18290">Direct Preference Optimization: Your Language Model is Secretly a Reward Model.</a> NeurIPS 2023. See §4 and Appendix A.1 for the reward-tilted optimal policy and KL rearrangement.</p>
-                <p id="ref-vsd">[6] Zhengyi Wang, Cheng Lu, Yikai Wang, Fan Bao, Chongxuan Li, Hang Su, and Jun Zhu. <a href="https://arxiv.org/abs/2305.16213">ProlificDreamer: High-Fidelity and Diverse Text-to-3D Generation with Variational Score Distillation.</a> NeurIPS 2023. See §3 and Appendix C for the distribution over scene parameters and its particle update.</p>
-                <p id="ref-diffinstruct">[7] Weijian Luo, Tianyang Hu, Shifeng Zhang, Jiacheng Sun, Zhenguo Li, and Zhihua Zhang. <a href="https://arxiv.org/abs/2305.18455">Diff-Instruct: A Universal Approach for Transferring Knowledge From Pre-trained Diffusion Models.</a> NeurIPS 2023. See §3 for integral KL and the generator gradient.</p>
-                <p id="ref-dmd">[8] Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shechtman, Fredo Durand, William T. Freeman, and Taesung Park. <a href="https://arxiv.org/abs/2311.18828">One-step Diffusion with Distribution Matching Distillation.</a> CVPR 2024. See §3.2–3.4 and Appendix F for the two-score update, regression term, and guidance.</p>
-                <p id="ref-dmd2">[9] Tianwei Yin, Michaël Gharbi, Taesung Park, Richard Zhang, Eli Shechtman, Fredo Durand, and William T. Freeman. <a href="https://arxiv.org/abs/2405.14867">Improved Distribution Matching Distillation for Fast Image Synthesis.</a> NeurIPS 2024. DMD2: critic update timescales, removal of paired regression, and adversarial training.</p>
-                <p id="ref-diffusionopd">[10] Quanhao Li et al. <a href="https://arxiv.org/abs/2605.15055">DiffusionOPD: A Unified Perspective of On-Policy Distillation in Diffusion Models.</a> 2026. See §3.2, Eqs. (10)–(12), for Gaussian transition KL and the separate deterministic regression objective; §3.3 discusses gradient estimators.</p>
-                <p id="ref-flowopd">[11] Zhen Fang et al. <a href="https://arxiv.org/abs/2605.08063">Flow-OPD: On-Policy Distillation for Flow Matching Models.</a> 2026. See §5.1.1, Eqs. (10)–(12) and (15), for Gaussian transition KL and direct optimization of weighted prediction MSE.</p>
-                <p id="ref-gan">[12] Ian J. Goodfellow et al. <a href="https://arxiv.org/abs/1406.2661">Generative Adversarial Nets.</a> NeurIPS 2014. Proposition 1 gives the optimal discriminator; §4.1 connects the minimax game to Jensen–Shannon divergence.</p>
-                <p id="ref-fgan">[13] Sebastian Nowozin, Botond Cseke, and Ryota Tomioka. <a href="https://arxiv.org/abs/1606.00709">f-GAN: Training Generative Neural Samplers using Variational Divergence Minimization.</a> NeurIPS 2016. A variational framework for adversarial training with different f-divergences.</p>
-                <p id="ref-gan-tutorial">[14] Ian Goodfellow. <a href="https://arxiv.org/abs/1701.00160">NIPS 2016 Tutorial: Generative Adversarial Networks.</a> 2017. See §3.2 and §8.1 for generator objectives and supervised density-ratio estimation.</p>
-                <p id="ref-grpo">[15] Zhihong Shao et al. <a href="https://arxiv.org/abs/2402.03300v2">DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.</a> 2024. See §4.1 for GRPO's clipped surrogate and group-relative advantage estimates.</p>
-                <p id="ref-tml-opd">[16] Kevin Lu and Thinking Machines Lab. <a href="https://thinkingmachines.ai/blog/on-policy-distillation/">On-Policy Distillation.</a> October 27, 2025. See “Loss function: reverse KL” for the zero discount factor and “Pseudocode” for per-token log-ratio weights.</p>
+                <ol class="reference-list" role="list">
+                    <li id="ref-reinforce">
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://link.springer.com/article/10.1007/BF00992696">Simple statistical gradient-following algorithms for connectionist reinforcement learning</a></span>
+                            <span class="reference-meta">Ronald J. Williams. Machine Learning 8:229–256, 1992. The REINFORCE estimator.</span>
+                        </div>
+                    </li>
+                    <li id="ref-gkd">
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2306.13649">On-Policy Distillation of Language Models: Learning from Self-Generated Mistakes</a></span>
+                            <span class="reference-meta">Rishabh Agarwal, Nino Vieillard, Yongchao Zhou, Piotr Stanczyk, Sabela Ramos, Matthieu Geist, and Olivier Bachem. ICLR 2024. See §3.1 for GKD and §5 for the distinction from sequence-level policy-gradient distillation.</span>
+                        </div>
+                    </li>
+                    <li id="ref-minillm">
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2306.08543v2">MiniLLM: Knowledge Distillation of Large Language Models</a></span>
+                            <span class="reference-meta">Yuxian Gu, Li Dong, Furu Wei, and Minlie Huang. ICLR 2024. Linked to the conference-era v2. See §2.1–2.2 and Appendix A.2–A.3 for reverse KL, policy gradient, and future-reward decomposition.</span>
+                        </div>
+                    </li>
+                    <li id="ref-ppo">
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1707.06347">Proximal Policy Optimization Algorithms</a></span>
+                            <span class="reference-meta">John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. arXiv:1707.06347, 2017. See §3 for the clipped surrogate objective.</span>
+                        </div>
+                    </li>
+                    <li id="ref-dpo">
+                        <span class="reference-number">[5]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2305.18290">Direct Preference Optimization: Your Language Model is Secretly a Reward Model</a></span>
+                            <span class="reference-meta">Rafael Rafailov, Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher D. Manning, and Chelsea Finn. NeurIPS 2023. See §4 and Appendix A.1 for the reward-tilted optimal policy and KL rearrangement.</span>
+                        </div>
+                    </li>
+                    <li id="ref-vsd">
+                        <span class="reference-number">[6]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2305.16213">ProlificDreamer: High-Fidelity and Diverse Text-to-3D Generation with Variational Score Distillation</a></span>
+                            <span class="reference-meta">Zhengyi Wang, Cheng Lu, Yikai Wang, Fan Bao, Chongxuan Li, Hang Su, and Jun Zhu. NeurIPS 2023. See §3 and Appendix C for the distribution over scene parameters and its particle update.</span>
+                        </div>
+                    </li>
+                    <li id="ref-diffinstruct">
+                        <span class="reference-number">[7]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2305.18455">Diff-Instruct: A Universal Approach for Transferring Knowledge From Pre-trained Diffusion Models</a></span>
+                            <span class="reference-meta">Weijian Luo, Tianyang Hu, Shifeng Zhang, Jiacheng Sun, Zhenguo Li, and Zhihua Zhang. NeurIPS 2023. See §3 for integral KL and the generator gradient.</span>
+                        </div>
+                    </li>
+                    <li id="ref-dmd">
+                        <span class="reference-number">[8]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2311.18828">One-step Diffusion with Distribution Matching Distillation</a></span>
+                            <span class="reference-meta">Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shechtman, Fredo Durand, William T. Freeman, and Taesung Park. CVPR 2024. See §3.2–3.4 and Appendix F for the two-score update, regression term, and guidance.</span>
+                        </div>
+                    </li>
+                    <li id="ref-dmd2">
+                        <span class="reference-number">[9]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2405.14867">Improved Distribution Matching Distillation for Fast Image Synthesis</a></span>
+                            <span class="reference-meta">Tianwei Yin, Michaël Gharbi, Taesung Park, Richard Zhang, Eli Shechtman, Fredo Durand, and William T. Freeman. NeurIPS 2024. DMD2: critic update timescales, removal of paired regression, and adversarial training.</span>
+                        </div>
+                    </li>
+                    <li id="ref-diffusionopd">
+                        <span class="reference-number">[10]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2605.15055">DiffusionOPD: A Unified Perspective of On-Policy Distillation in Diffusion Models</a></span>
+                            <span class="reference-meta">Quanhao Li, Junqiu Yu, Kaixun Jiang, Yujie Wei, Zhen Xing, Pandeng Li, Ruihang Chu, Shiwei Zhang, Yu Liu, and Zuxuan Wu. arXiv:2605.15055, 2026. See §3.2, Eqs. (10)–(12), for Gaussian transition KL and the separate deterministic regression objective; §3.3 discusses gradient estimators.</span>
+                        </div>
+                    </li>
+                    <li id="ref-flowopd">
+                        <span class="reference-number">[11]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2605.08063">Flow-OPD: On-Policy Distillation for Flow Matching Models</a></span>
+                            <span class="reference-meta">Zhen Fang, Wenxuan Huang, Yu Zeng, et al. arXiv:2605.08063, 2026. See §5.1.1, Eqs. (10)–(12) and (15), for Gaussian transition KL and direct optimization of weighted prediction MSE.</span>
+                        </div>
+                    </li>
+                    <li id="ref-gan">
+                        <span class="reference-number">[12]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1406.2661">Generative Adversarial Nets</a></span>
+                            <span class="reference-meta">Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, and Yoshua Bengio. NeurIPS 2014. Proposition 1 gives the optimal discriminator; §4.1 connects the minimax game to Jensen–Shannon divergence.</span>
+                        </div>
+                    </li>
+                    <li id="ref-fgan">
+                        <span class="reference-number">[13]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1606.00709">f-GAN: Training Generative Neural Samplers using Variational Divergence Minimization</a></span>
+                            <span class="reference-meta">Sebastian Nowozin, Botond Cseke, and Ryota Tomioka. NeurIPS 2016. A variational framework for adversarial training with different f-divergences.</span>
+                        </div>
+                    </li>
+                    <li id="ref-gan-tutorial">
+                        <span class="reference-number">[14]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1701.00160">NIPS 2016 Tutorial: Generative Adversarial Networks</a></span>
+                            <span class="reference-meta">Ian Goodfellow. arXiv:1701.00160, 2017. See §3.2 and §8.1 for generator objectives and supervised density-ratio estimation.</span>
+                        </div>
+                    </li>
+                    <li id="ref-grpo">
+                        <span class="reference-number">[15]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2402.03300v2">DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models</a></span>
+                            <span class="reference-meta">Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo. arXiv:2402.03300v2, 2024. See §4.1 for GRPO's clipped surrogate and group-relative advantage estimates.</span>
+                        </div>
+                    </li>
+                    <li id="ref-tml-opd">
+                        <span class="reference-number">[16]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://thinkingmachines.ai/blog/on-policy-distillation/">On-Policy Distillation</a></span>
+                            <span class="reference-meta">Kevin Lu and Thinking Machines Lab. Thinking Machines Lab: Connectionism, October 2025. See “Loss function: reverse KL” for the zero discount factor and “Pseudocode” for per-token log-ratio weights.</span>
+                        </div>
+                    </li>
+                </ol>
             </section>
 
-            <div class="next-post"><a href="distributional-distillation.html">Continue with the two-score derivation →</a><a href="../index.html#blogs">All posts</a></div>
+            <nav class="article-nav" aria-label="Blog navigation"><a href="distributional-distillation.html">Continue with the two-score derivation →</a><a href="../index.html#blogs">All posts</a></nav>
         </article>
     </main>
     <script>

@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Theoretical Analysis of ConsistencySolver — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -123,7 +122,9 @@
             .katex-display { font-size: 0.85em; }
         }
     </style>
-    <link rel="stylesheet" href="blog-refinements.css">
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <div class="container">
@@ -332,16 +333,68 @@ with advantage \\(\\hat{A} = (\\mathcal{R} - \\mathbb{E}[\\mathcal{R}]) / (\\sig
 Compared with distillation-based training (which backpropagates through the entire diffusion chain), RL has three advantages: (1) it supports non-differentiable rewards; (2) it optimizes the <em>final</em> output globally rather than matching intermediate segments; (3) only the compact MLP participates in gradient computation, so training takes ~12 H100 GPU hours total.
 </p>
 
-<h2>References</h2>
-
-<p>[1] Song et al. "Score-Based Generative Modeling through Stochastic Differential Equations." ICLR 2021.</p>
-<p>[2] Song, Meng, and Ermon. "Denoising Diffusion Implicit Models." ICLR 2021.</p>
-<p>[3] Lu et al. "DPM-Solver: A Fast ODE Solver for Diffusion Probabilistic Model Sampling in Around 10 Steps." NeurIPS 2022.</p>
-<p>[4] Liu et al. "Pseudo Numerical Methods for Diffusion Models on Manifolds." ICLR 2022.</p>
-<p>[5] Schulman et al. "Proximal Policy Optimization Algorithms." arXiv 2017.</p>
-<p>[6] Hairer, N&oslash;rsett, and Wanner. "Solving Ordinary Differential Equations I: Nonstiff Problems." Springer, 1993. (Chapter III: Multistep Methods)</p>
-<p>[7] Butcher, J. C. "Numerical Methods for Ordinary Differential Equations." Wiley, 2016.</p>
-<p>[8] Sauer, T. "Numerical Analysis." 3rd edition, Pearson, 2018.</p>
+<section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2011.13456">Score-Based Generative Modeling through Stochastic Differential Equations</a></span>
+                            <span class="reference-meta">Yang Song, Jascha Sohl-Dickstein, Diederik P. Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. ICLR 2021.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2010.02502">Denoising Diffusion Implicit Models</a></span>
+                            <span class="reference-meta">Jiaming Song, Chenlin Meng, and Stefano Ermon. ICLR 2021.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2206.00927">DPM-Solver: A Fast ODE Solver for Diffusion Probabilistic Model Sampling in Around 10 Steps</a></span>
+                            <span class="reference-meta">Cheng Lu, Yuhao Zhou, Fan Bao, Jianfei Chen, Chongxuan Li, and Jun Zhu. NeurIPS 2022.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2202.09778">Pseudo Numerical Methods for Diffusion Models on Manifolds</a></span>
+                            <span class="reference-meta">Luping Liu, Yi Ren, Zhijie Lin, and Zhou Zhao. ICLR 2022.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[5]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1707.06347">Proximal Policy Optimization Algorithms</a></span>
+                            <span class="reference-meta">John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. arXiv:1707.06347, 2017.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[6]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://link.springer.com/book/10.1007/978-3-540-78862-1">Solving Ordinary Differential Equations I: Nonstiff Problems</a></span>
+                            <span class="reference-meta">Ernst Hairer, Syvert P. Nørsett, and Gerhard Wanner. 2nd edition, Springer, 1993. Chapter III: Multistep Methods and General Linear Methods.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[7]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://onlinelibrary.wiley.com/doi/book/10.1002/9781119121534">Numerical Methods for Ordinary Differential Equations</a></span>
+                            <span class="reference-meta">J. C. Butcher. 3rd edition, Wiley, 2016.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[8]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://www.pearson.com/en-ca/subject-catalog/p/numerical-analysis/P200000006340/9780134697338">Numerical Analysis</a></span>
+                            <span class="reference-meta">Timothy Sauer. 3rd edition, Pearson, 2018 (copyright 2019).</span>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+<nav class="article-nav" aria-label="Blog navigation"><a href="../index.html#blogs">All posts</a></nav>
 
 `;
 

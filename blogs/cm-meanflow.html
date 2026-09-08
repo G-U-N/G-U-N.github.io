@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>On the Equivalence of Consistency Models and MeanFlow — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -124,10 +123,6 @@
         }
         .katex-display > .katex { max-width: 100%; }
         .katex { font-size: 1.05em; }
-        .blog-content h2:last-of-type ~ p {
-            font-size: 0.92rem;
-            color: var(--text-secondary);
-        }
         @media (max-width: 640px) {
             .container { padding: 24px 16px 60px; }
             .blog-content { padding: 28px 20px; }
@@ -135,7 +130,9 @@
             .katex-display { font-size: 0.85em; }
         }
     </style>
-    <link rel="stylesheet" href="blog-refinements.css">
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <div class="container">
@@ -315,15 +312,40 @@ This also provides insight into why the **detach** operation is essential — an
 - The necessity of detaching $\\frac{\\mathrm{d}u}{\\mathrm{d}t}$ may be fundamental to the algorithm's correctness rather than merely an optimization trick.
 
 
-## References
-
-[1] Song, Y., et al. Consistency Models. ICML, 2023.
-
-[2] Geng, Z., et al. Mean Flows for One-step Generative Modeling. 2025.
-
-[3] Lipman, Y., et al. Flow Matching for Generative Modeling. ICLR, 2023.
-
-[4] Chi, C., et al. Diffusion Policy: Visuomotor Policy Learning via Action Diffusion. RSS, 2023.
+<section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2303.01469">Consistency Models</a></span>
+                            <span class="reference-meta">Yang Song, Prafulla Dhariwal, Mark Chen, and Ilya Sutskever. ICML 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2505.13447">Mean Flows for One-step Generative Modeling</a></span>
+                            <span class="reference-meta">Zhengyang Geng, Mingyang Deng, Xingjian Bai, J. Zico Kolter, and Kaiming He. NeurIPS 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2210.02747">Flow Matching for Generative Modeling</a></span>
+                            <span class="reference-meta">Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel, and Matt Le. ICLR 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2303.04137">Diffusion Policy: Visuomotor Policy Learning via Action Diffusion</a></span>
+                            <span class="reference-meta">Cheng Chi, Zhenjia Xu, Siyuan Feng, Eric Cousineau, Yilun Du, Benjamin Burchfiel, Russ Tedrake, and Shuran Song. RSS 2023.</span>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+<nav class="article-nav" aria-label="Blog navigation"><a href="../index.html#blogs">All posts</a></nav>
 `;
 
     document.addEventListener("DOMContentLoaded", function() {

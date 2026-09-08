@@ -1,17 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A derivation-first comparison of SDS, VSD, Diff-Instruct, DMD, DMD2, and Phased DMD.">
     <title>Distributional Distillation II: What the Methods Actually Estimate — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <link rel="stylesheet" href="distributional-distillation.css">
-    <link rel="stylesheet" href="blog-refinements.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <main class="container">
@@ -511,20 +512,58 @@
                 </table>
             </div>
 
-            <section class="references">
-                <h2>References</h2>
-                <p>[1] Poole et al. “DreamFusion: Text-to-3D using 2D Diffusion.” ICLR 2023.</p>
-                <p>[2] Wang et al. “ProlificDreamer.” NeurIPS 2023.</p>
-                <p>[3] Luo et al. “Diff-Instruct.” NeurIPS 2023.</p>
-                <p>[4] Yin et al. “One-step Diffusion with Distribution Matching Distillation.” CVPR 2024.</p>
-                <p>[5] Yin et al. “Improved Distribution Matching Distillation for Fast Image Synthesis.” NeurIPS 2024.</p>
-                <p>[6] Fan et al. “Phased DMD: Few-step Distribution Matching Distillation via Score Matching within Subintervals.” CVPR 2026.</p>
+            <section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2209.14988">DreamFusion: Text-to-3D using 2D Diffusion</a></span>
+                            <span class="reference-meta">Ben Poole, Ajay Jain, Jonathan T. Barron, and Ben Mildenhall. ICLR 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2305.16213">ProlificDreamer: High-Fidelity and Diverse Text-to-3D Generation with Variational Score Distillation</a></span>
+                            <span class="reference-meta">Zhengyi Wang, Cheng Lu, Yikai Wang, Fan Bao, Chongxuan Li, Hang Su, and Jun Zhu. NeurIPS 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2305.18455">Diff-Instruct: A Universal Approach for Transferring Knowledge From Pre-trained Diffusion Models</a></span>
+                            <span class="reference-meta">Weijian Luo, Tianyang Hu, Shifeng Zhang, Jiacheng Sun, Zhenguo Li, and Zhihua Zhang. NeurIPS 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2311.18828">One-step Diffusion with Distribution Matching Distillation</a></span>
+                            <span class="reference-meta">Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shechtman, Fredo Durand, William T. Freeman, and Taesung Park. CVPR 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[5]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2405.14867">Improved Distribution Matching Distillation for Fast Image Synthesis</a></span>
+                            <span class="reference-meta">Tianwei Yin, Michaël Gharbi, Taesung Park, Richard Zhang, Eli Shechtman, Fredo Durand, and William T. Freeman. NeurIPS 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[6]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2510.27684">Phased DMD: Few-step Distribution Matching Distillation via Score Matching within Subintervals</a></span>
+                            <span class="reference-meta">Xiangyu Fan, Zesong Qiu, Zhuguanyu Wu, Fanzhou Wang, Zhiqian Lin, Tianxiang Ren, Dahua Lin, Ruihao Gong, and Lei Yang. CVPR 2026.</span>
+                        </div>
+                    </li>
+                </ol>
             </section>
 
-            <div class="next-post">
+            <nav class="article-nav" aria-label="Blog navigation">
                 <a href="distributional-distillation.html"><i class="fas fa-arrow-left"></i> Part I · Two-score calculus</a>
                 <a href="distributional-distillation-flows.html">Part III · Scores to flows <i class="fas fa-arrow-right"></i></a>
-            </div>
+            </nav>
         </article>
     </main>
 

@@ -1,17 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="From distribution functionals to particle fields: the precise connection among DMD, Wasserstein gradient flow, Drifting Models, and W-Flow.">
     <title>Distributional Distillation III: From Scores to Flows — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <link rel="stylesheet" href="distributional-distillation.css">
-    <link rel="stylesheet" href="blog-refinements.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <main class="container">
@@ -641,18 +642,44 @@
 
             <p>DMD shows the target-score minus self-score direction using denoisers. The Gaussian KDE view of Drifting recovers the same shape from feature-space neighborhoods. W-Flow keeps the same batch-field and detached-regression pattern, but replaces local kernel weighting with globally balanced Sinkhorn plans tied to an explicit transport objective. That is the useful connection—not that all three methods are identical.</p>
 
-            <section class="references">
-                <h2>References</h2>
-                <p>[1] Yin et al. “One-step Diffusion with Distribution Matching Distillation.” CVPR 2024.</p>
-                <p>[2] Deng et al. “Generative Modeling via Drifting.” 2026.</p>
-                <p>[3] Han et al. “One-Step Generative Modeling via Wasserstein Gradient Flows.” 2026.</p>
-                <p>[4] Gretton et al. “On the Wasserstein Gradient Flow Interpretation of Drifting Models.” 2026.</p>
+            <section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2311.18828">One-step Diffusion with Distribution Matching Distillation</a></span>
+                            <span class="reference-meta">Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shechtman, Fredo Durand, William T. Freeman, and Taesung Park. CVPR 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2602.04770">Generative Modeling via Drifting</a></span>
+                            <span class="reference-meta">Mingyang Deng, He Li, Tianhong Li, Yilun Du, and Kaiming He. arXiv:2602.04770, 2026.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2605.11755">One-Step Generative Modeling via Wasserstein Gradient Flows</a></span>
+                            <span class="reference-meta">Jiaqi Han, Puheng Li, Qiushan Guo, Renyuan Xu, Stefano Ermon, and Emmanuel J. Candès. arXiv:2605.11755, 2026.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2605.05118">On the Wasserstein Gradient Flow Interpretation of Drifting Models</a></span>
+                            <span class="reference-meta">Arthur Gretton, Li Kevin Wenliang, Alexandre Galashov, James Thornton, Valentin De Bortoli, and Arnaud Doucet. arXiv:2605.05118, 2026.</span>
+                        </div>
+                    </li>
+                </ol>
             </section>
 
-            <div class="next-post">
+            <nav class="article-nav" aria-label="Blog navigation">
                 <a href="distributional-distillation-methods.html"><i class="fas fa-arrow-left"></i> Part II · What the methods estimate</a>
                 <a href="../index.html#blogs">Back to all posts <i class="fas fa-arrow-right"></i></a>
-            </div>
+            </nav>
         </article>
     </main>
 

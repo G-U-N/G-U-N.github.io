@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A derivation-first guide to FlashAttention, Ring Attention, and sparse attention: the same block computation unit, but three different mathematical contracts.">
     <title>Scaling Long-Context Attention I: Exact Blocks, Rings, and Sparsity — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&amp;family=DM+Serif+Display&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <link rel="stylesheet" href="distributional-distillation.css">
     <link rel="stylesheet" href="scaling-long-context-attention.css">
-    <link rel="stylesheet" href="blog-refinements.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <main class="container">
@@ -23,7 +24,7 @@
             <p class="dek">FlashAttention, Ring Attention, and sparse attention all talk about blocks. But a block is only a unit of work: Flash changes where exact work happens, Ring changes which device performs it, and sparsity changes which terms enter the answer.</p>
             <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical and systems notes</div>
             <a class="colab-callout" href="https://colab.research.google.com/github/G-U-N/G-U-N.github.io/blob/master/blogs/code/flash_attention.ipynb" target="_blank" rel="noopener">
-                <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open the FlashAttention notebook in Google Colab">
+                <span class="colab-label">Open in Colab</span>
                 <span><strong>Run FlashAttention forward and backward step by step</strong><small>The notebook checks online softmax, the saved LSE, probability reconstruction, and Triton gradients against PyTorch.</small></span>
                 <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
             </a>
@@ -1252,40 +1253,156 @@ def flash_backward(q, k, v, o, lse, do, causal=False):
                 First write attention as one numerator divided by one denominator. Then ask three questions: Which pairs are evaluated? What represents the omitted pairs? Can those choices be executed as large, regular blocks? This separates mathematical accuracy from kernel efficiency.
             </div>
 
-            <h2>References</h2>
-            <section class="references">
-                <div class="reference-group">
-                    <h3>Exact tiled and distributed attention</h3>
-                    <p>NVIDIA, <a href="https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/" target="_blank" rel="noopener">CUDA Refresher: The CUDA Programming Model</a>, 2020.</p>
-                    <p>Dao et al., <a href="https://arxiv.org/abs/2205.14135" target="_blank" rel="noopener">FlashAttention</a>, 2022.</p>
-                    <p>Dao, <a href="https://arxiv.org/abs/2307.08691" target="_blank" rel="noopener">FlashAttention-2</a>, 2023/2024.</p>
-                    <p>Shah et al., <a href="https://arxiv.org/abs/2407.08608" target="_blank" rel="noopener">FlashAttention-3</a>, 2024.</p>
-                    <p>Liu, Zaharia, and Abbeel, <a href="https://arxiv.org/abs/2310.01889" target="_blank" rel="noopener">Ring Attention with Blockwise Transformers</a>, 2023.</p>
-                    <p>Wang et al., <a href="https://arxiv.org/abs/2504.17577" target="_blank" rel="noopener">TileLang</a>, 2025.</p>
-                </div>
-                <div class="reference-group">
-                    <h3>Sparse-attention lineage and systems</h3>
-                    <p>Child et al., <a href="https://arxiv.org/abs/1904.10509" target="_blank" rel="noopener">Generating Long Sequences with Sparse Transformers</a>, 2019.</p>
-                    <p>Kitaev et al., <a href="https://arxiv.org/abs/2001.04451" target="_blank" rel="noopener">Reformer</a>, 2020.</p>
-                    <p>Beltagy et al., <a href="https://arxiv.org/abs/2004.05150" target="_blank" rel="noopener">Longformer</a>, 2020.</p>
-                    <p>Zaheer et al., <a href="https://arxiv.org/abs/2007.14062" target="_blank" rel="noopener">BigBird</a>, 2020.</p>
-                    <p>Roy et al., <a href="https://arxiv.org/abs/2003.05997" target="_blank" rel="noopener">Routing Transformer</a>, 2020.</p>
-                    <p>Jiang et al., <a href="https://arxiv.org/abs/2407.02490" target="_blank" rel="noopener">MInference 1.0</a>, 2024.</p>
-                    <p>Tang et al., <a href="https://arxiv.org/abs/2406.10774" target="_blank" rel="noopener">Quest</a>, 2024.</p>
-                    <p>Zhang et al., <a href="https://arxiv.org/abs/2502.18137" target="_blank" rel="noopener">SpargeAttention</a>, 2025.</p>
-                    <p>Yuan et al., <a href="https://arxiv.org/abs/2502.11089" target="_blank" rel="noopener">Native Sparse Attention</a>, 2025.</p>
-                    <p>Lu et al., <a href="https://arxiv.org/abs/2502.13189" target="_blank" rel="noopener">MoBA</a>, 2025.</p>
-                    <p>Zhang et al., <a href="https://arxiv.org/abs/2502.04507" target="_blank" rel="noopener">Sliding Tile Attention</a>, 2025.</p>
-                    <p>DeepSeek-AI, <a href="https://arxiv.org/abs/2512.02556" target="_blank" rel="noopener">DeepSeek-V3.2 / DSA</a>, 2025.</p>
-                    <p>Hu et al., <a href="https://arxiv.org/abs/2607.02980" target="_blank" rel="noopener">Hierarchical Sparse Attention Done Right</a>, 2026.</p>
-                    <p>Li et al., <a href="https://arxiv.org/abs/2602.01077" target="_blank" rel="noopener">PISA</a>, 2026.</p>
-                </div>
+            <section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/">CUDA Refresher: The CUDA Programming Model</a></span>
+                            <span class="reference-meta">Pradeep Gupta. NVIDIA Technical Blog, June 26, 2020.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2205.14135">FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness</a></span>
+                            <span class="reference-meta">Tri Dao, Daniel Y. Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. NeurIPS 2022.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2307.08691">FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning</a></span>
+                            <span class="reference-meta">Tri Dao. ICLR 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2407.08608">FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision</a></span>
+                            <span class="reference-meta">Jay Shah, Ganesh Bikshandi, Ying Zhang, Vijay Thakkar, Pradeep Ramani, and Tri Dao. NeurIPS 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[5]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2310.01889">Ring Attention with Blockwise Transformers for Near-Infinite Context</a></span>
+                            <span class="reference-meta">Hao Liu, Matei Zaharia, and Pieter Abbeel. arXiv:2310.01889, 2023.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[6]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2504.17577">TileLang: A Composable Tiled Programming Model for AI Systems</a></span>
+                            <span class="reference-meta">Lei Wang, Yu Cheng, Yining Shi, et al. arXiv:2504.17577, 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[7]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1904.10509">Generating Long Sequences with Sparse Transformers</a></span>
+                            <span class="reference-meta">Rewon Child, Scott Gray, Alec Radford, and Ilya Sutskever. arXiv:1904.10509, 2019.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[8]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2001.04451">Reformer: The Efficient Transformer</a></span>
+                            <span class="reference-meta">Nikita Kitaev, Łukasz Kaiser, and Anselm Levskaya. ICLR 2020.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[9]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2004.05150">Longformer: The Long-Document Transformer</a></span>
+                            <span class="reference-meta">Iz Beltagy, Matthew E. Peters, and Arman Cohan. arXiv:2004.05150, 2020.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[10]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2007.14062">Big Bird: Transformers for Longer Sequences</a></span>
+                            <span class="reference-meta">Manzil Zaheer, Guru Guruganesh, Avinava Dubey, et al. NeurIPS 2020.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[11]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2003.05997">Efficient Content-Based Sparse Attention with Routing Transformers</a></span>
+                            <span class="reference-meta">Aurko Roy, Mohammad Saffar, Ashish Vaswani, and David Grangier. Transactions of the Association for Computational Linguistics 9:53–68, 2021.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[12]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2407.02490">MInference 1.0: Accelerating Pre-filling for Long-Context LLMs via Dynamic Sparse Attention</a></span>
+                            <span class="reference-meta">Huiqiang Jiang, Yucheng Li, Chengruidong Zhang, et al. NeurIPS 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[13]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2406.10774">Quest: Query-Aware Sparsity for Efficient Long-Context LLM Inference</a></span>
+                            <span class="reference-meta">Jiaming Tang, Yilong Zhao, Kan Zhu, Guangxuan Xiao, Baris Kasikci, and Song Han. ICML 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[14]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2502.18137">SpargeAttention: Accurate and Training-free Sparse Attention Accelerating Any Model Inference</a></span>
+                            <span class="reference-meta">Jintao Zhang, Chendong Xiang, Haofeng Huang, Jia Wei, Haocheng Xi, Jun Zhu, and Jianfei Chen. ICML 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[15]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2502.11089">Native Sparse Attention: Hardware-Aligned and Natively Trainable Sparse Attention</a></span>
+                            <span class="reference-meta">Jingyang Yuan, Huazuo Gao, Damai Dai, et al. ACL 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[16]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2502.13189">MoBA: Mixture of Block Attention for Long-Context LLMs</a></span>
+                            <span class="reference-meta">Enzhe Lu, Zhejun Jiang, Jingyuan Liu, et al. NeurIPS 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[17]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2502.04507">Fast Video Generation with Sliding Tile Attention</a></span>
+                            <span class="reference-meta">Peiyuan Zhang, Yongqi Chen, Runlong Su, Hangliang Ding, Ion Stoica, Zhengzhong Liu, and Hao Zhang. ICML 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[18]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2512.02556">DeepSeek-V3.2: Pushing the Frontier of Open Large Language Models</a></span>
+                            <span class="reference-meta">DeepSeek-AI. arXiv:2512.02556, 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[19]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2607.02980">Hierarchical Sparse Attention Done Right: Toward Infinite Context Modeling</a></span>
+                            <span class="reference-meta">Xiang Hu, Xinyu Wei, Hao Gu, et al. arXiv:2607.02980, 2026.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[20]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2602.01077">PISA: Piecewise Sparse Attention Is Wiser for Efficient Diffusion Transformers</a></span>
+                            <span class="reference-meta">Haopeng Li, Shitong Shao, Wenliang Zhong, Zikai Zhou, Lichen Bai, Hui Xiong, and Zeke Xie. arXiv:2602.01077, 2026.</span>
+                        </div>
+                    </li>
+                </ol>
             </section>
 
-            <div class="next-post">
+            <nav class="article-nav" aria-label="Blog navigation">
                 <span>Next: keep exact attention, but make each cached token narrower.</span>
                 <a href="scaling-long-context-kv-cache.html">Part II · KV Caches and Attention Kernels <i class="fas fa-arrow-right"></i></a>
-            </div>
+            </nav>
         </article>
     </main>
 

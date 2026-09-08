@@ -1,17 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="blog-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="A step-by-step derivation of distributional distillation, from noisy marginal KL to the two-score and f-divergence gradients.">
     <title>Distributional Distillation I: From KL to Two Scores — Fu-Yun Wang</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <link rel="stylesheet" href="distributional-distillation.css">
-    <link rel="stylesheet" href="blog-refinements.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
 </head>
 <body>
     <main class="container">
@@ -620,17 +621,37 @@
 
             <p>What remains is estimation. The teacher score is available from a pretrained diffusion model; the student marginal score is not. SDS, VSD, Diff-Instruct, DMD, and adversarial variants differ primarily in what they substitute or learn for that missing quantity, what weight they apply, and at which state the comparison is formed.</p>
 
-            <section class="references">
-                <h2>References</h2>
-                <p>[1] Yin et al. “One-step Diffusion with Distribution Matching Distillation.” CVPR 2024.</p>
-                <p>[2] Xu, Nie, and Vahdat. “One-step Diffusion Models with \(f\)-Divergence Distribution Matching.” 2025.</p>
-                <p>[3] Wang et al. “ProlificDreamer: High-Fidelity and Diverse Text-to-3D Generation with Variational Score Distillation.” NeurIPS 2023.</p>
+            <section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2311.18828">One-step Diffusion with Distribution Matching Distillation</a></span>
+                            <span class="reference-meta">Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shechtman, Fredo Durand, William T. Freeman, and Taesung Park. CVPR 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2502.15681">One-step Diffusion Models with f-Divergence Distribution Matching</a></span>
+                            <span class="reference-meta">Yilun Xu, Weili Nie, and Arash Vahdat. arXiv:2502.15681, 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2305.16213">ProlificDreamer: High-Fidelity and Diverse Text-to-3D Generation with Variational Score Distillation</a></span>
+                            <span class="reference-meta">Zhengyi Wang, Cheng Lu, Yikai Wang, Fan Bao, Chongxuan Li, Hang Su, and Jun Zhu. NeurIPS 2023.</span>
+                        </div>
+                    </li>
+                </ol>
             </section>
 
-            <div class="next-post">
+            <nav class="article-nav" aria-label="Blog navigation">
                 <span>Next: what the algorithms actually estimate</span>
                 <a href="distributional-distillation-methods.html">Part II · SDS, VSD, and DMD <i class="fas fa-arrow-right"></i></a>
-            </div>
+            </nav>
         </article>
     </main>
 

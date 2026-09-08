@@ -1,0 +1,91 @@
+/* SHARED BLOG THEMES
+ * Edit the two presets here to update every article at once.
+ * Main controls: --page-background, --article-background, --article-border,
+ * --article-shadow, --article-radius, and the three --primary-* colors.
+ * Typography, spacing, code, and diagram colors belong to the article styles.
+ */
+:root {
+    /* Classic — the original blog appearance; also the no-JavaScript default. */
+    --page-background: linear-gradient(135deg, #f8f7f4 0%, #eef2ff 50%, #faf5ff 100%);
+    --article-background: #fff;
+    --article-border: 1px solid #e8e6df;
+    --article-shadow: 0 8px 24px rgba(30, 27, 75, .08);
+    --article-radius: 16px;
+    --primary-color: #6366f1;
+    --primary-light: #818cf8;
+    --primary-dark: #4f46e5;
+    --text-primary: #1e1b4b;
+    --text-secondary: #64748b;
+    --border-color: #e8e6df;
+    --theme-control-bg: #fff;
+}
+
+:root[data-blog-theme="paper"] {
+    /* Paper — a quiet background, an unframed article, and muted purple. */
+    --page-background: #fafaf8;
+    --article-background: transparent;
+    --article-border: 1px solid transparent;
+    --article-shadow: none;
+    --article-radius: 0;
+    --primary-color: #6c5791;
+    --primary-light: #9b83b4;
+    --primary-dark: #564374;
+    --text-primary: #283044;
+    --text-secondary: #697184;
+    --border-color: #e1e3e8;
+    --theme-control-bg: #fff;
+}
+
+/* Apply the selected preset. Load this stylesheet after article styles. */
+body { background: var(--page-background); background-attachment: fixed; color: var(--text-primary); }
+.blog-content {
+    background: var(--article-background);
+    border: var(--article-border);
+    border-radius: var(--article-radius);
+    box-shadow: var(--article-shadow);
+}
+.blog-header .dek a { color: var(--primary-dark); text-underline-offset: 3px; }
+.blog-header h1, .blog-content h2 { color: var(--text-primary); }
+
+/* One unobtrusive control beside the existing back link, on every article. */
+.blog-header .blog-tools {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.blog-header .blog-tools .back-link { margin: 0; }
+.blog-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 7px;
+    padding: 7px 11px;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--theme-control-bg);
+    color: var(--text-secondary);
+    font: 500 12px/1.4 var(--blog-font-body, sans-serif);
+    cursor: pointer;
+}
+.blog-theme-toggle::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--primary-color);
+    border-radius: 50%;
+    background: linear-gradient(90deg, var(--primary-color) 50%, transparent 50%);
+}
+.blog-theme-toggle:hover { color: var(--primary-dark); border-color: var(--primary-light); }
+.blog-theme-toggle:focus-visible { outline: 3px solid var(--primary-light); outline-offset: 3px; }
+@media (max-width: 420px) {
+    .blog-header .blog-tools { gap: 8px; }
+    .blog-header .blog-tools .back-link { font-size: 12px; }
+    .blog-theme-toggle { font-size: 11px; padding: 7px 9px; }
+}
+@media print {
+    body { background: white; }
+    .blog-content { background: white; border: 0; box-shadow: none; }
+    .blog-header .blog-tools { display: none; }
+}
