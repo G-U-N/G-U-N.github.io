@@ -30,7 +30,7 @@
             <a href="../index.html#blogs" class="back-link"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to all posts</a>
             <div class="eyebrow">Distributional Distillation · A connection to RL</div>
             <h1>RL, OPD, VSD, and GANs<span class="title-second">One Density Ratio, Different Updates</span></h1>
-            <p class="dek">Policy gradients, mean-squared error, diffusion scores, and discriminator feedback look like different training signals. One log-density ratio explains how they connect.</p>
+            <p class="dek">Start from a divergence between generated and target distributions. Different targets and gradient calculations connect policy gradients, mean MSE, diffusion scores, and GANs.</p>
             <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; <time datetime="2026-09-08">September 8, 2026</time> &middot; Mathematical notes</div>
             <div class="header-insight">
                 <span class="insight-label">The connection</span>
@@ -63,27 +63,36 @@
 
             <h2 id="motivation">1. Why these updates are connected</h2>
 
-            <p>Policy gradient weights actions by a reward. Gaussian OPD matches teacher predictions with MSE. VSD/DMD use diffusion scores, and GANs use a discriminator. Why do such different training signals all help a generator improve?</p>
+            <p>A generator produces a distribution of outputs. Suppose we want that distribution to match a target. A <em>divergence</em> measures the mismatch:</p>
 
-            <p>On-policy distillation (OPD) provides the clue. The student generates its own outputs, and the teacher evaluates them, so feedback covers the student's own prefixes. <a href="#ref-gkd">[2]</a> Choose sequence-level reverse KL, and its gradient becomes policy gradient with a simple reward: the teacher's log probability minus the student's.</p>
+            <div class="formula-card">
+                \[
+                \min_\theta D(q_\theta\|p_{\rm target}).
+                \]
+                <span class="equation-label">Student distribution \(q_\theta\), target distribution \(p_{\rm target}\), chosen divergence \(D\)</span>
+            </div>
 
-            <p>From there, two operations connect the other methods. For equal-covariance Gaussian transitions, <em>averaging</em> the action noise turns that gradient into mean MSE. For smooth continuous distributions, <em>differentiating</em> the log ratio with respect to the sample gives the score difference used in score distillation. A GAN discriminator offers another way to learn this ratio before differentiating it.</p>
+            <p>First choose <strong>what to match</strong>. Distillation uses a teacher distribution; GANs use the real data distribution. In KL-regularized RL, reward reshapes a reference distribution, giving higher-reward outputs more weight. Each specifies a target in a different way.</p>
 
-            <p class="opening-question">One log-density ratio: use its value to weight actions, or its derivative to move samples.</p>
+            <p>Next choose <strong>how to measure the mismatch</strong>. We will use reverse KL. With a suitable adversarial loss, GAN training can optimize this same divergence toward real data. Standard minimax GANs instead correspond to Jensen–Shannon divergence at the optimal discriminator. <a href="#ref-gan">[12]</a> A shared target does not by itself imply a shared loss.</p>
 
-            <p>We will derive this connection, then distinguish local transition matching from matching the full output distribution. Each equivalence has specific assumptions; sharing a ratio does not make the training recipes identical.</p>
+            <p>Finally choose <strong>how to compute the update</strong>. Evaluating probabilities lets us reward sampled outputs. Differentiating through outputs lets us move them toward lower loss. For Gaussian predictions with the same fixed variance, averaging the sampling noise gives a mean-squared-error gradient.</p>
+
+            <p class="opening-question">Choose the target, choose the divergence, then choose how to differentiate it.</p>
+
+            <p>We will follow these choices to derive policy gradient, Gaussian mean matching, and sample movement using diffusion scores or a discriminator.</p>
 
             <figure class="concept-figure bridge-figure" id="connection-map">
                 <div class="ratio-origin">
                     <span class="diagram-kicker">Student \(q_\theta\) · Target \(p\)</span>
-                    <strong>One log-density ratio</strong>
-                    <div>\(r_\theta(x)=\log p(x)-\log q_\theta(x)\)</div>
-                    <p>Positive: the target assigns this output more probability.</p>
+                    <strong>Match a student to a target</strong>
+                    <div>\(\mathcal L=\mathrm{KL}(q_\theta\|p)\)</div>
+                    <p>Our working example: reverse KL to a chosen target.</p>
                 </div>
                 <div class="ratio-fork" aria-hidden="true"></div>
                 <div class="ratio-routes">
                     <div class="ratio-route probability-route">
-                        <span class="diagram-kicker">Use its value</span>
+                        <span class="diagram-kicker">Differentiate probabilities</span>
                         <h3>Weight sampled actions</h3>
                         <svg class="route-sketch" viewBox="0 0 240 66" aria-hidden="true">
                             <path d="M25 55H215" fill="none" stroke="#d8d6ee"/>
@@ -95,7 +104,7 @@
                         <a class="route-example" href="#gaussian-opd"><span>02</span><div><strong>Gaussian OPD</strong><p>Average the noise → mean MSE.</p></div></a>
                     </div>
                     <div class="ratio-route movement-route">
-                        <span class="diagram-kicker">Use its spatial derivative</span>
+                        <span class="diagram-kicker">Differentiate samples</span>
                         <h3>Move generated outputs</h3>
                         <svg class="route-sketch" viewBox="0 0 240 66" aria-hidden="true">
                             <path d="M27 55H217" fill="none" stroke="#cfe5df"/>
@@ -106,7 +115,7 @@
                         <a class="route-example" href="#gan"><span>04</span><div><strong>The GAN connection</strong><p>Differentiate a discriminator logit.</p></div></a>
                     </div>
                 </div>
-                <figcaption><strong>Figure 1.</strong> Use the ratio's <em>value</em> to weight actions, or its <em>spatial derivative</em> to move continuous samples. Gaussian MSE analytically averages the policy gradient at a fixed condition. VSD/DMD compare noisy distributions; the GAN route depends on the discriminator and generator loss. Each entry links to its derivation.</figcaption>
+                <figcaption><strong>Figure 1.</strong> Start with a divergence, then choose a gradient calculation. For reverse KL, a log-density ratio weights actions; its spatial derivative moves continuous samples. Gaussian MSE averages the local action gradient analytically. VSD/DMD use noisy distributions; the GAN route also requires a suitable generator loss.</figcaption>
             </figure>
 
             <p class="notation">Notation: \(q_\theta\) is the student, \(p_T\) the teacher, and \(p\) a fixed target. Hold the prompt fixed; use sums for discrete outputs. Assume \(q_\theta\ll p\) (no student mass where the target has zero mass), finite required expectations, fixed support, and valid differentiation under the integral. Pathwise identities also require smooth densities and a differentiable sampler with parameter-independent base randomness. Density scores are \(s_q=\nabla_x\log q_\theta\) and \(s_p=\nabla_x\log p\).</p>
