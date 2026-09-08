@@ -1,0 +1,206 @@
+/* Opt-in visual polish for the earlier posts, inspired by rl-opd-vsd.css.
+   Keep article content, diagram layouts, and code-fold behavior unchanged. */
+.blog-header {
+    border-bottom-width: 1px;
+    padding-bottom: 28px;
+}
+
+.blog-header h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    line-height: 1.22;
+    letter-spacing: -.025em;
+    text-wrap: balance;
+    margin: 12px 0 20px;
+}
+
+.dek {
+    max-width: 760px;
+    line-height: 1.75;
+    text-wrap: pretty;
+}
+
+.blog-meta { margin-top: 18px; }
+
+.blog-content h2 {
+    line-height: 1.35;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+}
+
+.blog-content h3,
+.blog-content h4 { line-height: 1.5; }
+
+.blog-content p { text-wrap: pretty; }
+.blog-content a { text-underline-offset: 3px; }
+.blog-content :not(pre) > code { overflow-wrap: anywhere; }
+.step-body { min-width: 0; }
+
+/* Only the top-level list uses the two-column layout; nested links stay
+   below their parent, as in the MoE table of contents. */
+.toc {
+    padding: 22px 24px;
+    background: #fafbfe;
+    border-color: #e5e7ef;
+}
+
+.toc > strong {
+    font-size: .72rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 14px;
+}
+
+.toc > ol {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 32px;
+    padding-left: 24px;
+    list-style-type: decimal-leading-zero;
+}
+
+.toc > ol > li {
+    min-width: 0;
+    margin: 0;
+    padding: 3px 0 3px 3px;
+    font-size: .88rem;
+    line-height: 1.6;
+}
+
+.toc > ol > li::marker {
+    color: #7477cd;
+    font-size: .72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.toc a { color: #474467; }
+.toc a:hover { color: #4f46e5; text-decoration: underline; }
+.toc ul { padding-left: 16px; margin: 4px 0 0; }
+.toc ul li { margin: 0; font-size: .82rem; }
+.toc ul li::marker { color: #94a3b8; }
+
+.formula-card {
+    padding-top: 18px;
+    padding-bottom: 14px;
+    border-color: #e1e5f0;
+    background: #f9fafe;
+}
+
+.formula-card .equation-label {
+    color: #69758c;
+    margin-top: 5px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Reserve room for KaTeX's absolute-positioned equation numbers, including
+   when the formula is wider than the card and scrolls horizontally. */
+.katex { position: relative; }
+.katex-display > .katex > .katex-html:has(> .tag) {
+    min-width: max-content;
+    padding-right: 3.5em;
+}
+
+.plot-figure {
+    padding: 17px;
+    background: #fff;
+    border-color: #e3e6ee;
+    box-shadow: 0 3px 12px rgba(30, 27, 75, .025);
+}
+
+.plot-figure picture { display: block; }
+.plot-figure figcaption {
+    border-top: 1px solid #edf0f5;
+    margin-top: 10px;
+    padding: 14px 5px 2px;
+    line-height: 1.7;
+}
+
+.table-wrap { border: 1px solid #e5e7ef; border-radius: 10px; }
+.table-wrap table { margin: 0; }
+.table-wrap tbody tr:nth-child(even) { background: #fafbfe; }
+.table-wrap tbody tr:last-child td { border-bottom: 0; }
+
+/* Older tables without a wrapper need their own narrow-screen scroll area. */
+.blog-content > table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Light code surfaces match the reference article and keep long kernels
+   readable without turning whole sections into dark panels. */
+.blog-content pre {
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 20px 0;
+    padding: 19px 21px;
+    border: 1px solid #e1e5ee;
+    border-radius: 11px;
+    background: #f8fafc;
+    color: #25344c;
+    font-size: .8rem;
+    line-height: 1.7;
+    tab-size: 4;
+}
+
+.blog-content pre code {
+    padding: 0;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+}
+
+.code-fold { background: #f8fafc; border-color: #e1e5ee; }
+.code-fold summary {
+    padding: 15px 18px;
+    background: #f1f4fa;
+    color: #37345d;
+    line-height: 1.6;
+}
+.code-fold[open] summary { border-bottom-color: #e1e5ee; }
+.code-fold pre { margin: 0; border: 0; border-radius: 0; }
+
+.optional-derivation { background: #fafbfe; border-color: #e1e5ee; }
+.optional-derivation summary { padding: 15px 18px; line-height: 1.6; }
+.optional-derivation[open] summary { border-bottom-color: #e1e5ee; }
+
+.references { overflow-wrap: anywhere; }
+.references p {
+    margin: 0;
+    padding: 13px 0;
+    border-bottom: 1px solid #edf0f5;
+    line-height: 1.7;
+}
+.references p:last-child { border-bottom: 0; }
+
+a:focus-visible,
+summary:focus-visible {
+    outline: 3px solid #818cf8;
+    outline-offset: 4px;
+    border-radius: 3px;
+}
+
+@media (max-width: 700px) {
+    .blog-header h1 { font-size: 2rem; }
+    .blog-content { padding: 28px 20px; }
+    .toc { padding: 19px; }
+    .toc > ol { grid-template-columns: 1fr; gap: 5px; }
+    .formula-card { padding: 10px 12px; }
+    .plot-figure { padding: 10px; }
+    .blog-content pre { padding: 15px; font-size: .75rem; }
+    .code-fold summary,
+    .optional-derivation summary { padding: 13px 15px; }
+}
+
+@media (max-width: 420px) {
+    .container { padding-left: 12px; padding-right: 12px; }
+    .blog-content { padding-left: 18px; padding-right: 18px; }
+    .blog-header h1 { font-size: 1.85rem; }
+}
+
+@media print {
+    .blog-content pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .plot-figure, .formula-card { break-inside: avoid; }
+    .blog-content h2, .blog-content h3 { break-after: avoid; }
+}
