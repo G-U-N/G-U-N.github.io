@@ -80,7 +80,7 @@
 
             <p class="opening-question">Choose the target, choose the divergence, then choose how to differentiate it.</p>
 
-            <p>We will follow these choices to derive policy gradient, Gaussian mean matching, and sample movement using diffusion scores or a discriminator.</p>
+            <p>We will follow these choices to connect policy gradients (REINFORCE / GRPO), OPD, Gaussian mean matching (DiffusionOPD), and sample movement using diffusion scores (VSD / DMD) or a discriminator (GAN).</p>
 
             <figure class="concept-figure bridge-figure" id="connection-map">
                 <div class="ratio-origin">
@@ -190,7 +190,7 @@
                 <span class="equation-label">(4) Earlier actions can affect later distillation rewards</span>
             </div>
 
-            <p>Past rewards contribute zero in expectation; future rewards remain because earlier tokens affect later prefixes. Keeping only \(r_k\) generally misses this credit assignment. <a href="#ref-minillm">[3]</a> PPO adds old/new policy ratios and clipping to the policy-gradient framework; clipping is an optimizer choice, not a KL identity. <a href="#ref-ppo">[4]</a></p>
+            <p>Past rewards contribute zero in expectation; future rewards remain because earlier tokens affect later prefixes. Keeping only \(r_k\) generally misses this credit assignment. <a href="#ref-minillm">[3]</a> PPO adds old/new policy ratios and clipping to the policy-gradient framework; clipping is an optimizer choice, not a KL identity. <a href="#ref-ppo">[4]</a> GRPO uses a PPO-style clipped surrogate with advantages estimated from groups of sampled responses. <a href="#ref-grpo">[15]</a></p>
 
             <div class="pitfall">
                 <strong>“On-policy” specifies where data come from, not a unique loss</strong>
@@ -644,6 +644,7 @@ loss_dm.backward()  # d xt / d theta supplies alpha * the generator Jacobian</co
                 <p id="ref-gan">[12] Ian J. Goodfellow et al. <a href="https://arxiv.org/abs/1406.2661">Generative Adversarial Nets.</a> NeurIPS 2014. Proposition 1 gives the optimal discriminator; §4.1 connects the minimax game to Jensen–Shannon divergence.</p>
                 <p id="ref-fgan">[13] Sebastian Nowozin, Botond Cseke, and Ryota Tomioka. <a href="https://arxiv.org/abs/1606.00709">f-GAN: Training Generative Neural Samplers using Variational Divergence Minimization.</a> NeurIPS 2016. A variational framework for adversarial training with different f-divergences.</p>
                 <p id="ref-gan-tutorial">[14] Ian Goodfellow. <a href="https://arxiv.org/abs/1701.00160">NIPS 2016 Tutorial: Generative Adversarial Networks.</a> 2017. See §3.2 and §8.1 for generator objectives and supervised density-ratio estimation.</p>
+                <p id="ref-grpo">[15] Zhihong Shao et al. <a href="https://arxiv.org/abs/2402.03300v2">DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.</a> 2024. See §4.1 for GRPO's clipped surrogate and group-relative advantage estimates.</p>
             </section>
 
             <div class="next-post"><a href="distributional-distillation.html">Continue with the two-score derivation →</a><a href="../index.html#blogs">All posts</a></div>
