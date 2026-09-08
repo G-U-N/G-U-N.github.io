@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How RL, on-policy distillation, VSD, and DMD connect: rewards become target distributions, log-density ratios become policy gradients, and their spatial derivatives become score differences.">
+    <meta name="description" content="How RL, Gaussian on-policy distillation, VSD, DMD, and GANs connect through log-density ratios, mean MSE, and sample-space gradients—with derivations and reproducible checks.">
     <meta property="og:type" content="article">
-    <meta property="og:title" content="RL, OPD, and VSD: From Rewards to Score Differences">
-    <meta property="og:description" content="One reverse-KL objective, two ways to differentiate it, and the noisy marginals that connect language-model distillation to diffusion.">
+    <meta property="og:title" content="RL, OPD, VSD, and GANs: One Density Ratio, Different Updates">
+    <meta property="og:description" content="From policy gradients to Gaussian mean matching, diffusion scores, and discriminator gradients: what connects them, and where the equivalences end.">
     <meta property="og:url" content="https://g-u-n.github.io/blogs/rl-opd-vsd.html">
     <meta property="og:image" content="https://g-u-n.github.io/blogs/figures/rl-opd-vsd-two-gradients.png">
     <meta property="og:image:alt" content="A Gaussian example connecting scalar log-density-ratio rewards to a vector field that moves generated samples.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="RL, OPD, and VSD: From Rewards to Score Differences">
-    <meta name="twitter:description" content="One reverse-KL objective, two gradient estimators, and a bridge from language models to diffusion.">
+    <meta name="twitter:title" content="RL, OPD, VSD, and GANs: One Density Ratio, Different Updates">
+    <meta name="twitter:description" content="Policy gradients, Gaussian mean matching, diffusion scores, and discriminator gradients through one density ratio.">
     <meta name="twitter:image" content="https://g-u-n.github.io/blogs/figures/rl-opd-vsd-two-gradients.png">
     <link rel="canonical" href="https://g-u-n.github.io/blogs/rl-opd-vsd.html">
-    <title>RL, OPD, and VSD: From Rewards to Score Differences — Fu-Yun Wang</title>
+    <title>RL, OPD, VSD, and GANs: One Density Ratio, Different Updates — Fu-Yun Wang</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -29,8 +29,8 @@
         <header class="blog-header">
             <a href="../index.html#blogs" class="back-link"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to all posts</a>
             <div class="eyebrow">Distributional Distillation · A connection to RL</div>
-            <h1>RL, OPD, and VSD<span class="title-second">From Rewards to Score Differences</span></h1>
-            <p class="dek">A reward, a teacher likelihood, and a diffusion score look like very different training signals. Follow one log-density ratio, and the connection becomes surprisingly concrete.</p>
+            <h1>RL, OPD, VSD, and GANs<span class="title-second">One Density Ratio, Different Updates</span></h1>
+            <p class="dek">Policy gradients, mean-squared error, diffusion scores, and discriminator feedback look like different training signals. One log-density ratio explains how they connect.</p>
             <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; <time datetime="2026-09-08">September 8, 2026</time> &middot; Mathematical notes</div>
             <div class="header-insight">
                 <span class="insight-label">The connection</span>
@@ -52,8 +52,10 @@
                     <li><a href="#rl">RL: improve the policy through a scalar reward</a></li>
                     <li><a href="#opd">OPD: a teacher supplies an implicit reward</a></li>
                     <li><a href="#target">KL-regularized RL defines a target distribution</a></li>
+                    <li><a href="#gaussian-opd">Gaussian OPD: policy gradient becomes mean MSE</a></li>
                     <li><a href="#pathwise">From rewarding samples to moving samples</a></li>
                     <li><a href="#noisy">VSD and DMD: make the comparison at noise scales</a></li>
+                    <li><a href="#gan">GANs: learn the ratio, then differentiate it</a></li>
                     <li><a href="#practice">What survives in an actual training loop?</a></li>
                     <li><a href="#map">A compact map of the connection</a></li>
                 </ol>
@@ -63,7 +65,7 @@
 
             <p>This note started with a small moment of recognition. I was looking at the gradient of on-policy distillation (OPD): sample an output from the student, compare the teacher's and student's log probabilities, and use that difference to weight the gradient of the student's log probability. Then it clicked: <em>this is the structure of policy gradient.</em></p>
 
-            <p>There was a second connection waiting nearby. In variational score distillation (VSD) and distribution matching distillation (DMD), the generator also produces the samples used to improve itself. But the feedback is a difference of <em>scores</em>, not log probabilities. Since a score is the gradient of a log density with respect to the sample, the natural next question was:</p>
+            <p>There was a second connection waiting nearby. In variational score distillation (VSD) and distribution matching distillation (DMD), the current scene particles or generator also produce the samples used to improve themselves. But the feedback is a difference of <em>scores</em>, not log probabilities. Since a score is the gradient of a log density with respect to the sample, the natural next question was:</p>
 
             <p class="opening-question">Is the score difference simply the derivative of the reward that appeared in distillation?</p>
 
@@ -75,26 +77,47 @@
 
             <p>Now consider an image generator. There need not be one correct image for each latent input. What matters can be the distribution of all its outputs. The teacher's feedback must then describe that distribution, rather than assign a target image to every latent. A score difference supplies exactly the local directional information needed to update a differentiable generator.</p>
 
+            <p>Two more connections make the story richer. If a diffusion step has a Gaussian transition with fixed covariance, we can average its policy gradient analytically: the result is a squared-error gradient between student and teacher means. If neither density is available, a GAN discriminator offers another route. It learns to tell target samples from student samples; at its ideal optimum, its logit recovers their log-density ratio. Backpropagating through that scalar field gives a score difference. We will derive both connections, while keeping local transition matching separate from matching an entire output population.</p>
+
             <p>To connect the methods, keep three questions separate: <strong>What distribution are we optimizing? What objective defines improvement? What derivative can we actually compute?</strong> We will change one answer at a time. First, a teacher becomes a reward. Next, a reward becomes a target distribution. Finally, differentiating that reward in sample space turns it into the two-score update.</p>
 
-            <figure class="concept-figure bridge-figure">
-                <div class="bridge-intro">A map of the argument</div>
-                <div class="bridge-objectives">
-                    <div class="bridge-node violet"><strong>KL-regularized RL</strong>\(p^*\propto p_{\rm ref}e^{r/\beta}\)<p>Reward and reference define a target.</p></div>
-                    <div class="bridge-node teal"><strong>Reverse-KL distillation</strong>\(p=p_T\)<p>The teacher supplies the target directly.</p></div>
+            <figure class="concept-figure bridge-figure" id="connection-map">
+                <div class="ratio-origin">
+                    <span class="diagram-kicker">Student \(q_\theta\) · Target \(p\)</span>
+                    <strong>One log-density ratio</strong>
+                    <div>\(r_\theta(x)=\log p(x)-\log q_\theta(x)\)</div>
+                    <p>Positive: the target assigns this output more probability.</p>
                 </div>
-                <div class="bridge-join">Both lead to minimizing reverse KL<span aria-hidden="true">↓</span></div>
-                <div class="bridge-hub"><strong>The common object</strong>\(\mathcal L=\mathrm{KL}(q_\theta\|p)\)<p>Implicit reward: \(r_\theta(x)=\log p(x)-\log q_\theta(x)\)</p></div>
-                <div class="bridge-join">Two ways to differentiate the same objective<span aria-hidden="true">↙ &nbsp; ↘</span></div>
-                <div class="bridge-routes">
-                    <div class="bridge-node violet"><strong>Likelihood-ratio gradient</strong><div class="route-action">Change how likely an output is</div>\(r_\theta(x)\,\nabla_\theta\log q_\theta(x)\)<p>Policy gradient / sequence reverse-KL OPD</p></div>
-                    <div class="bridge-node teal"><strong>Pathwise gradient</strong><div class="route-action">Differentiate through a generated output</div>\(J_\theta^{\mathsf T}(s_p-s_q)\)<p>Reparameterize \(x=G_\theta(z)\)</p></div>
+                <div class="ratio-fork" aria-hidden="true"></div>
+                <div class="ratio-routes">
+                    <div class="ratio-route probability-route">
+                        <span class="diagram-kicker">Use its value</span>
+                        <h3>Weight sampled actions</h3>
+                        <svg class="route-sketch" viewBox="0 0 240 66" aria-hidden="true">
+                            <path d="M25 55H215" fill="none" stroke="#d8d6ee"/>
+                            <path d="M44 54V36M88 54V20M132 54V29M176 54V9" stroke="#a9a3e9" stroke-width="18"/>
+                            <path d="M44 28V17m-4 4 4-4 4 4" stroke="#6455c7" stroke-width="2" fill="none"/>
+                            <text x="204" y="24" fill="#6455c7" font-size="19">↑</text>
+                        </svg>
+                        <a class="route-example" href="#opd"><span>01</span><div><strong>Discrete OPD</strong><p>Estimate the policy gradient.</p></div></a>
+                        <a class="route-example" href="#gaussian-opd"><span>02</span><div><strong>Gaussian OPD</strong><p>Average the noise → mean MSE.</p></div></a>
+                    </div>
+                    <div class="ratio-route movement-route">
+                        <span class="diagram-kicker">Use its spatial derivative</span>
+                        <h3>Move generated outputs</h3>
+                        <svg class="route-sketch" viewBox="0 0 240 66" aria-hidden="true">
+                            <path d="M27 55H217" fill="none" stroke="#cfe5df"/>
+                            <g fill="#65a998"><circle cx="40" cy="32" r="5"/><circle cx="103" cy="24" r="5"/><circle cx="158" cy="36" r="5"/></g>
+                            <path d="M50 32H80l-5-4m5 4-5 4M113 24h27l-5-4m5 4-5 4M168 36h28l-5-4m5 4-5 4" fill="none" stroke="#26816c" stroke-width="2"/>
+                        </svg>
+                        <a class="route-example" href="#noisy"><span>03</span><div><strong>VSD / DMD</strong><p>Estimate two density scores.</p></div></a>
+                        <a class="route-example" href="#gan"><span>04</span><div><strong>The GAN connection</strong><p>Differentiate a discriminator logit.</p></div></a>
+                    </div>
                 </div>
-                <div class="bridge-footer">Apply the pathwise route to noisy marginals → the two-score core of VSD / DMD</div>
-                <figcaption><strong>Figure 1.</strong> The arrows identify mathematical connections, not identical training recipes. Both gradient expressions are ascent directions for \(-\mathcal L\). VSD/DMD add a family of noisy-marginal comparisons.</figcaption>
+                <figcaption><strong>Figure 1.</strong> Use the ratio's <em>value</em> to weight actions, or its <em>spatial derivative</em> to move continuous samples. Gaussian MSE analytically averages the policy gradient at a fixed condition. VSD/DMD compare noisy distributions; the GAN route depends on the discriminator and generator loss. Each entry links to its derivation.</figcaption>
             </figure>
 
-            <p class="notation">Notation: \(q_\theta\) is the student, \(p_T\) the teacher, and \(p\) a fixed target. A prompt or condition is held fixed and suppressed; averaging over a fixed prompt distribution changes none of the identities. Density scores are \(s_q=\nabla_x\log q_\theta\) and \(s_p=\nabla_x\log p\). We assume the required expectations are finite, differentiation can pass under the integral, and the relevant densities have compatible, parameter-independent support. The pathwise sections additionally assume smooth densities and a differentiable sampler.</p>
+            <p class="notation">Notation: \(q_\theta\) is the student, \(p_T\) the teacher, and \(p\) a fixed target. A prompt is held fixed; we may subsequently average over a fixed prompt distribution. Integrals become sums for discrete outputs. For each KL calculation, assume \(q_\theta\ll p\), finite required expectations, and differentiability on parameter-independent support with derivatives that can pass through the integrals. Here \(q_\theta\ll p\) means the student puts no mass where the target has zero mass. The pathwise identities additionally require smooth sample-space densities and a differentiable sampler whose base randomness is independent of \(\theta\). Density scores are \(s_q=\nabla_x\log q_\theta\) and \(s_p=\nabla_x\log p\).</p>
 
             <h2 id="rl">2. RL: improve the policy through a scalar reward</h2>
 
@@ -113,7 +136,7 @@
                 <span class="equation-label">(1) The likelihood-ratio / REINFORCE identity</span>
             </div>
 
-            <p>This is the REINFORCE structure. <a href="#ref-reinforce">[1]</a> We do not need \(\nabla_x r\): a scalar judgment is enough. This is useful for discrete tokens, environment interactions, and nondifferentiable verifiers. Subtracting an action-independent baseline leaves the expected gradient unchanged because \(\mathbb E_{q_\theta}[\nabla_\theta\log q_\theta]=0\). Outputs with higher reward relative to that baseline receive a positive log-probability weight; shared parameters still couple their updates.</p>
+            <p>This is the REINFORCE structure. <a href="#ref-reinforce">[1]</a> We do not need \(\nabla_x r\): a scalar judgment is enough. This is useful for discrete tokens, environment interactions, and nondifferentiable verifiers. For a fixed prompt, a baseline independent of the sampled output leaves the expected gradient unchanged because \(\mathbb E_{q_\theta}[\nabla_\theta\log q_\theta]=0\). In a trajectory, use the corresponding conditional identity at each state. Baselines are held fixed in the policy-gradient backward pass. Positive weights favor an output's log probability in that gradient contribution; shared parameters and the other samples determine its net change.</p>
 
             <h2 id="opd">3. OPD: a teacher supplies an implicit reward</h2>
 
@@ -149,10 +172,10 @@
 
             <p>The reward asks a relative question: <em>does the teacher assign this output more probability than the student does?</em> A plausible output can still be overproduced by the student. The subtraction of \(\log q_\theta\) detects that. This sequence-level reverse-KL and policy-gradient connection is explicit in MiniLLM. <a href="#ref-minillm">[3]</a></p>
 
-            <p>The implicit reward depends on \(\theta\). Usually a parameter-dependent reward adds an extra derivative. Here that term is \(-\mathbb E_{q_\theta}[\nabla_\theta\log q_\theta]=0\). This cancellation justifies treating the computed log ratio as a constant weight in a sampled policy-gradient surrogate. It is a property of this expression, not a general rule to ignore reward derivatives.</p>
+            <p>The implicit reward depends on \(\theta\). Usually a parameter-dependent reward adds an extra derivative. Here that term is \(-\mathbb E_{q_\theta}[\nabla_\theta\log q_\theta]=0\), with the derivative taken at fixed \(x\). This cancellation holds <em>in expectation under the current student</em>, not sample by sample. It justifies treating the log ratio as a constant weight in the sampled surrogate for (3), not ignoring reward derivatives in general.</p>
 
             <h3>Sequences need credit assignment</h3>
-            <p>For a finite response \(y_{1:H}\), let \(h_k\) contain the prompt and preceding tokens. Define the per-token log ratio \(r_k\) and its reward-to-go \(R_k\):</p>
+            <p>Use a fixed horizon \(H\), with EOS represented as an absorbing terminal state if generation ends earlier. Include its stopping probability in the sequence likelihood. Let \(h_k\) contain the prompt and preceding tokens. Define the per-token log ratio \(r_k\) and its reward-to-go \(R_k\):</p>
             <div class="formula-card">
                 \[
                 r_k=\log\frac{p_T(y_k\mid h_k)}{q_\theta(y_k\mid h_k)},
@@ -173,9 +196,42 @@
                 OPD can use several divergences. GKD, for example, evaluates token-distribution losses on student-generated prefixes while stopping gradients through prefix sampling. <a href="#ref-gkd">[2]</a> Its reverse-KL variant should not be identified with the full sequence gradient in (4): the latter also accounts for how parameters change which prefixes are visited. The exact equivalence here concerns <em>sequence-level reverse KL</em>, or a single fixed-context action distribution.
             </div>
 
+            <details class="optional-derivation" id="prefix-gradient">
+                <summary>Exactly what does a frozen-prefix token loss omit?</summary>
+                <div class="details-body">
+                    <p>Let \(d_{\theta,k}(h)\) be the student's prefix distribution at step \(k\), and define \(D_k(\theta,h)=\mathrm{KL}(q_\theta(\cdot\mid h)\|p_T(\cdot\mid h))\). For the fixed horizon, the KL chain rule gives</p>
+                    <div class="formula-card">
+                        \[
+                        \mathcal L_{\rm seq}=\sum_{k=1}^{H}\mathbb E_{h\sim d_{\theta,k}}[D_k(\theta,h)],
+                        \]
+                        \[
+                        \begin{aligned}
+                        \nabla_\theta\mathcal L_{\rm seq}
+                        ={}&\underbrace{\sum_k\mathbb E_{d_{\theta,k}}[\nabla_\theta D_k]}_{\text{differentiate the token KL at a fixed prefix}}\\
+                        &+\underbrace{\sum_k\mathbb E_{d_{\theta,k}}[D_k\nabla_\theta\log d_{\theta,k}]}_{\text{differentiate which prefixes are visited}}.
+                        \end{aligned}
+                        \]
+                        <span class="equation-label">(4a) Equal objective values do not imply equal gradients after stop-gradient</span>
+                    </div>
+                    <p>A two-step example makes the missing term concrete. Let the student's first token choose branch B with probability \(u=\operatorname{sigmoid}(\eta)\); the teacher chooses it with probability \(1/2\). At the second step the student's fixed probability of token 1 is \(1/2\) on both branches. The teacher's is \(1/2\) on A and \(0.9\) on B. Then \(D_A=0\), \(D_B=\tfrac12\log(25/9)\approx0.5108\), and</p>
+                    <div class="formula-card">
+                        \[
+                        \mathcal L_{\rm seq}
+                        =\mathrm{KL}(\operatorname{Ber}(u)\|\operatorname{Ber}(1/2))+uD_B,
+                        \]
+                        \[
+                        \left.\partial_\eta\mathcal L_{\rm seq}\right|_{\eta=0}
+                        =\tfrac14D_B\approx0.1277,
+                        \qquad g_{\rm frozen\ prefix}=0.
+                        \]
+                    </div>
+                    <p>The full gradient can change how often the student visits the branch it cannot match. The fixed-prefix loss has no such signal for \(\eta\). Equation (4a) isolates this distinction; GKD's actual recipe also allows data mixing, other divergences, and per-sequence length normalization. <a href="#ref-gkd">[2]</a> <a href="code/check_rl_opd_vsd.py">Reproduce this example and the gradient checks.</a></p>
+                </div>
+            </details>
+
             <h2 id="target">4. KL-regularized RL defines a target distribution</h2>
 
-            <p>So far, distillation has acquired an RL interpretation. The connection also works in the other direction. Let \(p_{\rm ref}\) be a fixed reference, \(\beta&gt;0\), and consider</p>
+            <p>So far, distillation has acquired an RL interpretation. The connection also works in the other direction. Let \(p_{\rm ref}\) and \(r\) be fixed, \(\beta&gt;0\), and restrict to policies with finite \(\mathrm{KL}(q_\theta\|p_{\rm ref})\) and finite expected absolute reward. Consider</p>
             <div class="formula-card">
                 \[
                 J_\beta(\theta)=\mathbb E_{q_\theta}[r(x)]
@@ -202,7 +258,7 @@
                 <span class="equation-label">(6) An exact objective identity</span>
             </div>
 
-            <p>Because \(Z\) is independent of the student parameters, the two optimization problems are equivalent. If the distillation teacher is \(p_T=p^*\), reverse-KL OPD optimizes the same objective, up to scale and a constant. A capacity-limited student finds the best available reverse-KL fit; it need not reach \(p^*\).</p>
+            <p>Because \(Z\) is independent of the student parameters, the two optimization problems have the same optimizers. If \(p_T=p^*\), sequence-level reverse-KL distillation has the same objective up to scale and a constant. A capacity-limited student's <em>global optimum, if attained,</em> is its best available reverse-KL fit; gradient training is not guaranteed to find it.</p>
 
             <p>This reward–optimal-policy transformation also underlies DPO's derivation. <a href="#ref-dpo">[5]</a> The identity alone does not give DPO's preference-pair loss, which additionally uses a preference model. Nor does an arbitrary teacher necessarily equal the optimum of a particular externally chosen reward.</p>
 
@@ -214,7 +270,95 @@
                 </div>
             </details>
 
-            <h2 id="pathwise">5. From rewarding samples to moving samples</h2>
+            <h2 id="gaussian-opd">5. Gaussian OPD: policy gradient becomes mean MSE</h2>
+
+            <p>Here is a particularly satisfying specialization: <strong>for a Gaussian policy and teacher with the same fixed covariance, the expected log-ratio policy gradient is exactly a mean-matching gradient.</strong> Continuity alone does not imply MSE; the Gaussian assumptions do the work.</p>
+
+            <h3>First keep the cost and reward signs consistent</h3>
+            <p>Keep this note's notation: \(q_\theta\) is the student and \(p_T\) the teacher. Define the <em>cost</em> \(c_\theta(a)=\log q_\theta(a)-\log p_T(a)=-r_\theta(a)\). With a fixed teacher, \(\partial_\theta c_\theta|_a=\partial_\theta\log q_\theta|_a\). Reading the reverse-KL derivation backwards gives</p>
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \mathbb E_{q_\theta}[c_\theta\nabla_\theta\log q_\theta]
+                &=\int (\nabla_\theta q_\theta)c_\theta\,da
+                +\underbrace{\int q_\theta\,\partial_\theta c_\theta\,da}_{0}\\
+                &=\nabla_\theta\int q_\theta c_\theta\,da
+                =\nabla_\theta\mathrm{KL}(q_\theta\|p_T).
+                \end{aligned}
+                \]
+                <span class="equation-label">(6a) Positive student/teacher log ratio → loss gradient; negate it for reward ascent</span>
+            </div>
+            <p>This adds a zero <em>expectation</em> and then uses the product rule. The derivatives in the integral hold the integration variable \(a\) fixed. Once we substitute a differentiable sampled action, total derivatives have an additional path through that action.</p>
+
+            <h3>Integrate out the Gaussian action noise</h3>
+            <p>Hold a context \(h\) fixed and suppress it in the notation. Let \(\sigma&gt;0\) be independent of \(\theta\), and let the teacher mean be fixed at this context:</p>
+            <div class="formula-card">
+                \[
+                q_\theta(a)=\mathcal N(\mu_\theta,\sigma^2I),
+                \qquad p_T(a)=\mathcal N(\mu_T,\sigma^2I),
+                \]
+                \[
+                \delta=\mu_\theta-\mu_T,\quad
+                a=\mu_\theta+\sigma\epsilon,\quad
+                \epsilon\sim\mathcal N(0,I).
+                \]
+            </div>
+            <p>The sampled cost has a constant part and a part correlated with the sampled noise:</p>
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                c_\theta(a)
+                &=\frac{\|a-\mu_T\|^2-\|a-\mu_\theta\|^2}{2\sigma^2}\\
+                &=\underbrace{\frac{\|\delta\|^2}{2\sigma^2}}_{C_\theta}
+                +\frac{\delta^{\mathsf T}\epsilon}{\sigma},\\
+                \left.\nabla_\theta\log q_\theta(a)\right|_a
+                &=J_\mu^{\mathsf T}\frac{\epsilon}{\sigma},
+                \qquad J_\mu=\frac{\partial\mu_\theta}{\partial\theta}.
+                \end{aligned}
+                \]
+            </div>
+            <p>Multiply them and use \(\mathbb E[\epsilon]=0\), \(\mathbb E[\epsilon\epsilon^{\mathsf T}]=I\):</p>
+            <div class="formula-card hero-equation">
+                \[
+                \begin{aligned}
+                \mathbb E[c_\theta\nabla_\theta\log q_\theta]
+                &=J_\mu^{\mathsf T}\!\left(
+                \frac{C_\theta}{\sigma}\mathbb E[\epsilon]
+                +\frac{\mathbb E[\epsilon\epsilon^{\mathsf T}]\delta}{\sigma^2}\right)\\
+                &=\boxed{J_\mu^{\mathsf T}\frac{\mu_\theta-\mu_T}{\sigma^2}}\\
+                &=\boxed{\nabla_\theta\frac{\|\mu_\theta-\mu_T\|^2}{2\sigma^2}}.
+                \end{aligned}
+                \]
+                <span class="equation-label">(6b) Expected policy gradient = analytic Gaussian KL gradient = scaled mean-MSE gradient</span>
+            </div>
+            <p>The entire action expectation has been evaluated. The mean gradient now has no variance from sampling \(\epsilon\) at this fixed context; sampling prompts, states, or noise levels can still contribute variance. A shared fixed covariance \(\Sigma\succ0\) gives the more general Mahalanobis loss \(\tfrac12\delta^{\mathsf T}\Sigma^{-1}\delta\). At this fixed covariance, the two directions of Gaussian KL even coincide. A trainable covariance adds covariance and entropy derivatives.</p>
+
+            <div class="pitfall">
+                <strong>A sampled log ratio is not an already-averaged KL reward</strong>
+                The correlation between \(c_\theta(a)\) and \(\epsilon\) supplies the gradient in (6b). Replacing \(c_\theta(a)\) by its mean \(C_\theta\) and detaching it gives \(\mathbb E[C_\theta\nabla_\theta\log q_\theta(a)]=0\) at fixed \(h\). Directly differentiating \(C_\theta\), by contrast, gives the desired MSE gradient. These are different operations; clipping does not establish an equivalence between them.
+            </div>
+
+            <h3>Flow-OPD and DiffusionOPD: which distribution is Gaussian?</h3>
+            <p>In a discretized diffusion SDE, the Gaussian can be the <em>next-state transition conditioned on the current state</em>. Both models are evaluated at the same student-visited state. DiffusionOPD derives the shared-covariance KL and uses direct transition matching; Flow-OPD also derives a Gaussian KL but describes a clipped policy update with detached mean-matching rewards. Their published v1 recipes are distinct. <a href="#ref-diffusionopd">[10]</a> <a href="#ref-flowopd">[11]</a> Equation (6b) establishes the local sampled-log-ratio identity, rather than an equivalence to every PPO surrogate in those papers.</p>
+            <p>For example, write a transition mean as \(\mu_\theta(h,t)=b(h,t)+k(t)v_\theta(h,t)\), with the same fixed \(b,k,\sigma_t\) for both models. Then</p>
+            <div class="formula-card">
+                \[
+                \mathrm{KL}\big(q_\theta(\cdot\mid h,t)\|p_T(\cdot\mid h,t)\big)
+                =\frac{k(t)^2}{2\sigma_t^2}\|v_\theta(h,t)-v_T(h,t)\|^2.
+                \]
+                <span class="equation-label">(6c) Matching transition means becomes a weighted prediction MSE</span>
+            </div>
+            <p>A simple noisy Euler step has \(b(h,t)=h\) and \(k(t)=\Delta t\); an SDE conversion can change both coefficients. This is a conditional transition loss, not the KL between the final generated-image marginals. Moreover, differentiating it on detached rollout states gives a local update. The full trajectory objective also differentiates which states are visited, exactly as in <a href="#prefix-gradient">(4a)</a>; Gaussian integration removes action noise, not that state-distribution derivative.</p>
+
+            <details class="optional-derivation">
+                <summary>What changes for a deterministic ODE sampler?</summary>
+                <div class="details-body">
+                    <p>At a fixed state, a deterministic step is a point mass at its predicted next state. Two distinct point masses have infinite KL, not a finite MSE. Introducing a common positive Gaussian observation noise makes the transition KL above well-defined; directly regressing the two deterministic predictions is another valid choice. DiffusionOPD explicitly replaces the KL with squared transition error in its ODE formulation, Eq. (12). <a href="#ref-diffusionopd">[10]</a></p>
+                    <p>For fixed unequal means, the Gaussian KL diverges as \(\sigma\to0\); the rescaled quantity \(\sigma^2\mathrm{KL}=\tfrac12\|\delta\|^2\) stays finite. This explains the regression connection without claiming a finite zero-noise KL. Separately, an ODE driven by a random initial latent can have a smooth, non-Gaussian <em>final marginal</em>. Deterministic transitions do not make the final population deterministic or Gaussian.</p>
+                </div>
+            </details>
+
+            <h2 id="pathwise">6. From rewarding samples to moving samples</h2>
 
             <p>Now suppose the sample is continuous and generated by a differentiable map:</p>
             <div class="formula-card">
@@ -224,7 +368,7 @@
                 \]
             </div>
 
-            <p>The latent distribution \(p_z\) is fixed. Instead of differentiating the probability of a sampled output, we can hold \(z\) fixed and differentiate the output itself. Reparameterize the same reverse KL, with \(p\) fixed:</p>
+            <p>The latent distribution \(p_z\) is fixed. Instead of differentiating the probability of a sampled output, we can hold \(z\) fixed and differentiate the output itself. For this section, assume \(q_\theta\) really has a smooth density; differentiability of \(G_\theta\) alone does not ensure that. Reparameterize the same reverse KL, with \(p\) fixed:</p>
             <div class="formula-card">
                 \[
                 \mathcal L(\theta)=\mathbb E_z\!\left[
@@ -252,7 +396,7 @@
                 <span class="equation-label">(8) The bridge from OPD to score distillation</span>
             </div>
 
-            <p>This answers the opening question. <strong>The log ratio grades an output; its spatial derivative says how that grade changes when the output moves.</strong> With both estimators available and the assumptions above satisfied, (3) and (8) have the same expected parameter gradient. Their Monte Carlo estimates, variance, and computational requirements differ. The word “score” also changes meaning across communities: \(\nabla_\theta\log q_\theta\) in REINFORCE is a parameter score; \(\nabla_x\log q_\theta\) in diffusion is a density score in sample space.</p>
+            <p>This answers the opening question. <strong>At fixed \(\theta\), the log ratio grades an output; its spatial derivative describes how that grade changes as \(x\) moves.</strong> For the <em>same smooth continuous model and target</em>, (3) and (8) have the same expected parameter gradient. Their sampled estimates and variance differ. This does not differentiate through sampled token IDs: discrete language OPD and continuous image distillation instantiate the calculus on different output spaces. Also distinguish the parameter score \(\nabla_\theta\log q_\theta\) in REINFORCE from the sample-space density score \(\nabla_x\log q_\theta\) in diffusion.</p>
 
             <figure class="plot-figure">
                 <a href="figures/rl-opd-vsd-two-gradients.png"><picture><source media="(max-width: 600px)" srcset="figures/rl-opd-vsd-two-gradients-mobile.png" width="1200" height="1900"><img src="figures/rl-opd-vsd-two-gradients.png" width="2400" height="1200" alt="Two views of a Gaussian student centered at minus one and a target centered at plus one. The scalar log ratio is 2x; its spatial gradient is a constant plus two, pointing every sample to the right." loading="lazy"></picture></a>
@@ -279,23 +423,34 @@
                         \]
                     </div>
                     <p>For Figure 2, both give \(+2\). The pathwise estimator happens to have zero variance in this mean-only example; that is a property of this Gaussian calculation, not a universal variance guarantee.</p>
+                    <p>To check the entropy contribution too, allow the scale to change: \(q_{\mu,\ell}=\mathcal N(\mu,e^{2\ell})\), \(p=\mathcal N(m,v^2)\). Both estimators give the ascent gradient</p>
+                    <div class="formula-card">
+                        \[
+                        \nabla_{(\mu,\ell)}(-\mathcal L)
+                        =\left(\frac{m-\mu}{v^2},\;1-\frac{e^{2\ell}}{v^2}\right).
+                        \]
+                    </div>
+                    <p>The \(+1\) in the scale component comes from student entropy. The <a href="code/check_rl_opd_vsd.py">numerical checks</a> compare both components against the closed form and finite differences.</p>
                 </div>
             </details>
 
             <p>The score difference is a direction in output space. An actual generator update is \(\Delta\theta\propto\mathbb E[J_\theta^{\mathsf T}(s_p-s_q)]\), so shared parameters couple the movement of different outputs. It is not generally identical to moving every output independently along a free particle flow. The <a href="distributional-distillation-flows.html">previous flow note</a> develops that distinction.</p>
 
-            <h2 id="noisy">6. VSD and DMD: make the comparison at noise scales</h2>
+            <h2 id="noisy">7. VSD and DMD: make the comparison at noise scales</h2>
 
-            <p>The clean-space derivation leaves a practical problem. A neural generator often has no tractable likelihood, and its clean output distribution can be concentrated on a thin set. A diffusion teacher instead exposes scores at positive noise levels. We therefore compare the distributions <em>after applying the same forward noising kernel</em>.</p>
+            <p>The clean-space derivation leaves a practical problem. A neural generator often has no tractable likelihood; a singular clean distribution does not even have the density used in (7). We can instead define the objective directly at positive noise levels. In the ideal model, \(p_T\) denotes a target clean probability law and \(s_{T,t}\) its exact forward-noised score. A trained diffusion network approximates this score. Apply the same Gaussian kernel to both clean laws, with \(t,z,\epsilon\) sampled independently from fixed distributions:</p>
             <div class="formula-card">
                 \[
                 x_t=\alpha_tG_\theta(z)+\sigma_t\epsilon,
                 \qquad \epsilon\sim\mathcal N(0,I),
                 \]
                 \[
+                K_t(\cdot\mid x_0)=\mathcal N(\alpha_t x_0,\sigma_t^2I),
+                \]
+                \[
                 \begin{aligned}
-                q_{\theta,t}(x_t)&=\int K_t(x_t\mid x_0)q_\theta(x_0)\,dx_0,\\
-                p_{T,t}(x_t)&=\int K_t(x_t\mid x_0)p_T(x_0)\,dx_0.
+                q_{\theta,t}(x_t)&=\int K_t(x_t\mid x_0)\,q_\theta(dx_0),\\
+                p_{T,t}(x_t)&=\int K_t(x_t\mid x_0)\,p_T(dx_0).
                 \end{aligned}
                 \]
                 \[
@@ -306,14 +461,15 @@
                 <span class="equation-label">(9) Fixed \(\rho\), nonnegative \(w(t)\), and \(\sigma_t&gt;0\) at sampled noise levels</span>
             </div>
 
-            <p>These are <strong>noisy marginals of the final output distribution</strong>. We integrate out the clean image and noise; a marginal describes the resulting population at a chosen noise level. It need not describe an intermediate state visited by the student's actual sampler. Even a one-step student can be evaluated at many such levels.</p>
+            <p>The measure notation \(q_\theta(dx_0)\) includes singular laws such as a point mass. A nondegenerate Gaussian kernel gives smooth, positive noisy densities, but does not by itself guarantee a finite KL or finite time-integrated gradient; the integrability assumptions still matter, especially near \(\sigma_t=0\).</p>
+            <p>These are <strong>noisy marginals of the final output distribution</strong>. We integrate out the clean image and noise; a marginal describes the resulting population at a chosen noise level. It need not describe an intermediate state visited by the student's actual sampler. Even a one-step student can be evaluated at many such levels. Training samples levels from \(\rho\), rather than evaluating every level on every step. Replacing clean KL by (9) changes the objective; reparameterization changes how that new objective is differentiated.</p>
 
             <figure class="plot-figure">
                 <a href="figures/rl-opd-vsd-noisy-marginals.png"><picture><source media="(max-width: 600px)" srcset="figures/rl-opd-vsd-noisy-marginals-mobile.png" width="1200" height="2300"><img src="figures/rl-opd-vsd-noisy-marginals.png" width="2400" height="1200" alt="Three exact Gaussian-mixture plots of the same clean student and target after adding noise with standard deviation 0.12, 0.65, and 1.40. Fine separated modes become smoother and more overlapping at larger noise levels." loading="lazy"></picture></a>
                 <figcaption><strong>Figure 3.</strong> One output population, three noise scales. These curves are analytic Gaussian convolutions with \(\alpha_t=1\), not three snapshots of a denoising trajectory. Low noise preserves narrow modes; higher noise broadens them and makes overlap easier. Noise does not itself correct the student's mode proportions.<br><span class="figure-downloads"><a href="figures/rl-opd-vsd-noisy-marginals.pdf">Vector PDF</a><a href="code/plot_rl_opd_vsd.py">Figure source</a></span></figcaption>
             </figure>
 
-            <p>Apply (7) separately at each \(t\). Since \(\partial_\theta x_t=\alpha_tJ_\theta\),</p>
+            <p>Apply the pathwise argument to the smooth noisy law at each \(t\), without differentiating a possibly nonexistent clean density. The schedule is fixed, so \(\partial_\theta x_t=\alpha_tJ_\theta\). With \(s_{q,t}=\nabla_{x_t}\log q_{\theta,t}\) and \(s_{T,t}=\nabla_{x_t}\log p_{T,t}\),</p>
             <div class="formula-card">
                 \[
                 \boxed{\nabla_\theta\mathcal L_{\rm noisy}
@@ -321,15 +477,15 @@
                 w(t)\alpha_tJ_\theta^{\mathsf T}
                 \big(s_{q,t}(x_t)-s_{T,t}(x_t)\big)\right].}
                 \]
-                <span class="equation-label">(10) Descent pushes in the teacher-minus-student score direction</span>
+                <span class="equation-label">(10) Loss gradient; gradient descent uses its negative</span>
             </div>
 
             <p>This is the ideal noisy-marginal two-score gradient. Diff-Instruct explicitly formulates an integral KL of this kind. <a href="#ref-diffinstruct">[7]</a> The original DMD derives a clean-distribution score gradient and implements it through noisy scores, with practical weighting and an additional regression term. <a href="#ref-dmd">[8]</a> Equation (9) captures the shared mathematical core with fixed time weights; it is not a verbatim specification of every DMD training loss.</p>
 
             <h3>Where VSD fits</h3>
-            <p>VSD's original setting is text-to-3D. It optimizes a distribution \(\mu\) over scene parameters, represented by particles. For a camera \(c\), rendering \(x_0=R(\vartheta,c)\), \(\vartheta\sim\mu\), induces an image distribution \(q_t^\mu(\cdot\mid c)\). The objective matches these noisy rendered-image distributions to a diffusion prior, averaging over noise and cameras; each particle receives the score difference through its renderer Jacobian. <a href="#ref-vsd">[6]</a></p>
+            <p>VSD's original setting is text-to-3D. It optimizes a distribution \(\mu\) over scene parameters. For a camera \(c\), rendering \(x_0=R(\vartheta,c)\), \(\vartheta\sim\mu\), induces \(q_t^\mu(\cdot\mid c)\). Its noisy-image KL is averaged over cameras and noise levels, with a view-conditioned teacher target. The paper derives a Wasserstein gradient flow in scene-parameter distribution space and approximates it with particles; each particle receives a score difference through its renderer Jacobian. <a href="#ref-vsd">[6]</a></p>
 
-            <p>DMD instead trains a shared image generator \(G_\theta\). <a href="#ref-dmd">[8]</a> Thus VSD and DMD share the noisy-distribution / two-score structure, but the variables being optimized and their parameterization differ. A renderer can only produce renderable views; a compact generator can only represent its model family. Matching a target remains subject to those constraints.</p>
+            <p>DMD instead trains a shared image generator \(G_\theta\). <a href="#ref-dmd">[8]</a> Thus the connection to VSD is through the noisy-KL first variation and the resulting two-score field; VSD is not simply the same finite-dimensional reparameterization optimizer. Both scene representation and generator capacity constrain the distributions that can be matched.</p>
 
             <h3>Why there is a fake-score network</h3>
             <p>The teacher estimates \(s_{T,t}\). The other score must describe the <em>current student's population</em>. Train an auxiliary denoiser on newly generated images with the generator held fixed:</p>
@@ -339,63 +495,154 @@
                 \left[\lambda(t)\|\epsilon_\phi(x_t,t)-\epsilon\|^2\right].
                 \]
                 \[
-                \epsilon_\phi^*(x_t,t)=\mathbb E[\epsilon\mid x_t,t],
-                \qquad s_{q,t}(x_t)=-\frac{\epsilon_\phi^*(x_t,t)}{\sigma_t}.
+                \epsilon_q^*(x_t,t)=\mathbb E[\epsilon\mid x_t,t],
+                \qquad s_{q,t}(x_t)=-\frac{\epsilon_q^*(x_t,t)}{\sigma_t}.
                 \]
                 <span class="equation-label">(11) Positive denoising weights on the trained noise levels</span>
             </div>
 
-            <p>Substituting exact noise predictors into (10) gives a generator-descent bracket proportional to \((\epsilon_T-\epsilon_\phi)/\sigma_t\), with the \(w(t)\alpha_t\) factor retained. In practice, the learned fake score only approximates the optimum and can lag behind a moving student. This estimator is part of the VSD / Diff-Instruct / DMD connection. <a href="#ref-vsd">[6]</a> <a href="#ref-diffinstruct">[7]</a> <a href="#ref-dmd">[8]</a></p>
+            <p>The conditional mean is the optimum over all square-integrable prediction functions; a finite neural network may not represent or reach it. For conditional generation, condition on the prompt—and on the camera in VSD—throughout the denoising problem. In particular, the individual sampled noise \(\epsilon\) is not generally the marginal predictor \(\epsilon_q^*\).</p>
+            <p>Let \(\epsilon_T^*=-\sigma_t s_{T,t}\). Substituting exact predictors makes the sign explicit:</p>
+            <div class="formula-card">
+                \[
+                \nabla_\theta\mathcal L_{\rm noisy}
+                =\mathbb E\!\left[\frac{w(t)\alpha_t}{\sigma_t}
+                J_\theta^{\mathsf T}(\epsilon_T^*-\epsilon_q^*)\right],
+                \]
+                \[
+                \Delta\theta=-\eta\nabla_\theta\mathcal L_{\rm noisy}.
+                \]
+                <span class="equation-label">(11a) Teacher minus fake predicts the loss gradient; the descent update reverses it</span>
+            </div>
+            <p>Training uses learned \(\epsilon_\phi\) and teacher estimates in place of these ideal predictors. Finite model capacity, optimization error, and a fake model lagging behind the student can bias the resulting gradient. <a href="#ref-vsd">[6]</a> <a href="#ref-diffinstruct">[7]</a> <a href="#ref-dmd">[8]</a></p>
 
             <div class="callout">
                 <strong>The same entropy term appears in two forms</strong>
-                \(-\mathrm{KL}(q\|p)=\mathbb E_q[\log p]+H(q)\). In the likelihood-ratio view, entropy contributes the \(-\log q\) part of the implicit reward. In the pathwise view, it contributes \(-s_q\). Removing the student term loses this distributional correction: maximizing teacher log likelihood alone is a different objective.
+                When the terms are separately finite, \(-\mathrm{KL}(q\|p)=\mathbb E_q[\log p]+H(q)\), with differential entropy for continuous densities. In the likelihood-ratio view, entropy contributes \(-\log q\); in the pathwise ascent gradient, it contributes \(-\mathbb E[J_\theta^{\mathsf T}s_q]\). This term matters when student entropy can change. For a fixed-variance Gaussian with only its mean trainable, entropy is constant and its expected gradient is zero. Also, this is output-distribution entropy, not VSD's scene-parameter entropy; it does not guarantee mode coverage.
             </div>
 
-            <h2 id="practice">7. What survives in an actual training loop?</h2>
+            <h2 id="gan">8. GANs: learn the ratio, then differentiate it</h2>
+
+            <p>There is another way to obtain the field that moves generated samples. Suppose we can sample from the target \(p\) and the current student \(q_\theta\), but cannot evaluate either density. Train a binary discriminator \(D_\psi(x)\) to classify target samples as real and student samples as fake, with equal class weights:</p>
+            <div class="formula-card">
+                \[
+                \max_\psi\;
+                \mathbb E_p[\log D_\psi(x)]
+                +\mathbb E_{q_\theta}[\log(1-D_\psi(x))].
+                \]
+                \[
+                D^*(x)=\frac{p(x)}{p(x)+q_\theta(x)}.
+                \]
+                <span class="equation-label">(12) The ideal logistic discriminator at a fixed student</span>
+            </div>
+            <p>This is the optimal discriminator in the original GAN analysis. <a href="#ref-gan">[12]</a> Its probability output is not a log-density ratio. Its <em>logit</em> is:</p>
+            <div class="formula-card hero-equation">
+                \[
+                f^*(x)=\operatorname{logit}D^*(x)
+                =\log\frac{D^*(x)}{1-D^*(x)}
+                =\log p(x)-\log q_\theta(x),
+                \]
+                \[
+                \boxed{\nabla_x f^*(x)=s_p(x)-s_q(x).}
+                \]
+                <span class="equation-label">(13) Learn a scalar density ratio; differentiate it to obtain the score difference</span>
+            </div>
+            <p>This gives two ways of estimating the same ideal field: diffusion denoisers estimate the two scores separately, while a discriminator logit estimates their log-density ratio jointly. Its input gradient estimates the <em>difference</em> of scores, not either individual score. For noisy marginals, train \(D_\psi(x_t,t)\) on target and student samples corrupted with the same kernel and time distribution.</p>
+            <p>In Figure 2's Gaussian example, \(D^*(x)=\operatorname{sigmoid}(2x)\). Its logit is \(2x\), whose derivative is \(+2\): exactly the rightward field already drawn in the figure.</p>
+
+            <h3>Which generator loss recovers reverse KL?</h3>
+            <p>At the current student \(\theta_0\), suppose \(f_{\psi_0}=\log p-\log q_{\theta_0}\). Hold this fitted function fixed while differentiating through \(x=G_\theta(z)\). Choose the generator loss</p>
+            <div class="formula-card">
+                \[
+                \mathcal L_G(\theta;\psi_0)=-\mathbb E_z[f_{\psi_0}(G_\theta(z))].
+                \]
+                \[
+                \left.\nabla_\theta\mathcal L_G\right|_{\theta_0}
+                =-\mathbb E_z[J_{\theta_0}^{\mathsf T}\nabla_x f_{\psi_0}]
+                =\left.\nabla_\theta\mathrm{KL}(q_\theta\|p)\right|_{\theta_0}.
+                \]
+                <span class="equation-label">(14) Negative-logit loss with an ideal, current discriminator matches the reverse-KL gradient locally</span>
+            </div>
+            <p>The fitted ratio must track the student as it changes. Equality at \(\theta_0\) does not turn a stale discriminator into the exact KL objective for all later parameters. The broader idea of selecting a divergence through adversarial training is developed in f-GAN. <a href="#ref-fgan">[13]</a></p>
+
+            <pre><code># Generator step: freeze discriminator parameters, keep its input gradient.
+discriminator.eval()
+for parameter in discriminator.parameters():
+    parameter.requires_grad_(False)
+x = generator(z)
+loss_ratio = -discriminator.logit(x).mean()
+loss_ratio.backward()  # backpropagate through discriminator INTO x
+# Restore training mode and parameter gradients for the discriminator update.</code></pre>
+            <p>This differs from the two-score surrogate: there we explicitly compute a vector field and detach it before taking its inner product with the generated sample. Here the network outputs a scalar, so we retain its input derivative to obtain the field. Detaching the logit would remove the generator's training signal.</p>
+
+            <details class="optional-derivation">
+                <summary>Why standard GAN losses are not all reverse KL</summary>
+                <div class="details-body">
+                    <p>Write \(D(x)=\operatorname{sigmoid}(f(x))\). With discriminator parameters fixed, the negative sample-space gradients of three generator losses are</p>
+                    <div class="table-wrap" role="region" aria-label="GAN generator losses and sample movement" tabindex="0">
+                        <table>
+                            <thead><tr><th scope="col">Generator loss \(\ell(x)\)</th><th scope="col">Descent field \(-\nabla_x\ell\)</th></tr></thead>
+                            <tbody>
+                                <tr><td>Negative logit: \(-f(x)\)</td><td>\(\nabla_x f(x)\)</td></tr>
+                                <tr><td>Minimax: \(\log(1-D(x))\)</td><td>\(D(x)\nabla_x f(x)\)</td></tr>
+                                <tr><td>Non-saturating: \(-\log D(x)\)</td><td>\((1-D(x))\nabla_x f(x)\)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p>At the ideal discriminator, substitute \(\nabla_x f=s_p-s_q\). All three use this field, but their sample-dependent weights differ. After averaging and multiplying by generator Jacobians, their parameter updates need not be parallel. The original optimized minimax game is \(-\log4+2\mathrm{JS}(p\|q_\theta)\); its non-saturating alternative changes the generator loss. <a href="#ref-gan">[12]</a> A shared ratio therefore does not make every GAN a reverse-KL optimizer.</p>
+                </div>
+            </details>
+            <p>The GAN tutorial emphasizes that this view depends on supervised density-ratio estimation. <a href="#ref-gan-tutorial">[14]</a> For the derivative identity here, assume smooth positive densities and an ideal classifier. A finite discriminator can classify well while estimating spatial derivatives poorly. With separated supports, logits may diverge; common Gaussian smoothing can restore overlap, but does not guarantee accurate training. As with DMD, the generator Jacobian couples outputs: “particle movement” describes the sample-space field, not independent control of every sample.</p>
+
+            <h2 id="practice">9. What survives in an actual training loop?</h2>
 
             <p>The exact identities are useful because they tell us where to stop gradients and where an implementation departs from its ideal objective.</p>
 
             <h3>A sampled reverse-KL policy-gradient surrogate</h3>
-            <pre><code># x is sampled from the current student; log probabilities sum over tokens.
-# Teacher probabilities are evaluated on that same sampled sequence.
+            <pre><code># x is sampled from exactly q_theta, with no sampling gradient.
+# Sum response-token log probabilities, including EOS; mask padding.
 logq = student_log_prob(x)
 logp = teacher_log_prob(x)
 reward = (logp - logq).detach()
 loss_pg = -(reward * logq).mean()
 loss_pg.backward()</code></pre>
-            <p>This illustrates the whole-sequence estimator in (3). Reward-to-go and valid baselines can reduce variance. The log-ratio weight is detached because its role here is to implement an already-derived gradient. This instruction does <em>not</em> mean detaching all student probabilities inside an analytically summed token KL; differentiating that explicit KL is a different implementation.</p>
+            <p>This illustrates (3), with one sequence log probability per batch element and a shared tokenization/output space for teacher and student. The sampling law must equal the \(q_\theta\) used in the log probabilities. Sampling with temperature, top-k/top-p truncation, or an old policy while evaluating an unmodified current policy does not give this estimator without further changes. Importance correction requires adequate support; truncation may remove it. Dividing by a sampled response's variable length generally changes the objective; a fixed divisor only rescales it.</p>
+            <p>The log-ratio weight is detached to implement the derived gradient. This does <em>not</em> mean detaching the student distribution inside an explicitly summed token KL. Conversely, directly averaging \(\log q_\theta(x)-\log p_T(x)\) on detached samples and calling backward misses the dependence of the sampling distribution on \(\theta\).</p>
 
             <h3>A two-score generator surrogate</h3>
             <pre><code># Generator update: both score estimates are evaluated, then detached.
 x0 = generator(z)
 xt = alpha * x0 + sigma * noise
 with no_grad():
-    direction = w * (fake_score(xt, t) - teacher_score(xt, t))
-loss_dm = (direction * xt).flatten(1).sum(1).mean()
+    grad_xt = w * (fake_score(xt, t) - teacher_score(xt, t))
+loss_dm = (grad_xt * xt).flatten(1).sum(1).mean()
 loss_dm.backward()  # d xt / d theta supplies alpha * the generator Jacobian</code></pre>
-            <p>Here time scalars broadcast per sample, and both functions return <em>density scores</em>. The score difference is held fixed during the generator backward pass, while the path through \(x_t\) stays differentiable. In a separate denoising update, generated images are detached and the fake-score model is trained. These surrogate scalar values are not estimates of the KL itself; their gradients implement the desired updates.</p>
+            <p>Here fixed time weights broadcast per sample, and both functions return <em>density scores</em>. The whole computed score difference is detached, including its dependence on \(x_t\); merely freezing the score networks' parameters would not do that. Keep the path through the final \(x_t\) differentiable. A separate denoising update detaches generated images and trains the fake model. The generator surrogate's scalar value is not a KL estimate. By contrast, the raw sampled log ratio is a KL estimate, but needs the correct gradient treatment discussed above.</p>
 
-            <p>For a fixed distribution and exact scores, the identities above are exact. A learned or stale fake score introduces gradient error. Classifier-free guidance supplies a modified teacher score field, which need not be the forward-noised marginals of the teacher sampler's clean output law. Sample-dependent gradient normalization also need not equal the gradient of (9) with a fixed \(w(t)\). Such choices should be described as choices in the applied update. The <a href="distributional-distillation-methods.html">method-by-method note</a> treats these practical distinctions in more detail.</p>
+            <p>The teacher target in (9) is an idealized probability law, not automatically the output law of a particular finite-step teacher sampler. Approximate scores, solver discretization, and guidance can separate the two. Even a guided field that is the score of a normalized density at each \(t\) need not describe marginals obtained by forward-noising one common clean law. These are additional assumptions when interpreting an implementation as distillation to \(p_T\).</p>
+            <p>DMD's weighting is a concrete further difference. Its paper's Eq. (8) uses a factor proportional to \((\sigma_t^2/\alpha_t)/\operatorname{MAE}(\hat x_T(x_t,t),x_0)\), where \(\hat x_T\) is the teacher's denoised prediction. The denominator depends on the generated sample. <a href="#ref-dmd">[8]</a> Treating this factor as a detached weight does not make it a fixed function \(w(t)\), or establish that the applied field is the gradient of (9). The <a href="distributional-distillation-methods.html">method-by-method note</a> discusses further differences.</p>
 
             <p>The full original DMD objective additionally includes paired regression. <a href="#ref-dmd">[8]</a> DMD2 removes that requirement, improves fake-score tracking with a two-time-scale update scheme, and introduces an adversarial loss using real data. <a href="#ref-dmd2">[9]</a> These modifications matter: “DMD is reverse KL plus reparameterization” is a useful description of its distribution-matching core, not its complete recipe.</p>
 
-            <h2 id="map">8. A compact map of the connection</h2>
+            <h2 id="map">10. A compact map of the connection</h2>
 
-            <div class="table-wrap" role="region" aria-label="Comparison of RL, OPD, VSD, and DMD" tabindex="0">
+            <div class="table-wrap" role="region" aria-label="Comparison of RL, OPD, VSD, DMD, and GANs" tabindex="0">
                 <table>
                     <thead><tr><th scope="col">View</th><th scope="col">What defines improvement?</th><th scope="col">How do we obtain an update?</th></tr></thead>
                     <tbody>
                         <tr><td><strong>RL / policy gradient</strong></td><td>Expected external reward</td><td>A scalar return weights \(\nabla_\theta\log q_\theta\)</td></tr>
                         <tr><td><strong>KL-regularized RL</strong></td><td>Reverse KL to \(p^*\propto p_{\rm ref}e^{r/\beta}\)</td><td>Policy gradient, or another valid optimizer</td></tr>
-                        <tr><td><strong>Reverse-KL OPD</strong></td><td>Reverse KL to a fixed teacher</td><td>The log ratio acts as an implicit reward; full sequences require future credit</td></tr>
+                        <tr><td><strong>Sequence reverse-KL OPD</strong></td><td>Reverse KL to a fixed teacher</td><td>The log ratio acts as an implicit reward; full sequences require future credit</td></tr>
+                        <tr><td><strong>Token KL on frozen prefixes</strong></td><td>Conditional KL at sampled prefixes</td><td>Differentiate the conditional loss; omit the prefix-distribution derivative in (4a)</td></tr>
+                        <tr><td><strong>Gaussian transition OPD</strong></td><td>Local KL with a shared fixed covariance</td><td>Integrate action noise analytically → weighted mean MSE</td></tr>
                         <tr><td><strong>VSD</strong></td><td>Noisy rendered-image KL, averaged over views</td><td>Two scores through a renderer; optimize scene particles</td></tr>
                         <tr><td><strong>DMD's matching core</strong></td><td>Noisy output-distribution comparisons</td><td>Two estimated scores through a shared generator</td></tr>
+                        <tr><td><strong>GAN / discriminator route</strong></td><td>Depends on the generator loss; negative ideal logit recovers the reverse-KL gradient</td><td>Differentiate a learned scalar ratio through the generator</td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <p>The connection can now be stated precisely: <strong>RL optimizes a policy for expected reward. Reverse-KL OPD uses a teacher–student log ratio as an implicit reward. The noisy-marginal core of VSD/DMD applies distribution matching at selected noise levels and uses reparameterization to turn that log ratio into a score difference.</strong></p>
+            <p>The connection can now be stated precisely: <strong>KL-regularized RL supplies a target distribution. Reverse-KL OPD uses its log ratio as a policy-gradient signal. At a fixed condition, equal-covariance Gaussians turn that expectation into mean MSE. In continuous sample space, the ratio's derivative gives the two-score field used in score distillation; a discriminator offers another way to estimate it.</strong> Discrete outputs do not force PPO, continuous outputs do not force MSE, and a GAN's loss still determines which update it applies.</p>
 
             <p>What made this connection satisfying was that the “reward” and the “direction” had been next to each other all along:</p>
             <div class="formula-card hero-equation">
@@ -406,6 +653,7 @@ loss_dm.backward()  # d xt / d theta supplies alpha * the generator Jacobian</co
                 \]
             </div>
             <p>When reading a new method, I can now ask whether it changed the target, the divergence, the sampling distribution, or the gradient estimator. A new-looking training loop often becomes much easier to understand once those choices are visible.</p>
+            <p class="notation"><a href="code/check_rl_opd_vsd.py">Reproduce the numerical checks</a>: sequence versus frozen-prefix gradients, Gaussian PG-to-MSE, covariance entropy, noisy scores, and three discriminator generator losses. The script uses finite sums and Gaussian quadrature, with finite-difference comparisons.</p>
 
             <section class="references" aria-labelledby="references">
                 <h2 id="references">References</h2>
@@ -418,6 +666,11 @@ loss_dm.backward()  # d xt / d theta supplies alpha * the generator Jacobian</co
                 <p id="ref-diffinstruct">[7] Weijian Luo, Tianyang Hu, Shifeng Zhang, Jiacheng Sun, Zhenguo Li, and Zhihua Zhang. <a href="https://arxiv.org/abs/2305.18455">Diff-Instruct: A Universal Approach for Transferring Knowledge From Pre-trained Diffusion Models.</a> NeurIPS 2023. See §3 for integral KL and the generator gradient.</p>
                 <p id="ref-dmd">[8] Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shechtman, Fredo Durand, William T. Freeman, and Taesung Park. <a href="https://arxiv.org/abs/2311.18828">One-step Diffusion with Distribution Matching Distillation.</a> CVPR 2024. See §3.2–3.4 and Appendix F for the two-score update, regression term, and guidance.</p>
                 <p id="ref-dmd2">[9] Tianwei Yin, Michaël Gharbi, Taesung Park, Richard Zhang, Eli Shechtman, Fredo Durand, and William T. Freeman. <a href="https://arxiv.org/abs/2405.14867">Improved Distribution Matching Distillation for Fast Image Synthesis.</a> NeurIPS 2024. DMD2: critic update timescales, removal of paired regression, and adversarial training.</p>
+                <p id="ref-diffusionopd">[10] Quanhao Li et al. <a href="https://arxiv.org/abs/2605.15055v1">DiffusionOPD: A Unified Perspective of On-Policy Distillation in Diffusion Models.</a> 2026, v1. See §3.2, Eqs. (10)–(12), for Gaussian transition KL and the separate deterministic regression objective; §3.3 discusses gradient estimators.</p>
+                <p id="ref-flowopd">[11] Zhen Fang et al. <a href="https://arxiv.org/abs/2605.08063v1">Flow-OPD: On-Policy Distillation for Flow Matching Models.</a> 2026, v1. See §5.1.1, Eqs. (8)–(11), for Gaussian KL, detached rewards, and the clipped policy surrogate.</p>
+                <p id="ref-gan">[12] Ian J. Goodfellow et al. <a href="https://arxiv.org/abs/1406.2661">Generative Adversarial Nets.</a> NeurIPS 2014. Proposition 1 gives the optimal discriminator; §4.1 connects the minimax game to Jensen–Shannon divergence.</p>
+                <p id="ref-fgan">[13] Sebastian Nowozin, Botond Cseke, and Ryota Tomioka. <a href="https://arxiv.org/abs/1606.00709">f-GAN: Training Generative Neural Samplers using Variational Divergence Minimization.</a> NeurIPS 2016. A variational framework for adversarial training with different f-divergences.</p>
+                <p id="ref-gan-tutorial">[14] Ian Goodfellow. <a href="https://arxiv.org/abs/1701.00160">NIPS 2016 Tutorial: Generative Adversarial Networks.</a> 2017. See §3.2 and §8.1 for generator objectives and supervised density-ratio estimation.</p>
             </section>
 
             <div class="next-post"><a href="distributional-distillation.html">Continue with the two-score derivation →</a><a href="../index.html#blogs">All posts</a></div>
