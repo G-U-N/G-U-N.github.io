@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Two ways to see the gradient — Animation studies</title>
+  <script>if (new URLSearchParams(location.search).get('embed') === 'views') document.documentElement.classList.add('embed-views');</script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="figures/rl-opd-vsd-animations.css">
+  <script type="module" src="code/rl-opd-vsd-animations.mjs"></script>
+</head>
+<body>
+  <main>
+    <header class="page-header">
+      <a class="back" href="rl-opd-vsd.html">← Back to the article</a>
+      <span class="eyebrow">Animation studies · Review preview</span>
+      <h1>Two ways to see<br>the gradient.</h1>
+      <p>From a change in probability to a change in position.<br>Two small experiments behind the same mathematics.</p>
+      <nav aria-label="Animation previews"><a href="#two-views">01 · Probability &amp; motion</a><a href="#gaussian">02 · Noise &amp; expectation</a></nav>
+    </header>
+
+    <section class="study" id="two-views" aria-labelledby="views-title">
+      <div class="study-heading"><span class="number">01</span><div><span class="eyebrow">For section 6</span><h2 id="views-title">Change the probability. Move the sample.</h2><p>Two ways to reduce reverse KL: change the weights of fixed outcomes, or change where continuous samples land.</p></div></div>
+      <div class="animation" data-animation="views">
+        <div class="legend"><span><i class="key student"></i>Student q</span><span><i class="key target"></i>Target p</span><span class="legend-note">Target stays fixed</span></div>
+        <div class="panels">
+          <div class="panel"><div class="panel-heading"><div><span class="eyebrow">Policy gradient · OPD</span><h3>Change the weights</h3></div><div class="metric"><span>KL</span><output id="discrete-kl"></output></div></div>
+            <svg id="probability-plot" viewBox="0 0 460 292" role="img" aria-label="Student probability bars approach outlined target bars at fixed outcome positions."></svg>
+            <div class="equation">reward = log p − log q</div>
+            <p class="panel-caption">The outcomes stay in place.<br>Their probabilities change.</p>
+          </div>
+          <div class="panel"><div class="panel-heading"><div><span class="eyebrow">Pathwise gradient</span><h3>Change the positions</h3></div><div class="metric"><span>KL</span><output id="continuous-kl"></output></div></div>
+            <svg id="particle-plot" viewBox="0 0 460 292" role="img" aria-label="A student Gaussian and its sample particles move toward a fixed target Gaussian."></svg>
+            <div class="equation">direction = ∇<sub>x</sub> log p − ∇<sub>x</sub> log q</div>
+            <p class="panel-caption">The samples move.<br>Their distribution changes with them.</p>
+          </div>
+        </div>
+        <div class="controls"><button type="button" data-action="play" aria-label="Play probability and motion animation">Play</button><button type="button" data-action="replay">Replay</button><label class="timeline"><span class="sr-only">Probability and motion progress</span><input type="range" min="0" max="1000" value="0" step="1"></label><output class="progress-label">0%</output></div>
+        <div class="takeaway"><span class="takeaway-mark">↗</span><p><strong>One kind of objective. Two ways to change a distribution.</strong><br>The left uses a categorical model; the right uses a Gaussian generator. Each follows its own optimization trajectory.</p></div>
+      </div>
+      <details><summary>What is being computed?</summary><p>Left: 13 outcomes with softmax probabilities. Each step uses the exact expected OPD policy gradient: Δθᵢ = η qᵢ(rᵢ − ∑ⱼqⱼrⱼ), where rᵢ = log(pᵢ/qᵢ). The initial probabilities use a Gaussian centered at −1.2, mixed with 3% uniform probability to represent every outcome. Right: q = N(μ, 0.85²), p = N(1, 0.85²), with x = μ + 0.85z and initial μ = −1.2. Mean updates follow Δμ = η(1 − μ)/0.85². Dots are fixed quantiles translated with the mean; the curve shows the exact density. The categorical target is the normalized target Gaussian density evaluated on the outcome grid.</p></details>
+    </section>
+
+    <section class="study" id="gaussian" aria-labelledby="gaussian-title">
+      <div class="study-heading"><span class="number">02</span><div><span class="eyebrow">For section 5</span><h2 id="gaussian-title">Noisy estimates. One analytic gradient.</h2><p>Gaussian KL is already mean MSE. Sampling the policy gradient shows how the two calculations agree in expectation.</p></div></div>
+      <div class="animation" data-animation="gaussian">
+        <div class="experiment"><span><i class="key student"></i>Student μ = 0</span><span><i class="key target"></i>Teacher μ = 1</span><span>σ = 1 · Both distributions stay fixed</span></div>
+        <div class="panels">
+          <div class="panel"><div class="panel-heading"><div><span class="eyebrow">One sample at a time</span><h3>Sample the PG gradient</h3></div><div class="metric"><span>Sample</span><output id="sample-count"></output></div></div>
+            <svg id="sample-plot" viewBox="0 0 460 292" role="img" aria-label="A new action sampled from a fixed Gaussian produces a varying policy gradient."></svg>
+            <div class="sample-values"><div><span>noise ε</span><output id="noise-value"></output></div><div><span>cost c(a)</span><output id="cost-value"></output></div><div><span>gradient g</span><output id="gradient-value"></output></div></div>
+            <div class="equation">g = c(a) ε = (½ − ε) ε</div>
+          </div>
+          <div class="panel"><div class="panel-heading"><div><span class="eyebrow">Average over samples</span><h3>Recover the MSE gradient</h3></div><div class="metric"><span>Average</span><output id="average-value"></output></div></div>
+            <svg id="average-plot" viewBox="0 0 460 292" role="img" aria-label="The running mean of policy-gradient samples approaches the analytic mean-MSE gradient of minus one."></svg>
+            <div class="chart-legend"><span><i class="key student"></i>Running PG average</span><span><i class="key target"></i>Exact MSE gradient</span></div>
+            <div class="equation">E[g] = ∂<sub>μ</sub> ½(μ − 1)² = −1</div>
+          </div>
+        </div>
+        <div class="controls"><button type="button" data-action="play" aria-label="Play Gaussian gradient animation">Play</button><button type="button" data-action="replay">Replay</button><label class="timeline"><span class="sr-only">Gaussian gradient progress</span><input type="range" min="0" max="1000" value="0" step="1"></label><output class="progress-label">0%</output></div>
+        <div class="takeaway"><span class="takeaway-mark">≈</span><p><strong>The MSE gradient is exact. The sampled average is an estimate.</strong><br>The mean is held fixed throughout. Gradient descent would subtract −1 and move it toward the teacher.</p></div>
+      </div>
+      <details><summary>What is being computed?</summary><p>Here δ = μ − μ<sub>T</sub> = −1 and a = μ + ε, with ε ∼ N(0,1). The sampled log-ratio cost is c(a) = log q(a) − log p(a) = ½ − ε. The fixed-action score ∂<sub>μ</sub> log q(a) = ε, so g = ½ε − ε² and E[g] = −1. The plot uses 512 seeded independent pseudorandom samples and a logarithmic sample-count axis. More samples reduce the average's variance; an individual run need not approach −1 monotonically.</p></details>
+    </section>
+    <footer>Animation studies for <a href="rl-opd-vsd.html">RL, OPD, VSD, and GANs</a> · <a href="code/rl-opd-vsd-animations.mjs">View the calculations</a></footer>
+  </main>
+</body>
+</html>

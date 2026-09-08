@@ -20,9 +20,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <link rel="stylesheet" href="distributional-distillation.css">
-    <link rel="stylesheet" href="rl-opd-vsd.css">
+    <link rel="stylesheet" href="rl-opd-vsd.css?v=20260908-animations">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script type="module" src="code/rl-opd-vsd-embed.mjs"></script>
 </head>
 <body>
     <main class="container">
@@ -380,6 +381,12 @@
                 <a href="figures/rl-opd-vsd-two-gradients.png"><picture><source media="(max-width: 600px)" srcset="figures/rl-opd-vsd-two-gradients-mobile.png" width="1200" height="1900"><img src="figures/rl-opd-vsd-two-gradients.png" width="2400" height="1200" alt="Two views of a Gaussian student centered at minus one and a target centered at plus one. The scalar log ratio is 2x; its spatial gradient is a constant plus two, pointing every sample to the right." loading="lazy"></picture></a>
                 <figcaption><strong>Figure 2.</strong>For \(q=\mathcal N(-1,1)\) and \(p=\mathcal N(1,1)\), the log ratio is \(2x\). Left: larger \(x\) gets a higher reward. Right: its derivative \(+2\) points samples toward the target. Both views come from the same distribution mismatch.<br><span class="figure-downloads"><a href="figures/rl-opd-vsd-two-gradients.pdf">Vector PDF</a><a href="code/plot_rl_opd_vsd.py">Figure source</a></span></figcaption>
             </figure>
+
+            <details class="optional-derivation animation-fold" id="watch-updates">
+                <summary>Watch the updates</summary>
+                <iframe data-src="rl-opd-vsd-animations.html?embed=views" title="Animation: changing probabilities and moving samples" scrolling="no"></iframe>
+                <noscript><p><a href="rl-opd-vsd-animations.html#two-views">Open the animation preview</a> (JavaScript required for playback).</p></noscript>
+            </details>
 
             <h2 id="noisy">7. VSD / DMD: match noisy marginals</h2>
 

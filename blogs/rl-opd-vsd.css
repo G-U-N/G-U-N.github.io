@@ -55,6 +55,10 @@
 .figure-downloads a:hover { color: #3730a3; border-color: #a5b4fc; }
 .optional-derivation { background: #fafbfe; }
 .optional-derivation summary { padding: 16px 18px; }
+.animation-fold[open] { background: #fff; }
+.animation-fold iframe { display: block; width: 100%; height: 680px; border: 0; }
+.animation-fold iframe:not([src]) { display: none; }
+@media (max-width: 700px) { .animation-fold iframe { height: 1150px; } }
 .table-wrap { border: 1px solid #e5e7ef; border-radius: 10px; }
 tbody tr:nth-child(even) { background: #fafbfe; }
 .references { overflow-wrap: anywhere; }
@@ -91,7 +95,7 @@ a:focus-visible, summary:focus-visible { outline: 3px solid #818cf8; outline-off
     body { background: white; }
     .container { max-width: none; padding: 0; }
     .blog-content { padding: 0; border: 0; box-shadow: none; }
-    .back-link, .series-nav, .toc, .next-post, .figure-downloads { display: none; }
+    .back-link, .series-nav, .toc, .next-post, .figure-downloads, .animation-fold { display: none; }
     figure, .formula-card { break-inside: avoid; }
     h2, h3 { break-after: avoid; }
 }
