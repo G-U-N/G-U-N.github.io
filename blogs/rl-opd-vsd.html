@@ -74,7 +74,7 @@
 
             <p>First choose <strong>what to match</strong>. Distillation uses a teacher distribution; GANs use the real data distribution. In KL-regularized RL, reward reshapes a reference distribution, giving higher-reward outputs more weight. Each specifies a target in a different way.</p>
 
-            <p>Next choose <strong>how to measure the mismatch</strong>. We will use reverse KL. With a suitable adversarial loss, GAN training can optimize this same divergence toward real data. Standard minimax GANs instead correspond to Jensen–Shannon divergence at the optimal discriminator. <a href="#ref-gan">[12]</a> A shared target does not by itself imply a shared loss.</p>
+            <p>Next choose <strong>how to measure the mismatch</strong>. We will use reverse KL. With a suitable adversarial loss, GAN training can optimize this same divergence toward real data.</p>
 
             <p>Finally choose <strong>how to compute the update</strong>. Evaluating probabilities lets us reward sampled outputs. Differentiating through outputs lets us move them toward lower loss. For Gaussian predictions with the same fixed variance, averaging the sampling noise gives a mean-squared-error gradient.</p>
 
