@@ -628,16 +628,12 @@ loss_dm.backward()  # d xt / d theta supplies alpha * the generator Jacobian</co
 
             <div class="table-wrap" role="region" aria-label="Comparison of RL, OPD, VSD, DMD, and GANs" tabindex="0">
                 <table>
-                    <thead><tr><th scope="col">View</th><th scope="col">What defines improvement?</th><th scope="col">How do we obtain an update?</th></tr></thead>
+                    <thead><tr><th scope="col">View</th><th scope="col">Training signal</th><th scope="col">Update</th></tr></thead>
                     <tbody>
-                        <tr><td><strong>RL / policy gradient</strong></td><td>Expected external reward</td><td>A scalar return weights \(\nabla_\theta\log q_\theta\)</td></tr>
-                        <tr><td><strong>KL-regularized RL</strong></td><td>Reverse KL to \(p^*\propto p_{\rm ref}e^{r/\beta}\)</td><td>Policy gradient, or another valid optimizer</td></tr>
-                        <tr><td><strong>Sequence reverse-KL OPD</strong></td><td>Reverse KL to a fixed teacher</td><td>The log ratio acts as an implicit reward; full sequences require future credit</td></tr>
-                        <tr><td><strong>Token KL on frozen prefixes</strong></td><td>Conditional KL at sampled prefixes</td><td>Differentiate the conditional loss; omit the prefix-distribution derivative in (4a)</td></tr>
-                        <tr><td><strong>Gaussian transition OPD</strong></td><td>Local KL with a shared fixed covariance</td><td>Integrate action noise analytically → weighted mean MSE</td></tr>
-                        <tr><td><strong>VSD</strong></td><td>Noisy rendered-image KL, averaged over views</td><td>Two scores through a renderer; optimize scene particles</td></tr>
-                        <tr><td><strong>DMD's matching core</strong></td><td>Noisy output-distribution comparisons</td><td>Two estimated scores through a shared generator</td></tr>
-                        <tr><td><strong>GAN / discriminator route</strong></td><td>Depends on the generator loss; negative ideal logit recovers the reverse-KL gradient</td><td>Differentiate a learned scalar ratio through the generator</td></tr>
+                        <tr><td><strong>Policy gradient / discrete OPD</strong></td><td>External reward or teacher–student log ratio</td><td>Weight \(\nabla_\theta\log q_\theta\) by a scalar return</td></tr>
+                        <tr><td><strong>Gaussian OPD</strong></td><td>Local KL with shared fixed covariance</td><td>Analytic mean-MSE gradient</td></tr>
+                        <tr><td><strong>VSD / DMD</strong></td><td>Scores of noisy output distributions</td><td>Backpropagate a two-score field</td></tr>
+                        <tr><td><strong>GAN / discriminator</strong></td><td>A learned log-density ratio</td><td>Backpropagate the logit, weighted by the generator loss</td></tr>
                     </tbody>
                 </table>
             </div>
