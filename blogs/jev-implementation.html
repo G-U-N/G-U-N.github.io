@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" class="blog-page">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Notes on JEV, direct candidate scoring, the squared-error objective behind an open RLCD implementation, and faster feedback in agent workflows.">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="So, What is Jev?">
+    <meta property="og:description" content="If a program only needs a few decisions, the model may not need to write the answer first.">
+    <meta property="og:url" content="https://g-u-n.github.io/blogs/jev-implementation.html">
+    <meta property="og:image" content="https://g-u-n.github.io/blogs/figures/jev-official-workflow-results.png">
+    <meta property="og:image:alt" content="TypeSafe’s published workflow accuracy and cost comparison.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="So, What is Jev?">
+    <meta name="twitter:description" content="Architecture, candidate scoring, parallel inference, and RLCD. Public facts are separated from implementation hypotheses.">
+    <meta name="twitter:image" content="https://g-u-n.github.io/blogs/figures/jev-official-workflow-results.png">
+    <link rel="canonical" href="https://g-u-n.github.io/blogs/jev-implementation.html">
+    <title>So, What is Jev? — Fu-Yun Wang</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="distributional-distillation.css">
+    <link rel="stylesheet" href="jev-implementation.css">
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+<main class="container">
+    <header class="blog-header">
+        <a href="../index.html#blogs" class="back-link">← Back to all posts</a>
+        <div class="eyebrow">Decision models · Notes</div>
+        <h1>So, What is Jev?</h1>
+        <p class="dek">Is it really something new?</p>
+        <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> · <time datetime="2026-09-20">September 20, 2026</time></div>
+    </header>
+    <article class="blog-content">
+        <nav class="toc" aria-label="Table of contents">
+            <strong>Contents</strong>
+            <ol>
+                <li>
+                    <a href="#architecture">Scoring candidates directly</a>
+                    <ul>
+                        <li><a href="#semif">Scoring with an off-the-shelf LLM</a></li>
+                    </ul>
+                </li>
+                <li><a href="#rlcd">What might RLCD be doing?</a></li>
+                <li><a href="#takeaway">Using it in an agent</a></li>
+                <li><a href="#demo-hype">Demo Hype</a></li>
+            </ol>
+        </nav>
+
+        <p>Jev, TypeSafe’s new decision model, has attracted considerable attention. Its promise is to make the decisions that software needs without generating a written answer first. To understand what that means, we should start with what a program asks the model to do.</p>
+        <p>We send the current state, the questions, and the allowed answers. It returns decisions and probabilities the program can branch on. <a class="source-cite" href="https://docs.typesafe.ai/introduction" target="_blank" rel="noopener" title="[2] TypeSafe: API introduction" aria-label="[2] TypeSafe: API introduction" data-reference="ref-api"><img src="../assets/icons/source-docs.svg" width="16" height="16" alt=""><span class="source-cite-number">[2]</span></a> If the workflow is already written, that is often all it needs.</p>
+        <p>For a workflow that makes many such decisions, both latency and cost matter. In TypeSafe’s published results across four workflows, Jev is about as accurate as Terra, averages 0.4 seconds against Terra’s 10.1, and costs much less. <a class="source-cite" href="https://typesafe.ai/blog/introducing-system-one-models-and-jev" target="_blank" rel="noopener" title="[1] TypeSafe: Introducing System One Models &amp; Jev" aria-label="[1] TypeSafe: Introducing System One Models &amp; Jev" data-reference="ref-typesafe"><img src="../assets/icons/source-blog.svg" width="16" height="16" alt=""><span class="source-cite-number">[1]</span></a> <a class="source-cite" href="https://evals.typesafe.ai/" target="_blank" rel="noopener" title="[9] TypeSafe: Workflow evals" aria-label="[9] TypeSafe: Workflow evals" data-reference="ref-evals"><img src="../assets/icons/source-evals.svg" width="16" height="16" alt=""><span class="source-cite-number">[9]</span></a></p>
+        <figure class="plot-figure jev-official">
+            <a href="figures/jev-official-workflow-results.png"><img class="jev-plot" src="figures/jev-official-workflow-results.png" width="1672" height="918" alt="TypeSafe's official accuracy-versus-cost chart for four workflows. JEV is inexpensive and close to Terra in accuracy; Sol and Opus 5 score higher at greater cost."></a>
+            <figcaption><strong>Figure 1.</strong> Results published by TypeSafe. Diamonds use a coded workflow; circles put the policy in a prompt. Reference labels come from strong-model consensus. The LLM baselines use default reasoning and return structured answers with probabilities. These are official numbers; I have not rerun the eval. <a class="source-cite" href="https://typesafe.ai/blog/introducing-system-one-models-and-jev" target="_blank" rel="noopener" title="[1] TypeSafe: Introducing System One Models &amp; Jev" aria-label="[1] TypeSafe: Introducing System One Models &amp; Jev" data-reference="ref-typesafe"><img src="../assets/icons/source-blog.svg" width="16" height="16" alt=""><span class="source-cite-number">[1]</span></a> <a class="source-cite" href="https://evals.typesafe.ai/" target="_blank" rel="noopener" title="[9] TypeSafe: Workflow evals" aria-label="[9] TypeSafe: Workflow evals" data-reference="ref-evals"><img src="../assets/icons/source-evals.svg" width="16" height="16" alt=""><span class="source-cite-number">[9]</span></a></figcaption>
+        </figure>
+        <p>These results raise a practical question: when a program only needs a few choices or scores, how much work do we add by asking an LLM to generate them as text? We can examine ways to score candidates directly, then look at how their probabilities can be trained and used in an agent.</p>
+
+        <h2 id="architecture">Scoring candidates directly</h2>
+        <p>JEV is not specified well enough to reproduce. What follows is how similar interfaces are usually built, plus two independent open-source projects. None of this is a claim about JEV’s internals.</p>
+        <p>One way to expose this kind of interface is the GLiClass family <a class="source-cite" href="https://arxiv.org/abs/2508.07662" target="_blank" rel="noopener" title="[4] arXiv: GLiClass" aria-label="[4] arXiv: GLiClass" data-reference="ref-gliclass"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[4]</span></a> <a class="source-cite" href="https://github.com/Knowledgator/GLiClass/blob/40baa67cdea577449bc3f6a251646377b2cb0a6c/gliclass/model.py" target="_blank" rel="noopener" title="[4] GitHub: GLiClass model" aria-label="[4] GitHub: GLiClass model" data-reference="ref-gliclass"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[4]</span></a> and the classification branch of GLiNER2 <a class="source-cite" href="https://github.com/fastino-ai/GLiNER2/blob/d7c727458bf6929bc9ef5ee04e13c3f717a7c455/gliner2/models/span/model.py" target="_blank" rel="noopener" title="[5] GitHub: GLiNER2 span model" aria-label="[5] GitHub: GLiNER2 span model" data-reference="ref-gliner2"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[5]</span></a>: a BERT-style bidirectional encoder reads the text together with the candidate descriptions, then a head reads scores off the representations.</p>
+        <p>A GLiClass-style joint encoding puts the state, the question, and the candidates through the encoder, then compares a text vector \(h\) with candidate vectors \(e_k\):</p>
+        <div class="formula-card">
+            \[
+            (h,e_1,\ldots,e_K)=E_\theta(x,q,C),\qquad s_k=h^\top e_k.
+            \]
+            <span class="equation-label">\(x\) is the state, \(q\) the question, and \(C\) the \(K\) candidate descriptions on this request. The dot product is only to show the idea; the head can be different.</span>
+        </div>
+        <p>Because the descriptions arrive with the request, the label set can change every call. The model still has to understand the question and compare the options. It just returns scores instead of a paragraph.</p>
+        <h3 id="semif">Scoring with an off-the-shelf LLM</h3>
+        <p>We can also use an ordinary language model to score candidates. Assign each option a label such as A, B, or C, and read the corresponding logits at the answer position. Choosing the highest-scoring label is equivalent to greedy decoding restricted to those labels; keeping all the scores also lets us rank the options or normalize them into a probability distribution.</p>
+        <p>This idea predates Jev. Constitutional AI uses the log-probabilities of A/B answers to construct soft preference labels. <a class="source-cite" href="https://arxiv.org/pdf/2212.08073#page=10" target="_blank" rel="noopener" title="[13] arXiv: Constitutional AI, preference labeling" aria-label="[13] arXiv: Constitutional AI, preference labeling" data-reference="ref-cai"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[13]</span></a> SteamSHP scores a response using the probability or logit of label A. <a class="source-cite" href="https://huggingface.co/stanfordnlp/SteamSHP-flan-t5-xl#reward-model-usage" target="_blank" rel="noopener" title="[14] SteamSHP: Reward Model Usage" aria-label="[14] SteamSHP: Reward Model Usage" data-reference="ref-steamshp"><img src="../assets/icons/source-docs.svg" width="16" height="16" alt=""><span class="source-cite-number">[14]</span></a> LlamaRec reads candidate-letter logits to rank items in a single forward pass. <a class="source-cite" href="https://arxiv.org/html/2311.02089v1#S3.SS2.SSS2" target="_blank" rel="noopener" title="[15] arXiv: LlamaRec, label-token ranking" aria-label="[15] arXiv: LlamaRec, label-token ranking" data-reference="ref-llamarec"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[15]</span></a></p>
+        <p>The saving is not from reading logits instead of generating one letter: both require computing the scores at that position. It comes from avoiding additional decoding steps for explanations, structured text, or a ranked list. For a program that only needs candidate scores, those extra tokens may be unnecessary.</p>
+        <p>The independent projects eve-rlcd and SemIf both use this approach with causal language models. eve-rlcd starts from Qwen3-0.6B-Base and dots the last hidden state with the LM-head rows for the 26 letter tokens A–Z. <a class="source-cite" href="https://github.com/anthony-maio/eve-rlcd/blob/ce5ebf627058b65acfc41d49e0e334a722a14ba5/rlcd/policies.py" target="_blank" rel="noopener" title="[6] GitHub: eve-rlcd letter readout" aria-label="[6] GitHub: eve-rlcd letter readout" data-reference="ref-eve"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[6]</span></a> SemIf’s main runs use a frozen Qwen3.5-4B with no extra training: full vocabulary logits at the last position, then the candidate letters. <a class="source-cite" href="https://github.com/TheoLeeCJ/SemIf/blob/ca3ba65f142967030ecb453346e94d6f476a69df/src/semif_phase1/direct.py" target="_blank" rel="noopener" title="[11] GitHub: SemIf direct option-logit readout" aria-label="[11] GitHub: SemIf direct option-logit readout" data-reference="ref-semif"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[11]</span></a></p>
+        <p>Both also cache the shared state. They put it first, compute its KV cache once, and batch the question suffixes against that prefix. <a class="source-cite" href="https://github.com/anthony-maio/eve-rlcd/blob/ce5ebf627058b65acfc41d49e0e334a722a14ba5/rlcd/decide.py" target="_blank" rel="noopener" title="[6] GitHub: eve-rlcd shared-prefix parallel inference" aria-label="[6] GitHub: eve-rlcd shared-prefix parallel inference" data-reference="ref-eve"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[6]</span></a> <a class="source-cite" href="https://github.com/TheoLeeCJ/SemIf/blob/ca3ba65f142967030ecb453346e94d6f476a69df/src/semif_phase1/shared.py" target="_blank" rel="noopener" title="[11] GitHub: SemIf shared-prefix parallel scoring" aria-label="[11] GitHub: SemIf shared-prefix parallel scoring" data-reference="ref-semif"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[11]</span></a> The questions do not depend on each other. Ask the model for an array, though, and the output still has to come out token by token. Direct scores let independent questions run in parallel; prefix reuse means the long shared context is computed once.</p>
+        <p>SemIf has a clean comparison: same model, same state, same 21 binary questions. Parallel direct scoring takes about 1.02 seconds; generating a compact yes/no array takes about 5.33. The generated answer already drops explanations and field names. The first token shows up around 0.49 seconds, but the program still waits for the rest of the array. <a class="source-cite" href="https://github.com/TheoLeeCJ/SemIf/blob/ca3ba65f142967030ecb453346e94d6f476a69df/results/raw/decision-vs-compact-array.json" target="_blank" rel="noopener" title="[11] GitHub: SemIf same-model timing and outputs" aria-label="[11] GitHub: SemIf same-model timing and outputs" data-reference="ref-semif"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[11]</span></a></p>
+        <figure class="plot-figure">
+            <a href="figures/jev-semif-readout.svg"><img class="jev-plot" src="figures/jev-semif-readout.svg" width="1000" height="370" loading="lazy" alt="SemIf same-model comparison: parallel direct readout finishes 21 decisions in 1.023 seconds; a compact JSON array takes 5.332 seconds, with its first token at roughly 0.49 seconds. The readouts agree on 18 decisions."></a>
+            <figcaption><strong>Figure 2.</strong> Plotted from SemIf’s committed measurements: one RTX 3090, a warm-loaded BF16 model, one project-authored state, medians of three runs. <a class="source-cite" href="https://github.com/TheoLeeCJ/SemIf/blob/ca3ba65f142967030ecb453346e94d6f476a69df/results/raw/decision-vs-compact-array.json" target="_blank" rel="noopener" title="[11] GitHub: SemIf same-model timing and outputs" aria-label="[11] GitHub: SemIf same-model timing and outputs" data-reference="ref-semif"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[11]</span></a></figcaption>
+        </figure>
+        <p>The two readouts agree on 18 of 21. The speed gain is clear. Whether the decisions are any good still needs an eval with reference answers. <a class="source-cite" href="https://github.com/TheoLeeCJ/SemIf/blob/ca3ba65f142967030ecb453346e94d6f476a69df/docs/RESULTS.md" target="_blank" rel="noopener" title="[11] GitHub: SemIf results and limitations" aria-label="[11] GitHub: SemIf results and limitations" data-reference="ref-semif"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[11]</span></a></p>
+        <p>On the independent JevBench leaderboard, SemIf is already close to Jev on standard and answer-judging tasks, but still trails on harder items and calibration. <a class="source-cite" href="https://benchmarkheaven.com/jev-models" target="_blank" rel="noopener" title="[12] Benchmark Heaven: Jev-class models leaderboard" aria-label="[12] Benchmark Heaven: Jev-class models leaderboard" data-reference="ref-jevbench"><img src="../assets/icons/source-evals.svg" width="16" height="16" alt=""><span class="source-cite-number">[12]</span></a> The more useful fact is that it gets there with no extra training. A frozen model already makes enough of these calls to be worth trying before a specialized decision model exists.</p>
+
+        <h2 id="rlcd">What might RLCD be doing?</h2>
+        <p>Once you have scores, a program often still has to decide: continue, or hand off to a person. That only works if the model’s stated confidence matches how often it is actually right. TypeSafe calls the training aimed at that Reinforcement Learning for Calibrated Decisions, or RLCD. <a class="source-cite" href="https://docs.typesafe.ai/introduction/machine-learning-primer" target="_blank" rel="noopener" title="[7] TypeSafe: RLCD and calibrated decisions" aria-label="[7] TypeSafe: RLCD and calibrated decisions" data-reference="ref-primer"><img src="../assets/icons/source-docs.svg" width="16" height="16" alt=""><span class="source-cite-number">[7]</span></a></p>
+        <p>TypeSafe has not published JEV’s reward. The independent eve-rlcd project does publish one. For a question with a single correct choice \(y\), let \(p\) be the predicted distribution and sample \(a\sim p\). Write \(c=1\) if the choice is correct and \(0\) otherwise. The reward is \(r=c-p_a\), treated as a constant when the policy gradient is computed. <a class="source-cite" href="https://github.com/anthony-maio/eve-rlcd/blob/ce5ebf627058b65acfc41d49e0e334a722a14ba5/rlcd/rewards.py" target="_blank" rel="noopener" title="[6] GitHub: eve-rlcd reward and baseline" aria-label="[6] GitHub: eve-rlcd reward and baseline" data-reference="ref-eve"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[6]</span></a></p>
+        <p>We can work out the average update by summing over every possible choice. Write \(c_a=\mathbf 1[a=y]\): only the correct choice has \(c_a=1\). Each choice is sampled with probability \(p_a\), so its contribution is weighted by \(p_a\). Here \(\operatorname{stopgrad}\) leaves the reward's value unchanged but prevents differentiation through it; only \(\log p_a\) is differentiated in the policy-gradient update.</p>
+        <p>Using \(\nabla_\theta\log p_a=(\nabla_\theta p_a)/p_a\), the sampling probability cancels the denominator:</p>
+        <div class="formula-card">
+            \[
+            \begin{aligned}
+            g &amp;=\mathbb E_{a\sim p}\!\left[
+                \operatorname{stopgrad}(c_a-p_a)\nabla_\theta\log p_a
+            \right]\\
+            &amp;=\sum_a p_a(c_a-p_a)\frac{\nabla_\theta p_a}{p_a}\\
+            &amp;=\sum_a c_a\nabla_\theta p_a-\sum_a p_a\nabla_\theta p_a\\
+            &amp;=\nabla_\theta p_y-\sum_a p_a\nabla_\theta p_a.
+            \end{aligned}
+            \]
+        </div>
+        <p>The first sum keeps only \(a=y\), which gives \(\nabla_\theta p_y\). To see why the whole expression is a squared-error gradient, let \(e_y\) be the one-hot target, with entries \((e_y)_a=c_a\). Expanding its squared distance from \(p\) gives:</p>
+        <div class="formula-card">
+            \[
+            \begin{aligned}
+            \mathcal L_{\rm sq}
+            &amp;=\tfrac12\|p-e_y\|_2^2
+             =\tfrac12\sum_a(p_a-c_a)^2\\
+            &amp;=\tfrac12\sum_a p_a^2-p_y+\tfrac12,\\[4pt]
+            \nabla_\theta\mathcal L_{\rm sq}
+            &amp;=\sum_a p_a\nabla_\theta p_a-\nabla_\theta p_y
+             =-g.
+            \end{aligned}
+            \]
+            <span class="equation-label">The constant \(\tfrac12\) comes from the target's single nonzero entry. eve-rlcd already notes this identity.</span>
+        </div>
+        <p>Under this reward, policy-gradient ascent is, in expectation, gradient descent on squared error between the predicted probabilities and the one-hot label. The loss in the display is half the multiclass Brier loss, or \(K/2\) times MSE averaged over classes.</p>
+
+        <h2 id="takeaway">Using it in an agent</h2>
+        <p>If scores can be read directly, and the probabilities are trustworthy enough, an agent whose branches are already in code does not need a paragraph first. The available actions are already implemented. What remains is reading the latest material and choosing which branch applies. That still takes understanding. It does not always take replanning the whole task. A short option list can still be a hard question; when the evidence is thin or the plan is wrong, the workflow still needs a way to search and think.</p>
+        <figure class="plot-figure">
+            <a href="figures/jev-agent-flow.svg"><img class="jev-plot" src="figures/jev-agent-flow.svg" width="1080" height="370" loading="lazy" alt="A possible agent workflow: state feeds a direct judgment, code chooses a branch, and an action executes. When more evidence or planning is needed, search and reasoning update the state before another judgment."></a>
+            <figcaption><strong>Figure 3.</strong> One possible use: the model judges the current state, and code runs the matching branch. Search and reasoning stay available when more information or a new plan is needed.</figcaption>
+        </figure>
+        <p>If those judgments are reliable enough, latency also changes how often you check. A ten-second call is hard to justify after every tool result. A few hundred milliseconds makes it reasonable to look again and correct the next step before the workflow drifts. The time you save need not all go to finishing sooner; some of it can go to checking more often.</p>
+
+        <h2 id="demo-hype">Demo Hype</h2>
+        <p>There are already attempts in this direction, but we should be careful with demo hype. Take rmalde's Minecraft agent, whose author reports beating the Ender Dragon for less than $1 in model costs. Reading the code shows how much of the behavior is already designed: the route is surveyed in advance, rules filter the available actions, Mineflayer handles pathfinding, and attack timing and safety checks run inside scripted actions. A separate model provides high-level plans; Jev chooses from the remaining options, sometimes just one. <a class="source-cite" href="https://github.com/rmalde/minecraft-agent" target="_blank" rel="noopener" title="[16] Minecraft agent: source code and reported demo" aria-label="[16] Minecraft agent: source code and reported demo" data-reference="ref-minecraft"><img src="../assets/icons/source-github.svg" width="16" height="16" alt=""><span class="source-cite-number">[16]</span></a></p>
+        <p>A low inference bill does not mean the system took little work to build, nor that Jev supplied the capabilities we see on screen. Much of the task-specific behavior is already in the surrounding code. Presenting the whole result as Jev's ability overstates what this demo establishes. Whether Jev improves on a rule-based selector, with the same planner and action code, still needs testing.</p>
+
+        <section class="references" aria-labelledby="references">
+            <h2 id="references">References</h2>
+            <ol class="reference-list" role="list">
+                <li id="ref-typesafe"><span class="reference-number">[1]</span><div class="reference-body"><span class="reference-title"><a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">Introducing System One Models &amp; Jev</a></span><span class="reference-meta">Diogo Almeida. TypeSafe AI Blog, September 15, 2026.</span></div></li>
+                <li id="ref-api"><span class="reference-number">[2]</span><div class="reference-body"><span class="reference-title"><a href="https://docs.typesafe.ai/introduction">Introduction</a></span><span class="reference-meta">TypeSafe AI. Official documentation.</span></div></li>
+                <li id="ref-confidence"><span class="reference-number">[3]</span><div class="reference-body"><span class="reference-title"><a href="https://docs.typesafe.ai/confidence">Confidence</a></span><span class="reference-meta">TypeSafe AI. Official documentation.</span></div></li>
+                <li id="ref-gliclass"><span class="reference-number">[4]</span><div class="reference-body"><span class="reference-title"><a href="https://arxiv.org/abs/2508.07662">GLiClass: Generalist Lightweight Model for Sequence Classification Tasks</a></span><span class="reference-meta">Ihor Stepanov, Mykhailo Shtopko, Dmytro Vodianytskyi, Oleksandr Lukashov, Alexander Yavorskyi, and Mykyta Yaroshenko. arXiv preprint arXiv:2508.07662, 2025.</span></div></li>
+                <li id="ref-gliner2"><span class="reference-number">[5]</span><div class="reference-body"><span class="reference-title"><a href="https://aclanthology.org/2025.emnlp-demos.10/">GLiNER2: Schema-Driven Multi-Task Learning for Structured Information Extraction</a></span><span class="reference-meta">Urchade Zaratiana, Gil Pasternak, Oliver Boyd, George Hurn-Maloney, and Ash Lewis. EMNLP 2025: System Demonstrations, pp. 130–140.</span></div></li>
+                <li id="ref-eve"><span class="reference-number">[6]</span><div class="reference-body"><span class="reference-title"><a href="https://github.com/anthony-maio/eve-rlcd">eve-rlcd</a></span><span class="reference-meta">Anthony Maio. GitHub repository, 2026.</span></div></li>
+                <li id="ref-primer"><span class="reference-number">[7]</span><div class="reference-body"><span class="reference-title"><a href="https://docs.typesafe.ai/introduction/machine-learning-primer">AI primer</a></span><span class="reference-meta">TypeSafe AI. Official documentation.</span></div></li>
+                <li id="ref-calibration"><span class="reference-number">[8]</span><div class="reference-body"><span class="reference-title"><a href="https://proceedings.mlr.press/v70/guo17a.html">On Calibration of Modern Neural Networks</a></span><span class="reference-meta">Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. ICML 2017, PMLR 70:1321–1330.</span></div></li>
+                <li id="ref-evals"><span class="reference-number">[9]</span><div class="reference-body"><span class="reference-title"><a href="https://evals.typesafe.ai/">Workflow evals</a></span><span class="reference-meta">TypeSafe AI. Official evaluation dashboard, 2026.</span></div></li>
+                <li id="ref-decoding"><span class="reference-number">[10]</span><div class="reference-body"><span class="reference-title"><a href="https://pytorch.org/blog/flash-decoding/">Flash-Decoding for long-context inference</a></span><span class="reference-meta">Tri Dao, Daniel Haziza, Francisco Massa, and Grigory Sizov. PyTorch Blog, October 13, 2023.</span></div></li>
+                <li id="ref-semif"><span class="reference-number">[11]</span><div class="reference-body"><span class="reference-title"><a href="https://github.com/TheoLeeCJ/SemIf">SemIf — Semantic ifs from open models</a></span><span class="reference-meta"><a href="https://github.com/TheoLeeCJ">Theodore Lee</a>. GitHub repository, 2026.</span></div></li>
+                <li id="ref-jevbench"><span class="reference-number">[12]</span><div class="reference-body"><span class="reference-title"><a href="https://benchmarkheaven.com/jev-models">JevBench — Jev-class decision models</a></span><span class="reference-meta"><a href="https://github.com/fstandhartinger">Florian Standhartinger</a>. Benchmark Heaven, benchmark and leaderboard, 2026.</span></div></li>
+                <li id="ref-cai"><span class="reference-number">[13]</span><div class="reference-body"><span class="reference-title"><a href="https://arxiv.org/abs/2212.08073">Constitutional AI: Harmlessness from AI Feedback</a></span><span class="reference-meta">Yuntao Bai, Saurav Kadavath, Sandipan Kundu, Amanda Askell, Jackson Kernion, Andy Jones, Anna Chen, Anna Goldie, Azalia Mirhoseini, Cameron McKinnon, Carol Chen, Catherine Olsson, Christopher Olah, Danny Hernandez, Dawn Drain, Deep Ganguli, Dustin Li, Eli Tran-Johnson, Ethan Perez, Jamie Kerr, Jared Mueller, Jeffrey Ladish, Joshua Landau, Kamal Ndousse, Kamile Lukosuite, Liane Lovitt, Michael Sellitto, Nelson Elhage, Nicholas Schiefer, Noemi Mercado, Nova DasSarma, Robert Lasenby, Robin Larson, Sam Ringer, Scott Johnston, Shauna Kravec, Sheer El Showk, Stanislav Fort, Tamera Lanham, Timothy Telleen-Lawton, Tom Conerly, Tom Henighan, Tristan Hume, Samuel R. Bowman, Zac Hatfield-Dodds, Ben Mann, Dario Amodei, Nicholas Joseph, Sam McCandlish, Tom Brown, and Jared Kaplan. arXiv preprint arXiv:2212.08073, 2022.</span></div></li>
+                <li id="ref-steamshp"><span class="reference-number">[14]</span><div class="reference-body"><span class="reference-title"><a href="https://huggingface.co/stanfordnlp/SteamSHP-flan-t5-xl#reward-model-usage">SteamSHP-flan-t5-xl — Reward Model Usage</a></span><span class="reference-meta">Kawin Ethayarajh, Heidi (Chenyu) Zhang, Yizhong Wang, and Dan Jurafsky. Stanford NLP, Hugging Face model card.</span></div></li>
+                <li id="ref-llamarec"><span class="reference-number">[15]</span><div class="reference-body"><span class="reference-title"><a href="https://arxiv.org/abs/2311.02089">LlamaRec: Two-Stage Recommendation using Large Language Models for Ranking</a></span><span class="reference-meta">Zhenrui Yue, Sara Rabhi, Gabriel de Souza Pereira Moreira, Dong Wang, and Even Oldridge. PGAI workshop at CIKM 2023; arXiv:2311.02089.</span></div></li>
+                <li id="ref-minecraft"><span class="reference-number">[16]</span><div class="reference-body"><span class="reference-title"><a href="https://github.com/rmalde/minecraft-agent">minecraft-agent</a> · <a href="https://x.com/rronak_/status/2101544156757950697">Demo announcement</a></span><span class="reference-meta">Ronak Malde (rmalde). GitHub repository and accompanying X post, 2026.</span></div></li>
+            </ol>
+        </section>
+        <nav class="article-nav" aria-label="Blog navigation"><a href="../index.html#blogs">← All posts</a><a href="rl-opd-vsd.html">Related: probability ratios and policy gradients →</a></nav>
+    </article>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof renderMathInElement === 'function') renderMathInElement(document.body, {
+        delimiters: [{left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false}],
+        throwOnError: false
+    });
+});
+</script>
+</body>
+</html>

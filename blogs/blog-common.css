@@ -49,6 +49,11 @@
 .blog-page .blog-content > ul, .blog-page .blog-content > ol { padding-left: 24px; margin-bottom: 18px; }
 .blog-page .blog-content > ul > li, .blog-page .blog-content > ol > li { margin-bottom: 8px; }
 .blog-page .blog-content a { color: var(--primary-color); text-underline-offset: 3px; }
+/* Compact, accessible links to code, papers, and posts beside the citing text. */
+.blog-page .blog-content a.source-cite { display: inline-flex; align-items: center; justify-content: center; gap: .18em; min-width: 1.45em; height: 1.45em; margin: 0 .06em; padding: 0 .14em; vertical-align: -.28em; line-height: 1; white-space: nowrap; border-radius: 4px; text-decoration: none; }
+.blog-page .blog-content a.source-cite:hover { background: #ece8f4; }
+.blog-page .source-cite img { display: block; flex: none; width: 1em; height: 1em; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+.blog-page .source-cite-number { font-size: .8em; font-variant-numeric: tabular-nums; }
 .blog-page .blog-content :not(pre) > code { overflow-wrap: anywhere; }
 .blog-page .step-body { min-width: 0; }
 
