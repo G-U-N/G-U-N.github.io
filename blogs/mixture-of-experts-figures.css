@@ -1,0 +1,60 @@
+/* Article-specific styles. Shared components: blog-common.css. */
+.moe-article .toc ul { margin: 4px 0 2px 18px; }
+.moe-article .blog-content > pre {
+    margin: 20px 0 26px;
+    padding: 17px 18px 20px;
+    overflow-x: auto;
+    color: #dbeafe;
+    background: #111827;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.78rem;
+    line-height: 1.62;
+    tab-size: 4;
+}
+.moe-article .blog-content > pre code {
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border-radius: 0;
+    font-size: inherit;
+}
+@media (max-width: 700px) {
+    .moe-article .blog-content > pre { font-size: 0.7rem; }
+}
+.moe-article .blog-content { counter-reset: moe-figure; }
+.moe-figure { counter-increment: moe-figure; }
+.moe-figure figcaption::before { content: "FIGURE " counter(moe-figure, decimal-leading-zero); display: block; margin-bottom: 6px; color: var(--primary-color); font-size: .62rem; font-weight: 700; letter-spacing: .1em; }
+.moe-article .moe-detail-content { padding: 0 18px 18px; }
+.moe-article .moe-detail-content > :last-child { margin-bottom: 0; }
+
+/* Optional dataflow animation. */
+.moe-figure img { background: #fff; }
+.moe-animation { padding: 22px; background: #fff; }
+.moe-animation-heading { margin-bottom: 20px; }
+.moe-animation-kicker { color: #7954a1; font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+.blog-content .moe-animation h3 { margin: 6px 0 0; font-size: 24px; }
+.moe-animation-steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.moe-animation button { font: inherit; font-size: 13px; border: 1px solid #dce1ec; border-radius: 8px; background: #fff; color: #526078; padding: 8px 11px; cursor: pointer; }
+.moe-animation button:hover { background: #f4f1fa; border-color: #bca6d4; }
+.moe-animation button[aria-pressed="true"] { color: #653d8e; border-color: #baa1d0; background: #f3edf8; }
+.moe-animation :focus-visible { outline: 3px solid #7954a1; outline-offset: 3px; }
+.blog-content .moe-animation-note { min-height: 3.3em; font-size: 15px; line-height: 1.6; margin: 16px 0 4px; }
+.moe-animation svg { display: block; width: 100%; max-width: 590px; margin: 0 auto; font-family: var(--blog-font-body); }
+.moe-animation-example { margin: 10px 0 18px; padding: 13px 10px; background: #f5f2fa; color: #57397a; border-radius: 9px; text-align: center; font-size: 16px; font-weight: 500; }
+.moe-animation-controls { display: flex; align-items: center; gap: 8px; }
+.moe-animation-controls [data-play] { min-width: 65px; color: #fff; background: #735097; border-color: #735097; }
+.moe-animation-controls label { flex: 1; display: flex; align-items: center; gap: 10px; color: #657086; font-size: 12px; }
+.moe-animation-controls input { width: 100%; min-width: 40px; accent-color: #7954a1; }
+.blog-content .moe-animation-caption { margin: 0; padding: 0 22px 20px; background: white; font-size: 13px; color: #657086; line-height: 1.6; }
+@media (max-width: 600px) {
+    .moe-animation { padding: 14px 8px; }
+    .blog-content .moe-animation h3 { font-size: 21px; }
+    .moe-animation-heading, .moe-animation-note { padding: 0 4px; }
+    .moe-animation-steps { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .moe-animation button { padding: 8px 6px; }
+    .moe-animation-example { font-size: 14px; }
+    .moe-animation-controls { flex-wrap: wrap; }
+    .moe-animation-controls label { flex-basis: 100%; }
+}
+@media print { #moe-dispatch { display: none; } }

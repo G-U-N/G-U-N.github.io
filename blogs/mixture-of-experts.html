@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="en" class="blog-page">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A step-by-step systems guide to Mixture of Experts, from ragged expert GEMMs and Triton grouped GEMM to Expert Parallel dispatch, fixed-top-k backward, decode, DeepSeekMoE, and LatentMoE.">
+    <title>Mixture of Experts: How Routing Becomes GPU Computation — Fu-Yun Wang</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="distributional-distillation.css">
+    <link rel="stylesheet" href="scaling-long-context-attention.css">
+    <link rel="stylesheet" href="mixture-of-experts-figures.css?v=2">
+    <script type="module" src="code/moe-dispatch-animation.mjs"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
+</head>
+<body class="moe-article">
+    <main class="container">
+        <header class="blog-header">
+            <a href="../index.html#blogs" class="back-link"><i class="fas fa-arrow-left"></i> Back to all posts</a>
+            <div class="eyebrow">GPU Systems for Sparse Models</div>
+            <h1>Mixture of Experts <span class="title-subtitle">How Routing Becomes GPU Computation</span></h1>
+            <p class="dek">Mixture of Experts (MoE) has become a mainstream architecture for large language models. It enables models with <a href="https://qwen.ai/blog?id=qwen3.5">hundreds of billions</a> or <a href="https://fe-static.deepseek.com/chat/transparency/deepseek-V4-model-card-EN.pdf">trillions of parameters</a> to activate only a small fraction for each token, allowing model capacity to grow much faster than per-token computation. Efficient MoE execution is therefore a core problem in modern LLM training and inference. We introduce the basic principles of MoE, walk through core GPU kernel implementations, and explain why Expert Parallelism is useful and how to implement it.</p>
+            <div class="blog-meta"><a href="../index.html">Fu-Yun Wang</a> &middot; 2026 &middot; Mathematical and systems notes</div>
+            <a class="colab-callout" href="https://colab.research.google.com/github/G-U-N/G-U-N.github.io/blob/master/blogs/code/mixture_of_experts_colab.ipynb" target="_blank" rel="noopener">
+                <span class="colab-label">Open in Colab</span>
+                <span><strong>Build the MoE kernels step by step</strong><small>The notebook covers routing, grouped GEMM, SwiGLU forward, fixed-top-k backward, and a guarded DeepGEMM path for Hopper GPUs.</small></span>
+                <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            </a>
+        </header>
+
+        <article class="blog-content">
+            <div class="toc">
+                <strong>Methods and systems</strong>
+                <ol>
+                    <li><a href="#gemm">FFN and routing</a></li>
+                    <li><a href="#grouped-gemm">Grouped GEMM</a></li>
+                    <li><a href="#distributed-communication">Distributed communication</a></li>
+                    <li><a href="#expert-parallel">Expert Parallel</a>
+                        <ul>
+                            <li><a href="#ep-benefits">Why EP</a></li>
+                            <li><a href="#ep-groups">Process groups</a></li>
+                            <li><a href="#ep-forward">Forward: dispatch, compute, combine</a></li>
+                            <li><a href="#routing-balance">Load balancing</a></li>
+                            <li><a href="#deepep">DeepEP communication</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#ep-backward">Backward</a></li>
+                    <li><a href="#decode">Decode</a></li>
+                    <li><a href="#architectures">MoE architectures</a>
+                        <ul>
+                            <li><a href="#deepseek-moe">DeepSeekMoE</a></li>
+                            <li><a href="#latent-moe">LatentMoE</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#summary">Summary</a></li>
+                </ol>
+            </div>
+
+            <h2 id="motivation">MoE: more parameters with sparse expert computation</h2>
+
+            <p>In a dense Transformer, every token passes through the same feed-forward network (FFN). Increasing its intermediate width adds parameters, but it also increases the computation for every token. To grow the parameter count without paying that cost, we need a way for each token to use only part of the network.</p>
+
+            <p>A Mixture-of-Experts (MoE) layer does this by replacing one FFN with a collection of FFNs, called <em>experts</em>. A learned <em>router</em> selects a few experts for each token, so only those experts need to run for that token. With the expert size and the number selected per token held fixed, adding experts increases the total expert parameters while keeping the expert computation per token unchanged.</p>
+
+            <p>This selective execution changes how we batch the computation. A dense FFN applies the same weights to all tokens in a batch, so each projection can be computed as one large matrix multiplication. In MoE, the router may select different experts for different tokens. We therefore group the input rows by expert, giving each expert its own batch. Each projection now requires multiple matrix multiplications whose row counts depend on how many tokens each expert receives.</p>
+
+            <p>When experts are distributed across GPUs, forming these batches also requires communication: token representations must reach the GPUs that hold their selected experts, and the expert outputs must return to be combined. Efficient MoE execution therefore depends on both computing the expert batches and moving data between devices. We begin with the computation, looking at how the number of tokens in a batch affects the matrix multiplications inside an FFN.</p>
+
+            <h2 id="gemm">1. FFN and routing: how tokens reach experts</h2>
+
+            <p>We use a SwiGLU FFN for each expert. It projects each token into two intermediate vectors, uses one to gate the other, and projects the result back to the input width. For a batch of \(T\) tokens with input width \(d\) and intermediate width \(d_f\), the computation is</p>
+
+            <div class="formula-card">
+                \[
+                G=XW_g^\top,\qquad
+                U=XW_u^\top,\qquad
+                Y=\bigl(\operatorname{SiLU}(G)\odot U\bigr)W_d^\top.
+                \tag{1}
+                \]
+            </div>
+
+            <p>Here \(X\in\mathbb R^{T\times d}\) contains one token representation per row, \(W_g,W_u\in\mathbb R^{d_f\times d}\), and \(W_d\in\mathbb R^{d\times d_f}\). The gate uses the elementwise activation \(\operatorname{SiLU}(z)=z/(1+e^{-z})\), and \(\odot\) denotes elementwise multiplication.</p>
+
+            <p>Each of these three projections is a general matrix multiplication (GEMM). The gate and up projections read the same input \(X\) and each produce a tensor of shape \([T,d_f]\). After the activation and elementwise product, the down projection maps the gated features back to \([T,d]\).</p>
+
+            <p>All \(T\) tokens in a batch use the same projection weights. A GEMM kernel processes several tokens together, allowing them to reuse a loaded weight block.</p>
+
+            <p>For example, a kernel can load a block of weights and apply it to 64 tokens. The same loaded values then contribute to 64 token outputs, spreading the cost of that load across the group. This allows the kernel to perform more computation per weight byte loaded.</p>
+
+            <p>In MoE, routing divides the input tokens among experts, so each expert may have a much smaller batch to work with. With only one or two tokens, there is little opportunity to share the cost of loading weights across tokens.</p>
+
+            <p>Arithmetic intensity measures how much computation is performed per byte transferred. The gate projection \(G=XW_g^\top\) performs about \(2Tdd_f\) floating-point operations (FLOPs). Counting one read of each of its \(dd_f\) weights at \(b\) bytes per weight gives the idealized ratio</p>
+
+            <div class="formula-card">
+                \[
+                \frac{2Tdd_f}{bdd_f}=\frac{2T}{b}
+                \quad\text{FLOPs per weight byte}.
+                \]
+            </div>
+
+            <p>For bfloat16 (BF16) weights, \(b=2\), giving roughly \(T\) FLOPs per weight byte. This estimate ignores activation traffic and repeated weight reads, but it explains why an FFN processing very few tokens can spend much of its time reading weights.</p>
+
+            <details class="code-fold">
+                <summary>Triton GEMM kernel and launcher</summary>
+                <p>Let \(M=T\), \(K=d\), and \(N=d_f\). The kernel divides the \(M\times N\) output into \(B_M\times B_N\) tiles that can be computed independently. With one Triton program assigned to each output tile, the launcher starts</p>
+
+                <div class="formula-card">
+                    \[
+                    \left\lceil\frac{M}{B_M}\right\rceil
+                    \left\lceil\frac{N}{B_N}\right\rceil
+                    \quad\text{programs}.
+                    \]
+                </div>
+
+                <p>At fixed \(N\), a smaller \(M\) can produce fewer output tiles, leaving less work to run in parallel on the GPU.</p>
+
+                <p>Within each program, computing the output tile requires summing products over the input width \(K\). The program walks through that dimension in blocks of \(B_K\), accumulating the result. The code names the tile sizes \(B_M,B_N,B_K\) as <code>BLOCK_M</code>, <code>BLOCK_N</code>, and <code>BLOCK_K</code>. Since matrix dimensions need not be exact multiples of these sizes, loads and stores use masks to exclude out-of-bounds elements.</p>
+
+                <pre><code class="language-python">@triton.autotune(
+    configs=[
+        triton.Config(
+            {"BLOCK_M": 64, "BLOCK_N": 64, "BLOCK_K": 32},
+            num_warps=4,
+        ),
+        triton.Config(
+            {"BLOCK_M": 128, "BLOCK_N": 64, "BLOCK_K": 32},
+            num_warps=8,
+        ),
+    ],
+    key=["M", "N", "K"],
+)
+@triton.jit
+def _matmul_kernel(
+    A, B, C,
+    M: tl.constexpr,
+    N: tl.constexpr,
+    K: tl.constexpr,
+    stride_am, stride_ak,
+    stride_bk, stride_bn,
+    stride_cm, stride_cn,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_K: tl.constexpr,
+):
+    pid = tl.program_id(0)
+    num_pid_n = tl.cdiv(N, BLOCK_N)
+    pid_m = pid // num_pid_n
+    pid_n = pid % num_pid_n
+
+    rows = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+    cols = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+    acc = tl.zeros((BLOCK_M, BLOCK_N), tl.float32)
+
+    for start_k in range(0, K, BLOCK_K):
+        ks = start_k + tl.arange(0, BLOCK_K)
+        a = tl.load(
+            A + rows[:, None] * stride_am + ks[None, :] * stride_ak,
+            mask=(rows[:, None] &lt; M) &amp; (ks[None, :] &lt; K),
+            other=0.0,
+        )
+        b = tl.load(
+            B + ks[:, None] * stride_bk + cols[None, :] * stride_bn,
+            mask=(ks[:, None] &lt; K) &amp; (cols[None, :] &lt; N),
+            other=0.0,
+        )
+        acc += tl.dot(a, b)
+
+    tl.store(
+        C + rows[:, None] * stride_cm + cols[None, :] * stride_cn,
+        acc.to(C.dtype.element_ty),
+        mask=(rows[:, None] &lt; M) &amp; (cols[None, :] &lt; N),
+    )
+
+
+def triton_matmul(a, b):
+    assert a.dtype == b.dtype
+    assert a.ndim == b.ndim == 2 and a.shape[1] == b.shape[0]
+    a, b = a.contiguous(), b.contiguous()
+    M, K = a.shape
+    _, N = b.shape
+    out = torch.empty((M, N), device=a.device, dtype=a.dtype)
+
+    grid = lambda META: (
+        triton.cdiv(M, META["BLOCK_M"])
+        * triton.cdiv(N, META["BLOCK_N"]),
+    )
+    _matmul_kernel[grid](
+        a, b, out, M, N, K,
+        a.stride(0), a.stride(1),
+        b.stride(0), b.stride(1),
+        out.stride(0), out.stride(1),
+    )
+    return out</code></pre>
+            </details>
+
+            <h3 id="vanilla-moe">Routing: select experts and count their tokens</h3>
+
+            <p>For an MoE expert, the batch size is determined by routing. Let the layer contain \(E\) experts. For each of the \(T\) input tokens \(x_t\), our router produces scores \(r_t\in\mathbb R^E\) and selects the \(k\) highest-scoring experts.</p>
+
+            <p>Let \(\mathcal T_t\) contain the selected expert indices. We apply a softmax over their scores to obtain weights \(p_{t,e}\), then use those weights to combine the expert outputs. Writing \(F_e\) for expert \(e\)'s SwiGLU FFN with its own weights,</p>
+
+            <div class="formula-card">
+                \[
+                \mathcal T_t=\operatorname{TopK}(r_t,k),\qquad
+                p_{t,e}=\frac{\exp(r_{t,e})}
+                {\sum_{j\in\mathcal T_t}\exp(r_{t,j})},\quad e\in\mathcal T_t,
+                \]
+                \[
+                y_t=\sum_{e\in\mathcal T_t}p_{t,e}F_e(x_t).
+                \tag{2}
+                \]
+            </div>
+
+            <p>With top-2 routing, each token supplies one input row to each of two experts. We call each assignment \((t,e)\) a <em>token–expert pair</em>, so \(T\) input tokens produce \(2T\) expert input rows. Collecting the rows assigned to expert \(e\) gives its batch size:</p>
+
+            <div class="formula-card">
+                \[
+                M_e=\left|\{t:e\in\mathcal T_t\}\right|.
+                \tag{3}
+                \]
+            </div>
+
+            <p>A dense FFN processes all \(T\) tokens with the same weights. Expert \(e\) processes only the \(M_e\) tokens assigned to it, using its own weights. Each of its gate and up projections therefore has shape</p>
+
+            <div class="formula-card">
+                \[
+                [M_e,d]\,[d,d_f]\longrightarrow[M_e,d_f].
+                \]
+            </div>
+
+            <p>Each token contributes \(k\) rows, so \(\sum_eM_e=Tk\). The average is \(Tk/E\), while the actual counts depend on the routing decisions: some experts receive more rows, and others may receive none. Weight reuse depends on each expert's own \(M_e\), so a large total batch does not necessarily give every expert a large batch.</p>
+
+            <p>These routing decisions give us a collection of matrix multiplications with different row counts. A straightforward implementation launches each nonempty expert's projection separately, paying launch overhead for every active expert. Grouped GEMM schedules the projections together; to use it in our implementation, we first arrange the input rows by expert. The figure below previews this path, with packing and grouped scheduling developed in the next section.</p>
+
+            <figure class="plot-figure latex-figure figure-wide moe-figure">
+                <a href="figures/moe-routing-grouped-gemm.svg" aria-label="Open the full-resolution diagram of MoE routing, expert-major packing, and grouped GEMM">
+                    <picture>
+                        <source media="(max-width: 600px)" srcset="figures/moe-routing-grouped-gemm-mobile.svg" width="320" height="1500">
+                        <img src="figures/moe-routing-grouped-gemm.svg" alt="The router assigns two experts to each of six tokens. Packing produces expert batches of 4, 3, 3 and 2 rows. One grouped launch computes their projections with separate weights." width="1000" height="488" loading="eager" decoding="async">
+                    </picture>
+                </a>
+                <figcaption>Routing first expands tokens into token–expert pairs. Sorting by expert turns those scattered pairs into contiguous segments. Grouped GEMM schedules the segments together, although each expert still has its own \(M_e\) and weights.</figcaption>
+            </figure>
+
+            <h2 id="grouped-gemm">2. Grouped GEMM: compute uneven expert batches</h2>
+
+            <h3>Packing: place each expert’s inputs together</h3>
+
+            <p>We first sort the expanded rows by expert. If <code>counts[e] = M_e</code>, an exclusive prefix sum gives each expert's interval:</p>
+
+            <div class="formula-card">
+                \[
+                s_e=\sum_{j&lt;e}M_j,\qquad
+                X_e=X_{\mathrm{packed}}[s_e:s_e+M_e].
+                \tag{4}
+                \]
+            </div>
+
+            <p>We keep the inverse permutation because outputs must later return to their original tokens. The packed activation is one contiguous tensor of shape \([Tk,d]\); the expert weights are stacked as \([E,N,K]\); and the prefix offsets tell the kernel which expert owns each row range.</p>
+
+            <p>For the counts \([4,3,3,2]\) in the figure, the exclusive offsets are \([0,4,7,10,12]\). Expert 0 therefore reads packed rows <code>[0:4]</code>, expert 1 reads <code>[4:7]</code>, and so on. The rows move; the expert weights do not. This distinction becomes important again when we distribute the same layout across GPUs.</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Expert</th><th>\(M_e\)</th><th>Packed interval</th><th>Local GEMM</th></tr></thead>
+                    <tbody>
+                        <tr><td>0</td><td>4</td><td><code>[0:4]</code></td><td>\([4,K][K,N]\)</td></tr>
+                        <tr><td>1</td><td>3</td><td><code>[4:7]</code></td><td>\([3,K][K,N]\)</td></tr>
+                        <tr><td>2</td><td>3</td><td><code>[7:10]</code></td><td>\([3,K][K,N]\)</td></tr>
+                        <tr><td>3</td><td>2</td><td><code>[10:12]</code></td><td>\([2,K][K,N]\)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Scheduling: assign expert tiles to GPU programs</h3>
+
+            <p>Batched GEMM assumes every problem has the same \(M,N,K\). Grouped GEMM instead accepts a list of problems and schedules all of their output tiles in one launch. For MoE, only \(M_e\) changes; \(N\) and \(K\) are fixed by the expert architecture:</p>
+
+            <div class="formula-card">
+                \[
+                C_e=A_eB_e^\top,\qquad
+                A_e\in\mathbb R^{M_e\times K},\quad
+                B_e\in\mathbb R^{N\times K}.
+                \tag{5}
+                \]
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Execution</th><th>Allowed shapes</th><th>Scheduling consequence</th></tr></thead>
+                    <tbody>
+                        <tr><td>One launch per expert</td><td>Any \(M_e,N,K\)</td><td>Simple, but pays launch and scheduling overhead \(E\) times</td></tr>
+                        <tr><td>Batched GEMM</td><td>The same \(M,N,K\) for every expert</td><td>Regular addressing, but unequal \(M_e\) requires padding</td></tr>
+                        <tr><td>Grouped GEMM</td><td>Different \(M_e\), usually shared \(N,K\)</td><td>One launch schedules a ragged pool of expert output tiles</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>We represent the row-tile schedule with two arrays: <code>tile_expert[pid_m]</code> identifies the expert for each row tile, and <code>tile_m[pid_m]</code> gives the tile's index within that expert. Grid axis 0 ranges over these row tiles, while axis 1 covers the output-column tiles. Once a program loads its expert ID and row interval, it accumulates products along \(K\) as in the single-GEMM kernel.</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Kernel argument</th><th>Shape or role</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>A</code></td><td>Packed activation rows, \([\sum_e M_e,K]\)</td></tr>
+                        <tr><td><code>B</code></td><td>One weight matrix per expert, \([E,N,K]\); the kernel reads \(B_e^\top\)</td></tr>
+                        <tr><td><code>C</code></td><td>Packed output rows, \([\sum_e M_e,N]\)</td></tr>
+                        <tr><td><code>offsets</code></td><td>\([E+1]\) prefix offsets; rows for expert \(e\) are <code>[offsets[e]:offsets[e+1]]</code></td></tr>
+                        <tr><td><code>tile_expert</code>, <code>tile_m</code></td><td>The ragged launch schedule: expert ID and local row-tile ID for each <code>program_id(0)</code></td></tr>
+                        <tr><td><code>BLOCK_M</code>, <code>BLOCK_N</code>, <code>BLOCK_K</code></td><td>Compile-time tile sizes for expert rows, output columns, and the reduction loop</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <details class="code-fold" open>
+                <summary>contiguous M-grouped GEMM kernel and launcher</summary>
+                <pre><code class="language-python">def make_contiguous_schedule(counts, block_m, *, device):
+    expert_tiles, row_tiles = [], []
+    for expert, count in enumerate(counts.tolist()):
+        for row_tile in range((count + block_m - 1) // block_m):
+            expert_tiles.append(expert)
+            row_tiles.append(row_tile)
+    return (
+        torch.tensor(expert_tiles, device=device, dtype=torch.int32),
+        torch.tensor(row_tiles, device=device, dtype=torch.int32),
+    )
+
+
+@triton.jit
+def _m_grouped_nt_contiguous(
+    A, B, C, offsets,
+    tile_expert, tile_m,
+    N: tl.constexpr,
+    K: tl.constexpr,
+    stride_am, stride_ak,
+    stride_be, stride_bk, stride_bn,
+    stride_cm, stride_cn,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_K: tl.constexpr,
+):
+    pid_m = tl.program_id(0)
+    pid_n = tl.program_id(1)
+    expert = tl.load(tile_expert + pid_m)
+    local_tile_m = tl.load(tile_m + pid_m)
+
+    start = tl.load(offsets + expert)
+    end = tl.load(offsets + expert + 1)
+    rows = local_tile_m * BLOCK_M + tl.arange(0, BLOCK_M)
+    cols = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+    acc = tl.zeros((BLOCK_M, BLOCK_N), tl.float32)
+
+    # B is [E, N, K]. Pointer arithmetic exposes B[expert].T as [K, N].
+    for start_k in range(0, K, BLOCK_K):
+        ks = start_k + tl.arange(0, BLOCK_K)
+        a = tl.load(
+            A + (start + rows)[:, None] * stride_am
+              + ks[None, :] * stride_ak,
+            mask=(start + rows[:, None] &lt; end) &amp; (ks[None, :] &lt; K),
+            other=0.0,
+        )
+        b = tl.load(
+            B + expert * stride_be
+              + ks[:, None] * stride_bk
+              + cols[None, :] * stride_bn,
+            mask=(ks[:, None] &lt; K) &amp; (cols[None, :] &lt; N),
+            other=0.0,
+        )
+        acc += tl.dot(a, b)
+
+    tl.store(
+        C + (start + rows)[:, None] * stride_cm
+          + cols[None, :] * stride_cn,
+        acc.to(C.dtype.element_ty),
+        mask=(start + rows[:, None] &lt; end) &amp; (cols[None, :] &lt; N),
+    )
+
+
+def grouped_mm_contiguous(
+    a, b, offsets, *, block_m=32, block_n=64, block_k=32
+):
+    # a: [sum_e M_e, K], b: [E, N, K], offsets: [E + 1]
+    assert a.ndim == 2 and b.ndim == 3
+    assert b.shape[2] == a.shape[1]
+    assert a.dtype == b.dtype
+    a, b = a.contiguous(), b.contiguous()
+
+    counts = offsets[1:] - offsets[:-1]
+    tile_expert, tile_m = make_contiguous_schedule(
+        counts.cpu(), block_m, device=a.device
+    )
+    out = torch.empty(
+        (a.shape[0], b.shape[1]), device=a.device, dtype=a.dtype
+    )
+    if tile_expert.numel() == 0:
+        return out
+
+    grid = (
+        tile_expert.numel(),
+        triton.cdiv(b.shape[1], block_n),
+    )
+    _m_grouped_nt_contiguous[grid](
+        a, b, out, offsets, tile_expert, tile_m,
+        b.shape[1], a.shape[1],
+        a.stride(0), a.stride(1),
+        b.stride(0), b.stride(2), b.stride(1),
+        out.stride(0), out.stride(1),
+        BLOCK_M=block_m,
+        BLOCK_N=block_n,
+        BLOCK_K=block_k,
+        num_warps=4,
+    )
+    return out</code></pre>
+            </details>
+
+            <p>The launcher copies the expert counts to the CPU with <code>counts.cpu()</code> before building the schedule. To reduce this host-side preparation, the schedule could instead be constructed on the GPU, or work could be assigned by a persistent scheduler as in Triton's official Group GEMM tutorial. The expert-local matrix multiplications remain the same under either scheduling approach.</p>
+
+            <h3>SwiGLU forward: compute and combine expert outputs</h3>
+
+            <p>We apply the grouped kernel with \(W_g\) and \(W_u\) to compute \(G\) and \(U\), form \(\operatorname{SiLU}(G)\odot U\), and apply it with \(W_d\) to project the result back to the model width.</p>
+
+            <p>The resulting outputs are still grouped by expert. To recover the output for each original token, we multiply each expert output by \(p_{t,e}\) and accumulate the \(k\) contributions at that token's position.</p>
+
+            <p>The function below takes the selected expert indices and weights, both shaped \([T,k]\), packs the inputs, computes the expert outputs, and combines them. It saves the intermediate activations and routing metadata in <code>cache</code> for backward.</p>
+
+            <details class="code-fold" open>
+                <summary>SwiGLU forward: packing, grouped projections, and weighted combine</summary>
+                <pre><code class="language-python">def selected_expert_path_forward(
+    x, selected_expert, selected_weight, w_gate, w_up, w_down
+):
+    # Pack token-expert pairs in expert order.
+    T, top_k = selected_expert.shape
+    token_ids = torch.arange(T, device=x.device).repeat_interleave(top_k)
+    expert_ids = selected_expert.reshape(-1)
+    order = torch.argsort(expert_ids, stable=True)
+    token_ids, expert_ids = token_ids[order], expert_ids[order]
+    pair_weight = selected_weight.reshape(-1)[order]
+    counts = torch.bincount(expert_ids, minlength=w_gate.shape[0])
+    offsets = torch.cat([
+        torch.zeros(1, device=x.device, dtype=torch.int32),
+        counts.cumsum(0).to(torch.int32),
+    ])
+
+    # Compute each expert's SwiGLU FFN.
+    a = x[token_ids].contiguous()
+    gate = grouped_mm_contiguous(a, w_gate, offsets)
+    up = grouped_mm_contiguous(a, w_up, offsets)
+    hidden = torch.nn.functional.silu(gate) * up
+    pair_out = grouped_mm_contiguous(hidden, w_down, offsets)
+
+    # Accumulate weighted expert outputs at their original token positions.
+    out = torch.zeros(x.shape, device=x.device, dtype=torch.float32)
+    out.index_add_(0, token_ids, pair_out.float() * pair_weight[:, None])
+    cache = (
+        token_ids, expert_ids, pair_weight, order, offsets,
+        a, gate, up, hidden, pair_out,
+    )
+    return out.to(x.dtype), cache</code></pre>
+            </details>
+
+            <h3>SwiGLU backward: reuse grouped GEMM gradients</h3>
+
+            <p>The full SwiGLU backward uses the gradient of a grouped GEMM for each of its three projections. We first implement that operation, then assemble the gradients through the weighted combine, down projection, and gate/up branches.</p>
+
+            <h4>Grouped GEMM backward: one projection</h4>
+
+            <p>Each expert projection has two gradients. For one grouped linear \(C_e=A_eB_e^\top\),</p>
+
+            <div class="formula-card">
+                \[
+                dA_e=dC_eB_e,\qquad
+                dB_e=dC_e^\top A_e.
+                \tag{6}
+                \]
+            </div>
+
+            <p>The input gradient is another grouped GEMM, so we can reuse <code>grouped_mm_contiguous</code>. The weight gradient sums over \(M_e\) tokens for each expert. The kernel below assigns each program a tile of an expert's weight gradient and loops over that expert's tokens. Together, these two operations form <code>grouped_mm_backward</code>.</p>
+
+            <details class="code-fold">
+                <summary>Grouped GEMM backward: input and weight gradients</summary>
+                <pre><code class="language-python">@triton.jit
+def _grouped_weight_grad_kernel(
+    A, dC, dB, offsets,
+    N: tl.constexpr,
+    K: tl.constexpr,
+    MAX_M: tl.constexpr,
+    stride_am, stride_ak,
+    stride_cm, stride_cn,
+    stride_be, stride_bk, stride_bn,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_K: tl.constexpr,
+):
+    pid = tl.program_id(0)
+    tiles_k = tl.cdiv(K, BLOCK_K)
+    tiles_n = tl.cdiv(N, BLOCK_N)
+    expert = pid // (tiles_k * tiles_n)
+    rem = pid % (tiles_k * tiles_n)
+    tile_k = rem // tiles_n
+    tile_n = rem % tiles_n
+
+    start = tl.load(offsets + expert)
+    end = tl.load(offsets + expert + 1)
+    ks = tile_k * BLOCK_K + tl.arange(0, BLOCK_K)
+    ns = tile_n * BLOCK_N + tl.arange(0, BLOCK_N)
+    acc = tl.zeros((BLOCK_K, BLOCK_N), tl.float32)
+
+    # acc = A_e.T @ dC_e; only this expert's M_e rows are valid.
+    for row_start in range(0, MAX_M, BLOCK_M):
+        rows = row_start + tl.arange(0, BLOCK_M)
+        a = tl.load(
+            A + (start + rows)[:, None] * stride_am
+              + ks[None, :] * stride_ak,
+            mask=(start + rows[:, None] &lt; end) &amp; (ks[None, :] &lt; K),
+            other=0.0,
+        )
+        dc = tl.load(
+            dC + (start + rows)[:, None] * stride_cm
+               + ns[None, :] * stride_cn,
+            mask=(start + rows[:, None] &lt; end) &amp; (ns[None, :] &lt; N),
+            other=0.0,
+        )
+        acc += tl.dot(tl.trans(a), dc)
+
+    # Store dB as [E, N, K], the same NT layout used in forward.
+    tl.store(
+        dB + expert * stride_be
+           + ns[:, None] * stride_bn
+           + ks[None, :] * stride_bk,
+        tl.trans(acc).to(dB.dtype.element_ty),
+        mask=(ns[:, None] &lt; N) &amp; (ks[None, :] &lt; K),
+    )
+
+
+def grouped_weight_grad(
+    a, dc, offsets, *, block_m=32, block_n=64, block_k=32
+):
+    a, dc = a.contiguous(), dc.contiguous()
+    E = offsets.numel() - 1
+    K, N = a.shape[1], dc.shape[1]
+    db = torch.empty((E, N, K), device=a.device, dtype=a.dtype)
+    max_m = max(1, int((offsets[1:] - offsets[:-1]).max().item()))
+    grid = (
+        E * math.ceil(K / block_k) * math.ceil(N / block_n),
+    )
+    _grouped_weight_grad_kernel[grid](
+        a, dc, db, offsets, N, K, max_m,
+        a.stride(0), a.stride(1),
+        dc.stride(0), dc.stride(1),
+        db.stride(0), db.stride(2), db.stride(1),
+        BLOCK_M=block_m,
+        BLOCK_N=block_n,
+        BLOCK_K=block_k,
+        num_warps=4,
+    )
+    return db
+
+
+def grouped_mm_backward(a, b, dc, offsets):
+    # Forward is C_e = A_e @ B_e.T with B=[E,N,K].
+    da = grouped_mm_contiguous(
+        dc, b.transpose(1, 2).contiguous(), offsets
+    )
+    db = grouped_weight_grad(a, dc, offsets)
+    return da, db</code></pre>
+            </details>
+
+            <h4>SwiGLU backward: the complete expert path</h4>
+
+            <p>We now follow the complete forward in reverse, starting with the weighted combine. Let \(H_{t,e}=F_e(x_t)\) denote expert \(e\)'s unweighted output for token \(t\). The output gradient \(dY_t\) gives</p>
+
+            <div class="formula-card">
+                \[
+                dH_{t,e}=p_{t,e}dY_t,\qquad
+                dp_{t,e}=\langle H_{t,e},dY_t\rangle.
+                \tag{7}
+                \]
+            </div>
+
+            <p>We pass \(dH\) through the down projection using <code>grouped_mm_backward</code>, differentiate the SiLU gate and elementwise product, and call <code>grouped_mm_backward</code> for the gate and up projections. Finally, we add the input-gradient contributions at their original token positions and restore the routing-weight gradients to \([T,k]\) order.</p>
+
+            <p>The function below consumes the <code>cache</code> returned by <code>selected_expert_path_forward</code>. Its outputs are the gradients of the token inputs, selected routing weights, and three expert weight tensors. The router's score computation is differentiated later in Section 5; the selected expert indices stay fixed here.</p>
+
+            <details class="code-fold">
+                <summary>SwiGLU backward: combine, gating, and three projections</summary>
+                <pre><code class="language-python">def silu_grad(x):
+    s = torch.sigmoid(x)
+    return s * (1.0 + x * (1.0 - s))
+
+
+def selected_expert_path_backward(
+    dout, cache, w_gate, w_up, w_down, x_shape, routing_shape
+):
+    (token_ids, _, pair_weight, order, offsets,
+     a, gate, up, hidden, pair_out) = cache
+
+    d_pair_out = (dout[token_ids].float() * pair_weight[:, None]).to(pair_out.dtype)
+    d_pair_weight = (
+        dout[token_ids].float() * pair_out.float()
+    ).sum(dim=1)
+
+    d_hidden, d_w_down = grouped_mm_backward(
+        hidden, w_down, d_pair_out, offsets
+    )
+    d_gate = d_hidden * up * silu_grad(gate)
+    d_up = d_hidden * torch.nn.functional.silu(gate)
+    d_a_gate, d_w_gate = grouped_mm_backward(
+        a, w_gate, d_gate, offsets
+    )
+    d_a_up, d_w_up = grouped_mm_backward(
+        a, w_up, d_up, offsets
+    )
+
+    d_x = torch.zeros(x_shape, device=dout.device, dtype=dout.dtype)
+    d_x.index_add_(0, token_ids, d_a_gate + d_a_up)
+
+    # d_pair_weight is expert-major; scatter it back to token/top-k order.
+    d_routing_flat = torch.zeros(
+        routing_shape.numel(), device=dout.device, dtype=pair_weight.dtype
+    )
+    d_routing_flat.scatter_(0, order, d_pair_weight.to(pair_weight.dtype))
+    return (
+        d_x,
+        d_routing_flat.reshape(routing_shape.shape),
+        d_w_gate,
+        d_w_up,
+        d_w_down,
+    )</code></pre>
+            </details>
+
+            <details class="code-fold">
+                <summary>Computing gate and up in one grouped GEMM launch</summary>
+
+                <p>Gate and up read the same packed inputs, and neither projection depends on the other's output. A common optimization is to combine them into one wider projection, as in <a href="https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/core/transformer/moe/experts.py">Megatron-LM's grouped experts</a>. Store their weights together as \(W_{gu}\in\mathbb R^{E\times 2d_f\times d}\), with gate channels followed by up channels within each expert. The grouped GEMM kernel above can then compute both projections in one launch with \(N=2d_f\), removing one GEMM launch from the forward pass.</p>
+
+                <pre><code class="language-python">def grouped_swiglu_forward_combined(a, w_gu, w_down, offsets):
+    # a: packed inputs [sum_e M_e, d]
+    # w_gu: [E, 2*d_f, d], with gate weights followed by up weights
+    gu = grouped_mm_contiguous(a, w_gu, offsets)
+    gate, up = gu.chunk(2, dim=-1)
+    hidden = torch.nn.functional.silu(gate) * up
+    pair_out = grouped_mm_contiguous(hidden, w_down, offsets)
+    return pair_out, (gate, up, hidden)</code></pre>
+
+                <p>The split creates two views of the combined output. SiLU and the elementwise product follow, then a second grouped GEMM computes the down projection. Saving <code>gate</code>, <code>up</code>, and <code>hidden</code> preserves the intermediates needed by the backward above; the gate and up weight gradients can be concatenated along dimension 1 to match <code>w_gu</code>.</p>
+            </details>
+
+            <div class="plain-summary">
+                <strong>What grouped GEMM fixes:</strong> it removes one launch per expert, gives the GPU a shared pool of output tiles, and consumes an expert-major layout directly. <strong>What it cannot fix:</strong> it does not rebalance routing, give an expert more rows, or create weight reuse when \(M_e=1\).
+            </div>
+
+            <h2 id="distributed-communication">3. Distributed communication: exchange tensors across GPUs</h2>
+
+            <p>Grouped GEMM handles computation once an expert’s inputs and weights are on the same GPU. As we add experts, storing all of their weights on every GPU becomes increasingly expensive. Distributing experts across GPUs reduces the memory required on each device, but the router may then assign a token to an expert on another GPU. Its input must reach that GPU for computation, and the result must return to be combined with the token’s other expert outputs.</p>
+
+            <p>In the usual one-process-per-GPU setup, these transfers require communication between processes. To implement them, we need to identify the participating processes, specify which ones communicate, and choose how they exchange tensors.</p>
+
+            <h3>Ranks: identify processes and their GPUs</h3>
+
+            <p>In a common CUDA training setup, one operating-system process controls one GPU. <code>torchrun</code> starts the processes and provides several identifiers:</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+                    <tbody>
+                        <tr><td>Global rank</td><td>The process index across the entire distributed job, from 0 to <code>world_size - 1</code>.</td></tr>
+                        <tr><td><code>LOCAL_RANK</code></td><td>The process index inside the current node. We usually use it to select the local CUDA device.</td></tr>
+                        <tr><td>Group rank</td><td>The process index inside one particular <code>ProcessGroup</code>, from 0 to <code>group_size - 1</code>.</td></tr>
+                        <tr><td>World size</td><td>The number of processes in the default world group.</td></tr>
+                        <tr><td>Group size</td><td>The number of processes that participate in one ProcessGroup.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>These numbers need not match. In an eight-GPU job, an EP group may contain global ranks <code>[4,5,6,7]</code>. Global rank 5 is then group rank 1, while its <code>LOCAL_RANK</code> depends on which node hosts it.</p>
+
+            <h3>ProcessGroup: choose which ranks communicate</h3>
+
+            <p>A <code>ProcessGroup</code> is not merely a convenient list of ranks. It determines which processes participate in an operation, their order inside that group, and therefore the scope in which a collective occurs. The same global rank can simultaneously belong to an EP group, an Expert-DP group, and a Dense-DP group.</p>
+
+            <p>Passing <code>group=None</code> uses the default world group. Passing <code>group=ep_group</code> restricts the operation to that EP group; ranks outside it do not contribute data to that collective. Participating processes must issue compatible collectives in a consistent order. If one process enters an all-reduce while a peer enters an all-to-all—or simply reaches the same calls in a different order—the job can hang.</p>
+
+            <h3>Point-to-point and collectives: who participates?</h3>
+
+            <p><code>send</code> and <code>recv</code> name a specific source and destination. They are point-to-point operations: only the two peers exchange that message. A collective describes a communication pattern for the whole ProcessGroup. Every member participates in a broadcast, reduction, gather, scatter, all-to-all, or barrier according to the same operation contract.</p>
+
+            <h3>Collectives: a four-rank example</h3>
+
+            <p>Use four ranks, numbered 0 through 3. For scalar examples, rank \(r\) begins with \([r]\). Scatter starts with \([0,1,2,3]\) on rank 0; reduce-scatter starts with \([r,r,r,r]\) on rank \(r\); and all-to-all starts with four destination segments \([i0,i1,i2,i3]\) on source \(i\). The table first states the communication pattern, then shows the concrete result and where we commonly use it:</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Operation</th><th>Meaning</th><th>Four-rank result</th><th>Typical use</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>broadcast(src=0)</code></td><td>One rank copies the same tensor to every rank.</td><td>Every rank receives <code>[0]</code> from rank 0.</td><td>Parameter or configuration initialization</td></tr>
+                        <tr><td><code>reduce(dst=0, SUM)</code></td><td>Every rank reduces into one destination.</td><td><code>[0]+[1]+[2]+[3]</code> gives <code>[6]</code> on rank 0.</td><td>Collecting a reduced result on one rank</td></tr>
+                        <tr><td><code>all_reduce(SUM)</code></td><td>Reduce, then give the result to every rank.</td><td>Every rank receives <code>[6]</code>.</td><td>DDP gradient synchronization</td></tr>
+                        <tr><td><code>scatter(src=0)</code></td><td>One rank splits a tensor and sends one shard to each rank.</td><td>Rank \(r\) receives <code>[r]</code> from rank 0's <code>[0,1,2,3]</code>.</td><td>Distributing input or state shards</td></tr>
+                        <tr><td><code>gather(dst=0)</code></td><td>Every rank sends one shard to a single destination.</td><td>Rank 0 collects <code>[0,1,2,3]</code>.</td><td>Collecting distributed results</td></tr>
+                        <tr><td><code>all_gather</code></td><td>Gather, then give all shards to every rank.</td><td>Every rank receives <code>[0,1,2,3]</code>.</td><td>Materializing FSDP parameter shards</td></tr>
+                        <tr><td><code>reduce_scatter(SUM)</code></td><td>Reduce tensors, then leave one result shard on each rank.</td><td>The sum is <code>[6,6,6,6]</code>; rank \(r\) keeps its \(r\)-th <code>[6]</code>.</td><td>Sharded gradient synchronization</td></tr>
+                        <tr><td><code>all_to_all</code></td><td>Every rank sends a different segment to every rank.</td><td>Destination \(j\) receives <code>[0j,1j,2j,3j]</code>.</td><td>Expert Parallel dispatch and combine</td></tr>
+                        <tr><td><code>send</code>/<code>recv</code></td><td>One explicitly named rank communicates with one peer.</td><td>If rank 0 sends <code>[0]</code> to rank 2, only rank 2 receives that message.</td><td>Pipeline Parallel stage communication</td></tr>
+                        <tr><td><code>barrier</code></td><td>Wait until every group member reaches the same point.</td><td>No tensor changes; no rank returns early.</td><td>Synchronization and debugging</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>In data semantics, an all-reduce can be decomposed into a reduce-scatter followed by an all-gather:</p>
+
+            <div class="formula-card">
+                \[
+                \operatorname{AllReduce}
+                =\operatorname{ReduceScatter}+\operatorname{AllGather}.
+                \]
+            </div>
+
+            <p>The equality describes the result, not a promise that every backend implements all-reduce with those exact internal steps. It is nevertheless a useful way to remember the difference: reduce-scatter leaves each rank with one reduced shard, and all-gather replicates all of those shards again.</p>
+
+            <p>All-to-all has a different shape. If we arrange source ranks as rows and destination segments as columns, communication transposes this segment matrix:</p>
+
+            <div class="formula-card">
+                \[
+                \text{source }i\text{'s segment }j
+                \longrightarrow
+                \text{destination }j.
+                \]
+            </div>
+
+            <p>PyTorch provides <code>all_to_all_single</code> for this exchange, including unequal block sizes. <a href="#ep-all-to-all">Section 4.3</a> walks through its split arguments before using it for dispatch.</p>
+
+            <h3>Parallel training: where each collective is used</h3>
+
+            <p>Replicated gradients commonly use all-reduce. FSDP- and ZeRO-style sharding commonly pair reduce-scatter with all-gather so that gradients, parameters, or optimizer state need not remain replicated. Expert Parallel dispatch and combine use all-to-all because every source may send a different group of token rows to every expert owner.</p>
+
+            <h2 id="expert-parallel">4. Expert Parallel: distribute experts across GPUs</h2>
+
+            <p>We can now apply those communication primitives to the ragged expert batches. The expert weights stay with their owner rank. Token rows move through an all-to-all dispatch, the owner executes its local grouped GEMM, and the resulting branch outputs return through an all-to-all combine.</p>
+
+            <h3 id="ep-benefits">4.1 Why EP: save weight memory and enlarge expert batches</h3>
+
+            <p>With pure data parallelism, every rank stores all experts and routes only its local tokens. Each expert receives roughly \(T_{\mathrm{local}}k/E\) rows, and training must synchronize every replicated expert gradient. This wastes memory and can leave each expert GEMM too small.</p>
+
+            <p>Expert Parallelism makes a different trade: each EP group partitions the expert weights, and token activations move to their owners. An EP rank stores only \(E/P_{\mathrm{ep}}\) experts and aggregates routes from all ranks in its group. Under balanced routing, pure DP and EP give an expert approximately</p>
+
+            <div class="formula-card">
+                \[
+                \mathbb E[M_e^{\mathrm{DP}}]
+                \approx\frac{T_{\mathrm{local}}k}{E},
+                \qquad
+                \mathbb E[M_e^{\mathrm{EP}}]
+                \approx\frac{P_{\mathrm{ep}}T_{\mathrm{local}}k}{E}.
+                \tag{8}
+                \]
+            </div>
+
+            <p>The factor \(P_{\mathrm{ep}}\) can increase \(M_e\), making each local expert GEMM larger, while sharding reduces expert-weight memory per rank. The price is two activation exchanges: dispatch inputs to expert owners and return expert outputs to their source ranks.</p>
+
+            <h3 id="ep-groups">4.2 Process groups: define who communicates</h3>
+
+            <p>Each EP group holds a complete set of experts, partitioned across its ranks. Replicating that partition creates another EP group. Ranks that hold matching expert shards—global ranks 1 and 5 in the diagram below—form an Expert-DP group to synchronize their gradients:</p>
+
+            <ul class="compact-list">
+                <li><strong>EP group:</strong> partition expert weights and exchange token activations for dispatch/combine.</li>
+                <li><strong>Expert-DP group:</strong> synchronize corresponding expert gradients across replicated EP groups.</li>
+                <li><strong>Dense-DP group:</strong> synchronize gradients of the router and other dense layers, such as non-MoE MLPs.</li>
+            </ul>
+
+            <p><strong>Note:</strong> We leave fully sharded and hybrid sharded data parallelism (<a href="https://docs.pytorch.org/docs/stable/distributed.fsdp.fully_shard.html">FSDP/HSDP</a>) out of scope. These methods add parameter sharding to data parallel training, all-gathering full parameters for computation and releasing the gathered copies when no longer needed. Parallel strategies can be combined flexibly depending on the model and hardware; there is no single fixed layout. Here we focus on a simple combination of DP and EP.</p>
+
+            <p>The router and other dense layers are replicated across all ranks in this example, so their Dense-DP group is the world group.</p>
+
+            <figure class="plot-figure latex-figure figure-wide moe-figure">
+                <a href="figures/moe-expert-parallel-groups.svg" aria-label="Open the full-resolution Expert Parallel group diagram">
+                    <picture>
+                        <source media="(max-width: 600px)" srcset="figures/moe-expert-parallel-groups-mobile.svg" width="430" height="690">
+                        <img src="figures/moe-expert-parallel-groups.svg" alt="GPUs 0–3 and GPUs 4–7 form two Expert Parallel groups. Matching colors identify replicas of the same expert shard, whose gradients synchronize across groups." width="1000" height="480" loading="lazy" decoding="async">
+                    </picture>
+                </a>
+                <figcaption>Each EP group partitions all eight experts and exchanges token activations. Matching colors identify replicas of the same expert shard; dashed links connect their Expert-DP groups for gradient synchronization.</figcaption>
+            </figure>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th></th><th>Pure data parallelism</th><th>Expert Parallelism</th></tr></thead>
+                    <tbody>
+                        <tr><td>Expert weights per rank</td><td>All \(E\) experts</td><td>\(E/P_{\mathrm{ep}}\) experts</td></tr>
+                        <tr><td>Tokens visible to one expert</td><td>One rank's local tokens</td><td>Routes aggregated across the EP group</td></tr>
+                        <tr><td>Training gradients</td><td>Every expert replica must synchronize</td><td>Different owners do not synchronize with one another; replicas of the same shard still do</td></tr>
+                        <tr><td>Inference trade-off</td><td>No activation exchange, but all expert weights are replicated</td><td>Weights are sharded, but dispatch and combine add latency</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>In this example, EP and Expert-DP are the only parallel dimensions, so \(P_{\mathrm{world}}=P_{\mathrm{ep}}P_{\mathrm{expert\text{-}dp}}\). Every process creates all groups in the same order:</p>
+
+            <details class="code-fold">
+                <summary>Simplified PyTorch process-group construction</summary>
+                <pre><code class="language-python">import os
+
+import torch
+import torch.distributed as dist
+
+
+def init_distributed():
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    dist.init_process_group(backend="nccl")
+    return local_rank
+
+
+def make_parallel_groups(ep_size):
+    world = dist.get_world_size()
+    global_rank = dist.get_rank()
+    assert world % ep_size == 0
+
+    ep_group = expert_dp_group = None
+
+    # Every process calls new_group for every group in the same order.
+    for start in range(0, world, ep_size):
+        ranks = list(range(start, start + ep_size))
+        group = dist.new_group(ranks=ranks)
+        if global_rank in ranks:
+            ep_group = group
+
+    replicas = world // ep_size
+    for ep_slot in range(ep_size):
+        ranks = [replica * ep_size + ep_slot for replica in range(replicas)]
+        group = dist.new_group(ranks=ranks)
+        if global_rank in ranks:
+            expert_dp_group = group
+
+    # Simplified assumption: dense/router parameters are replicated globally.
+    dense_dp_group = dist.group.WORLD
+    return ep_group, expert_dp_group, dense_dp_group</code></pre>
+            </details>
+
+            <p>Each process uses its global rank to identify its EP, Expert-DP, and Dense-DP groups. <code>dist.get_process_group_ranks(ep_group)</code> returns the members' global ranks, and <code>dist.get_rank(ep_group)</code> returns the current process's rank within the group.</p>
+
+            <h3 id="ep-forward">4.3 Forward: dispatch, compute, and combine</h3>
+
+            <p>Dispatch moves token inputs to expert owners; combine returns their outputs. To understand the implementation, first look at how one <code>all_to_all_single</code> call moves already-packed rows.</p>
+
+            <h4 id="ep-all-to-all">How all_to_all_single exchanges blocks</h4>
+
+            <p><a href="https://docs.pytorch.org/docs/stable/distributed.html#torch.distributed.all_to_all_single"><code>dist.all_to_all_single</code></a> splits a rank's input along dimension 0, sends one block to each group member, and concatenates received blocks in source-rank order. <code>group</code> defines the participants; <code>input_split_sizes[j]</code> says how many rows to send to group rank \(j\), and <code>output_split_sizes[i]</code> says how many rows to receive from group rank \(i\). For token tensors of shape <code>[rows, d]</code>, the split unit is a whole token row.</p>
+
+            <p>For a small example, use three group ranks and one value per row. Each source packs the following blocks into its input, from left to right:</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Source rank</th><th>To rank 0</th><th>To rank 1</th><th>To rank 2</th></tr></thead>
+                    <tbody>
+                        <tr><td>0</td><td><code>[0]</code></td><td><code>[1, 2]</code></td><td><code>[3]</code></td></tr>
+                        <tr><td>1</td><td><code>[4, 5]</code></td><td><code>[6]</code></td><td><code>[7]</code></td></tr>
+                        <tr><td>2</td><td><code>[8]</code></td><td><code>[9, 10]</code></td><td><code>[11]</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p><strong>Read a row to see what a rank sends; read a column to see what it receives.</strong> Rank 1 sends <code>[4, 5 | 6 | 7]</code> with splits <code>[2, 1, 1]</code>, and receives <code>[1, 2 | 6 | 9, 10]</code> with splits <code>[2, 1, 2]</code>. This is the “rows become columns” intuition: the exchange transposes the arrangement of blocks while preserving the rows inside each block.</p>
+
+            <p>With <code>ep_group</code> already initialized and <code>device</code> set for this process, rank 1's call is:</p>
+
+            <pre><code class="language-python"># All three group members call this collective with their own buffers and splits.
+send_x = torch.tensor([[4.], [5.], [6.], [7.]], device=device)
+send_splits = [2, 1, 1]  # to group ranks 0, 1, 2
+recv_splits = [2, 1, 2]  # from group ranks 0, 1, 2
+recv_x = send_x.new_empty((sum(recv_splits), 1))
+
+dist.all_to_all_single(
+    recv_x, send_x,
+    output_split_sizes=recv_splits,
+    input_split_sizes=send_splits,
+    group=ep_group,
+)
+# recv_x[:, 0] is [1., 2., 6., 9., 10.]</code></pre>
+
+            <p>The send and receive counts must agree for each source–destination pair. The collective moves the blocks described by these counts; dispatch must first arrange the token rows into those blocks.</p>
+
+            <h4 id="ep-forward-dispatch">Dispatch: pack, exchange, and regroup token rows</h4>
+
+            <p>A token's selected experts may live on other GPUs, so dispatch sends a copy of its input to each expert's owner. The implementation below supports top-k routing and multiple experts per rank:</p>
+
+            <p><strong>1. Pack rows by destination.</strong> Expand \(T\) tokens into \(Tk\) routes. <code>token</code> records the original input row, <code>slot</code> records which top-k choice it is, and <code>owner</code> identifies the destination EP group rank. Sorting by owner, then local expert, gives <code>route_order</code>; <code>x[token[route_order]]</code> creates the packed send buffer. Apply the same ordering to the expert IDs and the <code>[source rank, token, slot]</code> metadata so each row keeps its identity.</p>
+
+            <p><strong>2. Exchange counts.</strong> <code>torch.bincount(owner)</code> counts the rows for each destination. Each source knows its own send counts, but must learn its receive counts before allocating a buffer. One all-to-all sends a single integer to each peer:</p>
+
+            <pre><code class="language-python">send_counts = torch.bincount(owner, minlength=ep_size)
+recv_counts = torch.empty_like(send_counts)
+dist.all_to_all_single(recv_counts, send_counts, group=ep_group)
+send_splits = send_counts.cpu().tolist()
+recv_splits = recv_counts.cpu().tolist()</code></pre>
+
+            <p>Here both count tensors have one entry per group member, so omitting split sizes sends one integer to each peer. The received entry <code>recv_counts[i]</code> tells us how many token rows source \(i\) will send.</p>
+
+            <p><strong>3. Exchange inputs and metadata.</strong> Allocate <code>sum(recv_splits)</code> rows, then exchange the packed inputs using <code>input_split_sizes=send_splits</code> and <code>output_split_sizes=recv_splits</code>. Exchange the expert IDs and route metadata with the same splits. Routing weights stay on the source until combine.</p>
+
+            <p><strong>4. Regroup by local expert.</strong> The received buffer is ordered by source rank. Rows for one local expert can therefore appear in several source blocks. Sort by <code>recv_expert</code>, apply that permutation to inputs and metadata, and build <code>offsets</code> from the expert counts. Each expert now has one contiguous batch for grouped GEMM.</p>
+
+            <details class="code-fold">
+                <summary>PyTorch dispatch: the four steps in code</summary>
+                <div class="moe-detail-content">
+                    <p>This reference uses consecutive expert shards. The communication helpers are defined in the next fold; <code>AllToAllRows</code> adds the reverse exchange needed by autograd.</p>
+                    <pre><code class="language-python">def ep_dispatch(x, topk_idx, num_experts, ep_group):
+    # x: [T,d], topk_idx: [T,k]
+    T, top_k = topk_idx.shape
+    ep_size = dist.get_world_size(ep_group)
+    ep_rank = dist.get_rank(ep_group)
+    assert num_experts % ep_size == 0
+    experts_per_rank = num_experts // ep_size
+
+    # 1. Expand routes and pack by destination.
+    token = torch.arange(T, device=x.device, dtype=torch.int64)
+    token = token[:, None].expand(T, top_k).reshape(-1)
+    slot = torch.arange(top_k, device=x.device, dtype=torch.int64)
+    slot = slot[None, :].expand(T, top_k).reshape(-1)
+    expert = topk_idx.reshape(-1).to(torch.int64)
+
+    owner = expert // experts_per_rank
+    local_expert = expert % experts_per_rank
+
+    # Primary key: destination group rank. Secondary key: its local expert.
+    route_order = torch.argsort(
+        owner * experts_per_rank + local_expert,
+        stable=True,
+    )
+    send_x = x[token[route_order]]
+    send_expert = local_expert[route_order].to(torch.int32)
+    send_meta = torch.stack([
+        torch.full_like(token, ep_rank),  # source group rank
+        token,                           # source token
+        slot,                            # source top-k slot
+    ], dim=1)[route_order]
+
+    # 2. Exchange counts and prepare split lists.
+    send_counts = torch.bincount(owner, minlength=ep_size).to(torch.int64)
+    recv_counts = exchange_counts(send_counts, ep_group)
+    send_splits = send_counts.cpu().tolist()
+    recv_splits = recv_counts.cpu().tolist()
+
+    # 3. Exchange token rows and their metadata.
+    recv_x = AllToAllRows.apply(
+        send_x, recv_splits, send_splits, ep_group
+    )
+    recv_expert = all_to_all_rows(
+        send_expert, recv_splits, send_splits, ep_group
+    )
+    recv_meta = all_to_all_rows(
+        send_meta, recv_splits, send_splits, ep_group
+    )
+
+    # 4. all-to-all returns source-major segments. Grouped GEMM needs
+    # rows from the same local expert to be contiguous.
+    expert_order = torch.argsort(recv_expert, stable=True)
+    recv_x = recv_x[expert_order].contiguous()
+    recv_expert = recv_expert[expert_order].contiguous()
+    recv_meta = recv_meta[expert_order].contiguous()
+
+    counts = torch.bincount(
+        recv_expert.to(torch.int64), minlength=experts_per_rank
+    ).to(torch.int32)
+    offsets = torch.cat([
+        torch.zeros(1, device=x.device, dtype=torch.int32),
+        counts.cumsum(0),
+    ])
+    context = {
+        "send_splits": send_splits,
+        "recv_splits": recv_splits,
+        "route_order": route_order,
+        "expert_order": expert_order,
+        "recv_meta": recv_meta,
+    }
+    return recv_x, recv_expert, offsets, context</code></pre>
+                </div>
+            </details>
+
+            <details class="code-fold">
+                <summary>Communication helpers and the autograd wrapper</summary>
+                <div class="moe-detail-content">
+                    <p>Floating-point inputs use <code>AllToAllRows</code>, whose backward swaps the send and receive splits. Integer counts and metadata use the ordinary collective. Section 5 follows the gradient path.</p>
+                    <pre><code class="language-python">def exchange_counts(send_counts, ep_group):
+    ep_size = dist.get_world_size(ep_group)
+    recv_counts = torch.empty_like(send_counts)
+    dist.all_to_all_single(
+        recv_counts,
+        send_counts,
+        output_split_sizes=[1] * ep_size,
+        input_split_sizes=[1] * ep_size,
+        group=ep_group,
+    )
+    return recv_counts
+
+
+def all_to_all_rows(send, output_splits, input_splits, ep_group):
+    recv = torch.empty(
+        (sum(output_splits), *send.shape[1:]),
+        device=send.device,
+        dtype=send.dtype,
+    )
+    dist.all_to_all_single(
+        recv,
+        send.contiguous(),
+        output_split_sizes=output_splits,
+        input_split_sizes=input_splits,
+        group=ep_group,
+    )
+    return recv
+
+
+class AllToAllRows(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, send, output_splits, input_splits, group):
+        ctx.output_splits = list(output_splits)
+        ctx.input_splits = list(input_splits)
+        ctx.group = group
+        return all_to_all_rows(
+            send, ctx.output_splits, ctx.input_splits, group
+        )
+
+    @staticmethod
+    def backward(ctx, grad_recv):
+        # Reverse the edges used by forward.
+        grad_send = all_to_all_rows(
+            grad_recv.contiguous(),
+            ctx.input_splits,
+            ctx.output_splits,
+            ctx.group,
+        )
+        return grad_send, None, None, None
+</code></pre>
+                </div>
+            </details>
+
+            <h4 id="ep-forward-compute">Compute: run the local expert GEMMs</h4>
+
+            <p>Dispatch leaves each owner with the expert-major layout from Section 2. Computation now uses only local inputs and weights. Local expert ID \(e\) indexes the local weight stack, and <code>offsets[e:e+2]</code> identifies its rows:</p>
+
+            <details class="code-fold">
+                <summary>Autograd wrapper and complete local expert SwiGLU</summary>
+                <pre><code class="language-python">class GroupedLinear(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, a, b, offsets):
+        ctx.save_for_backward(a, b, offsets)
+        return grouped_mm_contiguous(a, b, offsets)
+
+    @staticmethod
+    def backward(ctx, dc):
+        a, b, offsets = ctx.saved_tensors
+        da, db = grouped_mm_backward(a, b, dc.contiguous(), offsets)
+        return da, db, None
+
+
+def grouped_linear(a, b, offsets):
+    return GroupedLinear.apply(a, b, offsets)
+
+
+def local_expert_swiglu(
+    recv_x, offsets, w_gate, w_up, w_down
+):
+    gate = grouped_linear(recv_x, w_gate, offsets)
+    up = grouped_linear(recv_x, w_up, offsets)
+    hidden = torch.nn.functional.silu(gate) * up
+    return grouped_linear(hidden, w_down, offsets)</code></pre>
+            </details>
+
+            <h4 id="ep-forward-combine">Combine: return outputs and form the weighted sum</h4>
+
+            <p>Each expert output returns to its token's source rank. Pack outputs by source group rank, then reverse the exchange with <code>input_split_sizes=recv_splits</code> and <code>output_split_sizes=send_splits</code>. Every received route produces one result to send back, so the counts simply swap; no new count exchange is needed.</p>
+
+            <p>The source uses the returned token IDs and top-k slots to select the routing weights, then <code>index_add_</code> sums the weighted expert outputs into their original token rows.</p>
+
+            <details class="code-fold">
+                <summary>EP combine: reverse exchange, routing weights, and token restoration</summary>
+                <pre><code class="language-python">def ep_combine(
+    packed_y, topk_weight, dispatch_context, T, ep_group
+):
+    meta = dispatch_context["recv_meta"]
+
+    # One contiguous segment for every source group rank.
+    return_order = torch.argsort(meta[:, 0], stable=True)
+    send_y = packed_y[return_order]
+    send_meta = meta[return_order]
+
+    # Forward dispatch received recv_splits rows from each source.
+    # Combine sends those rows back and receives send_splits rows.
+    input_splits = dispatch_context["recv_splits"]
+    output_splits = dispatch_context["send_splits"]
+    returned_y = AllToAllRows.apply(
+        send_y, output_splits, input_splits, ep_group
+    )
+    returned_meta = all_to_all_rows(
+        send_meta, output_splits, input_splits, ep_group
+    )
+
+    output = torch.zeros(
+        (T, packed_y.shape[1]),
+        device=packed_y.device,
+        dtype=packed_y.dtype,
+    )
+    source_token = returned_meta[:, 1].to(torch.int64)
+    source_slot = returned_meta[:, 2].to(torch.int64)
+    route_weight = topk_weight[source_token, source_slot]
+    output.index_add_(
+        0,
+        source_token,
+        returned_y * route_weight[:, None].to(returned_y.dtype),
+    )
+    return output, (returned_y, returned_meta)</code></pre>
+            </details>
+
+            <details class="optional-derivation" id="moe-dispatch">
+                <summary>Watch tokens travel through Expert Parallel</summary>
+                <div class="moe-animation"><p>Open this example with JavaScript enabled to play or step through dispatch and combine.</p></div>
+                <p class="moe-animation-caption">Four scalar tokens, top-2 routing, and toy experts make each weighted sum explicit. The animation illustrates dataflow; stage durations do not represent GPU timings.</p>
+            </details>
+
+            <details class="code-fold">
+                <summary>EP forward assembled from dispatch, grouped GEMM, and combine</summary>
+                <pre><code class="language-python">def ep_moe_forward(
+    x, topk_idx, topk_weight,
+    w_gate, w_up, w_down,
+    num_experts, ep_group,
+):
+    recv_x, _, offsets, context = ep_dispatch(
+        x, topk_idx, num_experts, ep_group
+    )
+    packed_y = local_expert_swiglu(
+        recv_x, offsets, w_gate, w_up, w_down
+    )
+    output, combine_context = ep_combine(
+        packed_y, topk_weight, context, x.shape[0], ep_group
+    )
+    return output, (context, combine_context)</code></pre>
+            </details>
+
+            <h3 id="routing-balance">4.4 Load balancing: keep the EP ranks busy</h3>
+
+            <p>Dispatch sends every token to the right expert, but it does not make the work evenly distributed. If most rows go to experts on rank 0, other ranks may finish early and wait for its outputs. Efficient EP therefore needs reasonably balanced work across ranks; otherwise, idle GPUs can erase the benefit of parallel execution.</p>
+
+            <p><a href="https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/moe.html">Tensor parallelism (TP)</a> offers a different way to divide the work: split each expert's matrices across ranks so that they share its computation. A TP-based layout can outperform a badly imbalanced EP layout, but it introduces its own collectives. We need to compare those communication costs with the time lost to imbalance, rather than assume either layout is always faster.</p>
+
+            <p><strong>Train the router with a balancing loss.</strong> We can discourage concentrated routing during training. For a batch of \(T\) tokens, compute a probability over <em>all</em> experts from the router logits \(r_t\):</p>
+
+            <div class="formula-card">
+                \[
+                a_{t,e}=\operatorname{softmax}(r_t)_e,\qquad
+                \bar a_e=\frac{1}{T}\sum_{t=1}^{T}a_{t,e},\qquad
+                f_e=\frac{M_e}{Tk}.
+                \]
+            </div>
+
+            <p>Here \(\bar a_e\) is the average probability assigned to expert \(e\), while \(f_e\) is its fraction of the \(Tk\) token–expert assignments. These full-router probabilities are for the regularizer; the expert outputs still use the selected weights \(p_{t,e}\) from Equation (2). We add a common auxiliary loss to the task loss, such as language-model cross-entropy:</p>
+
+            <div class="formula-card">
+                \[
+                \mathcal L_{\mathrm{bal}}
+                =E\sum_{e=1}^{E} f_e\bar a_e,\qquad
+                \mathcal L_{\mathrm{train}}
+                =\mathcal L_{\mathrm{task}}+\lambda\mathcal L_{\mathrm{bal}}.
+                \]
+            </div>
+
+            <p>We treat the hard assignment counts \(f_e\) as constants during differentiation. An overused expert has a larger \(f_e\), so placing more probability on it incurs a larger penalty. Gradients through \(\bar a_e\) encourage the router to shift probability toward less-used experts. The coefficient \(\lambda\) controls this pressure; we want balanced aggregate usage, not an identical routing distribution for every token. See the <a href="https://www.jmlr.org/papers/volume23/21-0998/21-0998.pdf">auxiliary loss in Switch Transformers</a> and its <a href="https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/core/transformer/moe/moe_utils.py">top-k form in Megatron Core</a>.</p>
+
+            <p>For EP-level balancing, we measure both statistics over the tokens in that EP group; a globally balanced average can hide a skewed group. This auxiliary objective adds a router gradient beyond the task-loss backward shown in Section 5.</p>
+
+            <p><strong>Adjust selection biases instead.</strong> We can also encourage balanced routing by directly adjusting the scores used for expert selection. Using the softmax scores \(a_t=\operatorname{softmax}(r_t)\) defined above, we add a bias \(b_e\) <em>after softmax</em>, before choosing the top-\(k\) experts. Each expert has one bias shared by all tokens:</p>
+
+            <div class="formula-card">
+                \[
+                \mathcal T_t=\operatorname{TopK}(a_t+b,k),
+                \]
+                \[
+                p_{t,e}=\frac{a_{t,e}}{\sum_{j\in\mathcal T_t}a_{t,j}},
+                \qquad e\in\mathcal T_t.
+                \]
+            </div>
+
+            <p>The bias changes which experts we select, but their output weights \(p_{t,e}\) still use the original scores \(a_{t,e}\), renormalized over the selected experts. This is the same weighting rule as Equation (2), applied to the new selected set. We initialize all biases to zero. After each training batch, a simple feedback update is</p>
+
+            <div class="formula-card">
+                \[
+                b_e\leftarrow b_e+\eta\,
+                \operatorname{sign}\left(\frac{Tk}{E}-M_e\right).
+                \]
+            </div>
+
+            <p>An underused expert receives a higher bias for the next batch; an overloaded expert receives a lower one. Here \(\eta\) is the update step size. This <a href="https://arxiv.org/html/2408.15664v1#S3">loss-free balancing rule</a> uses observed loads directly rather than an auxiliary-loss gradient.</p>
+
+            <p>Balancing work and limiting communication are separate goals. <a href="https://arxiv.org/abs/2412.19437">Node-limited routing</a> restricts each token to experts on a few nodes, reducing communication fan-out, but does not by itself ensure equal rank loads.</p>
+
+            <h3 id="deepep">4.5 DeepEP: optimize the communication path</h3>
+
+            <p>With width \(d\) on both paths, a source with \(T\) tokens and top-\(k\) routing dispatches \(Tk\,d\) activation values and receives \(Tk\,d\) expert-output values, including routes that stay local. Moving and arranging these rows is the cost that a communication backend must optimize.</p>
+
+            <p>The PyTorch reference performs counting, packing, exchange, and reordering separately. Its <code>send_counts.cpu().tolist()</code> and <code>recv_counts.cpu().tolist()</code> also synchronize device-produced counts with the CPU because the variable-split API accepts Python lists.</p>
+
+            <p><a href="https://github.com/deepseek-ai/DeepEP" target="_blank" rel="noopener">DeepEP</a> packages and optimizes the dispatch/combine path, including communication and layout handling. Expert computation remains a local grouped GEMM. Its <a href="https://github.com/deepseek-ai/DeepEP#interfaces-and-examples" target="_blank" rel="noopener">official examples</a> show how to use the dispatch and combine interfaces.</p>
+
+            <details class="code-fold">
+                <summary>Run and compare the reference implementations</summary>
+                <div class="moe-detail-content">
+            <p>The <a href="code/moe_ep_hopper.py">single-node multi-GPU reference</a> uses PyTorch collectives and Triton expert computation. With <code>--phase train --check</code>, it compares the output and the input, routing-weight, router-parameter, and expert-parameter gradients against PyTorch autograd:</p>
+
+                    <pre><code class="language-bash">torchrun --standalone --nproc-per-node=4 \
+  blogs/code/moe_ep_hopper.py \
+  --backend torch-triton \
+  --phase train \
+  --num-experts 8 \
+  --top-k 2 \
+  --check</code></pre>
+
+            <p>On GPUs with the supported DeepEP and DeepGEMM installations, <code>--backend both</code> compares both forward pipelines on identical inputs. Timing includes dynamic packing, schedule preparation, computation, and combine; it excludes input generation and first-use library setup:</p>
+
+                    <pre><code class="language-bash">torchrun --standalone --nproc-per-node=4 \
+  blogs/code/moe_ep_hopper.py \
+  --backend both --phase decode --check --bench-iters 30</code></pre>
+                </div>
+            </details>
+
+            <h2 id="ep-backward">5. Backward: return gradients through experts and routing</h2>
+
+            <p>MoE backward has two connected paths. We will follow the expert path first, then continue through the router and add both contributions to \(dX\).</p>
+
+            <h3>Reverse communication: send gradients back along each route</h3>
+
+            <p>We follow the forward operations in reverse order. First, the source differentiates the weighted sum, producing a gradient for each returned expert output. The return exchange sends those gradients back to the expert owners. After the local expert backward, the dispatch exchange returns the expert-input gradients to the source.</p>
+
+            <p>Both exchanges use <code>AllToAllRows</code> from Section 4. A forward segment sent from rank \(i\) to rank \(j\) receives its gradient from \(j\) back to \(i\). This is why the wrapper swaps the send and receive split lists in backward.</p>
+
+            <p>The integer metadata still uses the ordinary non-differentiable collective. Indexing and permutation automatically scatter floating gradients back to the inverse positions; the grouped expert operation uses Equation (6) for its local backward.</p>
+
+            <p>Equation (7) already gives the two gradients of the weighted combine: \(dH_{t,e}=p_{t,e}dY_t\) and \(dp_{t,e}=\langle H_{t,e},dY_t\rangle\). After each expert backpropagates its branch, the source sums the returned input gradients:</p>
+
+            <div class="formula-card">
+                \[
+                dX_t^{\mathrm{expert}}=
+                \sum_{e\in\mathcal T_t}dX_{t,e}.
+                \tag{9}
+                \]
+            </div>
+
+            <p>The branch gradients \(dH_{t,e}\) go to expert owners, and the resulting \(dX_{t,e}\) return to token sources. The routing-weight gradient \(dp_{t,e}\) is computed on the source, where both the returned expert output and \(dY_t\) are available.</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Forward operation</th><th>Backward operation</th><th>Where the gradient goes</th></tr></thead>
+                    <tbody>
+                        <tr><td>Weighted top-k combine</td><td>Form \(dH_{t,e}\) and \(dp_{t,e}\)</td><td>Expert-output gradients go to owners; routing-weight gradients stay on sources</td></tr>
+                        <tr><td>Return all-to-all</td><td>All-to-all in the opposite direction</td><td>\(dH\) returns to the rank that computed each expert</td></tr>
+                        <tr><td>Grouped expert forward</td><td>Grouped input and weight gradients</td><td>\(dA_e\) follows route rows; \(dW_e\) stays with the expert owner</td></tr>
+                        <tr><td>Dispatch all-to-all</td><td>All-to-all in the opposite direction</td><td>Expert-input gradients return to token sources</td></tr>
+                        <tr><td>Top-k expansion</td><td>Sum selected branches</td><td>\(dX_t^{\mathrm{expert}}\) is token-major again</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Router backward: differentiate the selected weights</h3>
+
+            <p>Equation (2) defines a softmax over the selected logits. Top-k membership is discrete, but for the selected set \(\mathcal T_t\) the ordinary softmax derivative gives</p>
+
+            <div class="formula-card">
+                \[
+                dr_{t,e}
+                =
+                p_{t,e}\left(
+                dp_{t,e}
+                -
+                \sum_{j\in\mathcal T_t}p_{t,j}dp_{t,j}
+                \right),
+                \quad e\in\mathcal T_t,
+                \qquad
+                dr_{t,e}=0,\quad e\notin\mathcal T_t.
+                \tag{10}
+                \]
+            </div>
+
+            <p>If the router is \(R=XW_r^\top\), the remaining gradients are</p>
+
+            <div class="formula-card">
+                \[
+                dW_r=dR^\top X,\qquad
+                dX^{\mathrm{router}}=dR\,W_r,\qquad
+                dX=dX^{\mathrm{expert}}+dX^{\mathrm{router}}.
+                \tag{11}
+                \]
+            </div>
+
+            <p>In an autograd-integrated forward, the selected logits and weights stay on the source rank and remain connected to \(X\) and \(W_r\):</p>
+
+            <details class="code-fold" open>
+                <summary>Router forward connected to the complete EP forward</summary>
+                <pre><code class="language-python">router_logits = x.float() @ w_router.transpose(0, 1)
+topk_idx = torch.topk(router_logits, k, dim=-1).indices
+selected_logits = router_logits.gather(1, topk_idx)
+topk_weight = torch.softmax(selected_logits, dim=-1)
+
+output, _ = ep_moe_forward(
+    x, topk_idx, topk_weight,
+    w_gate, w_up, w_down,
+    num_experts, ep_group,
+)
+loss = criterion(output)
+loss.backward()</code></pre>
+            </details>
+
+            <p>Autograd applies the same derivative as Equation (10). The following explicit version is useful for checking it independently:</p>
+
+            <details class="code-fold">
+                <summary>Explicit selected-softmax and router-projection backward</summary>
+                <pre><code class="language-python">def selected_router_backward(
+    x, w_router, topk_idx, topk_weight, d_selected_weight
+):
+    # Router arithmetic stays in FP32 even when expert activations use BF16.
+    p = topk_weight.float()
+    dp = d_selected_weight.float()
+    centered = dp - (
+        p * dp
+    ).sum(dim=-1, keepdim=True)
+    d_selected_logits = p * centered
+
+    d_logits = torch.zeros(
+        (x.shape[0], w_router.shape[0]),
+        device=x.device,
+        dtype=torch.float32,
+    )
+    d_logits.scatter_add_(1, topk_idx, d_selected_logits)
+
+    d_w_router = d_logits.transpose(0, 1) @ x.float()
+    d_x_router = (d_logits @ w_router.float()).to(x.dtype)
+    return d_x_router, d_w_router</code></pre>
+            </details>
+
+            <p>This router block matches the selected-softmax definition in Equation (2). A router that uses sigmoid affinities and then normalizes the selected scores needs the Jacobian of that normalization instead. The router-local derivative changes; the two reverse all-to-alls and the grouped expert backward do not.</p>
+
+            <p>After the local expert gradients are computed, ranks inside one EP group still own different expert shards and do not synchronize them with each other. Replicas of the same shard synchronize across the Expert-DP group. Dense and router parameters use their dense data-parallel group. The following three lines describe parameter ownership; they are pseudocode, not a complete training loop:</p>
+
+            <details class="code-fold">
+                <summary>Parameter-ownership pseudocode for gradient synchronization</summary>
+                <pre><code class="language-python"># Only do this manually when the training framework is not already
+# synchronizing these parameters through DDP/FSDP communication hooks.
+dist.all_reduce(
+    expert_grad, op=dist.ReduceOp.SUM, group=expert_dp_group
+)
+dist.all_reduce(
+    router_grad, op=dist.ReduceOp.SUM, group=dense_dp_group
+)
+dist.all_reduce(
+    other_dense_grad, op=dist.ReduceOp.SUM, group=dense_dp_group
+)
+
+# If each rank produced a local-mean gradient and the desired result is
+# an equal-rank mean, divide by the relevant group size. Other loss
+# normalizations may require no division or a sample-count-weighted one.
+# expert_grad.div_(dist.get_world_size(expert_dp_group))</code></pre>
+            </details>
+
+            <p><code>dist.all_reduce</code> uses <code>SUM</code> by default. Whether the reduced gradient should then be divided by group size depends on how the loss and per-rank gradients were normalized. For equal local batches whose losses each use a local mean, dividing produces an equal-rank mean; uneven sample counts require weighted normalization instead. DDP and FSDP normally register their own gradient communication, so manually repeating the all-reduce would synchronize the same gradient twice. Frameworks may also replace it with reduce-scatter or sharded optimizer communication. The ownership remains the useful rule: EP collectives move activations, while data-parallel collectives reconcile replicated parameters.</p>
+
+            <h2 id="decode">6. Decode: compute small expert batches</h2>
+
+            <p>We can use the grouped GEMM from Section 2 during decode too. What changes is the batch: instead of many positions from each request, we usually receive one new token per request per step. Take four EP ranks, eight active requests per rank, 64 experts, and top-2 routing. Together they produce \(4\times8\times2=64\) token–expert pairs—only one row per expert on average. Packing still works, but there are very few tokens over which to reuse each expert's weights.</p>
+
+            <h3>Split-K: share one output tile across programs</h3>
+
+            <p>Recall how we assigned work in the grouped GEMM kernel: one program computes one output tile, looping over the entire input width \(K\). With few token rows, we may have too few output tiles across all active experts to keep the GPU busy. But each program still has that long \(K\) loop to finish.</p>
+
+            <p>We can split this loop between programs. For \(K=4096\), let one program accumulate products over the first 2048 input features and another over the remaining 2048. Both produce a partial result for the <em>same</em> output tile. Adding their results gives the complete tile. This is <strong>Split-K</strong>: we leave the packed inputs and offsets unchanged and add parallel work along the reduction dimension.</p>
+
+            <p>The addition requires atomic updates or a separate reduction kernel, so the extra parallelism has a cost. We try this when the original launch leaves the GPU underused, not when it already saturates memory bandwidth. Split-K does not improve weight reuse; it lets more programs share the existing computation. The <a href="https://pytorch.org/blog/accelerating-moe-model/#30-work-decomposition--splitk">PyTorch MoE kernel study</a> demonstrates this trade-off in inference.</p>
+
+            <h3>Column-major scheduling: reuse a weight block across tiles</h3>
+
+            <p>Next, consider what the programs read. With few tokens, the activation matrix is small enough that it may fit in cache, while the expert weights can still be large. For one expert, label output tiles \(C_{m,n}\), where \(m\) indexes token-row tiles and \(n\) indexes output-column tiles. Tiles \(C_{0,0}\) and \(C_{1,0}\) process different tokens but need the same weight block. Can they reuse that block even if they run on different SMs?</p>
+
+            <p><strong>They can share it through L2: an on-chip cache shared by the SMs, between the SMs and HBM in the memory hierarchy.</strong> For an H100-class GPU:</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Storage</th><th>Location</th><th>Sharing scope</th></tr></thead>
+                    <tbody>
+                        <tr><td>L1 cache (SRAM)</td><td>Inside each SM</td><td>Threads on that SM</td></tr>
+                        <tr><td>L2 cache (SRAM)</td><td>On the compute die, outside the SMs</td><td>Threads across SMs</td></tr>
+                        <tr><td>HBM (DRAM)</td><td>Memory stacks outside the compute die, in the same package</td><td>GPU-wide storage for weights and tensors</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>H100 SXM has 50 MB of L2 and 80 GB of HBM. If the first program's weight block is still in L2 when the second needs it, the second avoids another HBM read. See <a href="https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/">NVIDIA's Hopper architecture overview</a>.</p>
+
+            <p>We can express this by changing the program-ID mapping in Section 1's <code>_matmul_kernel</code>. For one expert with \(M\) token rows and \(N\) output columns, we launch a one-dimensional grid of \(\lceil M/B_M\rceil\lceil N/B_N\rceil\) programs. The original <strong>row-major</strong> mapping advances the column tile first:</p>
+
+            <pre><code class="language-python">pid = tl.program_id(0)
+num_pid_n = tl.cdiv(N, BLOCK_N)  # Number of output-column tiles.
+
+pid_m = pid // num_pid_n
+pid_n = pid % num_pid_n</code></pre>
+
+            <p>The remainder cycles through column tiles; the quotient advances to the next row tile. To visit row tiles first, we instead divide by the number of row tiles. Replace that mapping with:</p>
+
+            <pre><code class="language-python">pid = tl.program_id(0)
+num_pid_m = tl.cdiv(M, BLOCK_M)  # Number of token-row tiles.
+
+pid_m = pid % num_pid_m
+pid_n = pid // num_pid_m</code></pre>
+
+            <p>For two row tiles and three column tiles, increasing <code>pid</code> from 0 to 5 gives:</p>
+
+            <pre><code class="language-text">Row-major:    (0,0) (0,1) (0,2) (1,0) (1,1) (1,2)
+Column-major: (0,0) (1,0) (0,1) (1,1) (0,2) (1,2)</code></pre>
+
+            <p>The rest of the kernel still converts these tile indices to element indices in the same way, then runs the same \(K\) loop:</p>
+
+            <pre><code class="language-python">rows = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+cols = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)</code></pre>
+
+            <p>Matrix multiplication does not require a fixed order for traversing output tiles. With <strong>column-major scheduling</strong>, we assign nearby program IDs to token-row tiles of the same expert that need the same weight block. This can improve L2 reuse and reduce repeated HBM reads without changing tensor storage or enforcing an execution order. The <a href="https://pytorch.org/blog/accelerating-moe-model/#40-gemm-hardware-scheduling--column-major">MoE study</a> compares column-major schedules; <a href="https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html#l2-cache-optimizations">Triton's tutorial</a> uses this ordering within groups of row tiles.</p>
+
+            <h2 id="architectures">7. MoE architectures: redesign the experts</h2>
+
+            <p>So far, we have kept the expert structure fixed and changed how we execute it. We can also change the experts themselves. Their intermediate width, shared branches, and input/output width determine the matrix multiplications and communication that the system must perform.</p>
+
+            <h3 id="deepseek-moe">DeepSeekMoE: fine-grained and shared experts</h3>
+
+            <p><a href="https://arxiv.org/abs/2401.06066" target="_blank" rel="noopener">DeepSeekMoE</a> uses finer-grained experts to give the router more expert combinations to choose from while keeping per-token expert computation roughly unchanged. It also introduces shared experts that process every token.</p>
+
+            <p><strong>Fine-grained expert segmentation.</strong> Instead of keeping \(E\) large experts and activating \(k\), split each conventional expert into \(m\) narrower experts and activate \(mk\). The intermediate width of each smaller expert shrinks by approximately \(m\), so activated FFN compute remains comparable, while the number of possible expert subsets grows dramatically.</p>
+
+            <div class="formula-card">
+                \[
+                \underbrace{k\,d_f}_{\text{active intermediate width before splitting}}
+                \;\approx\;
+                \underbrace{(mk)\frac{d_f}{m}}_{\text{active intermediate width after splitting}}.
+                \]
+            </div>
+
+            <p>At the kernel level, there are \(mE\) experts and \(Tmk\) token–expert pairs. Under balanced routing, the average row count remains \(Tmk/(mE)=Tk/E\). Each expert is narrower, rather than receiving fewer rows on average. We therefore execute more GEMMs with smaller intermediate widths and pack more routes, even though the total expert arithmetic stays comparable.</p>
+
+            <p><strong>Shared-expert isolation.</strong> Multiple routed experts may learn the same knowledge that is useful across many tokens. DeepSeekMoE adds shared experts that process every token, aiming to reduce this duplication and let routed experts specialize. Shared experts process the full token batch; routed experts process the batches assigned by the router.</p>
+
+            <h3 id="latent-moe">LatentMoE: compute routed experts in a narrower space</h3>
+
+            <p>EP dispatch and combine move token representations, while the expert GEMMs read projection weights. Both costs depend on the input/output width of the routed experts. <a href="https://arxiv.org/abs/2601.18089" target="_blank" rel="noopener">NVIDIA's LatentMoE</a> reduces this width, making both the routed activations and expert matrices smaller.</p>
+
+            <p>Let the model hidden width be \(d\) and choose a latent width \(\ell&lt;d\). The router and any shared experts still operate at width \(d\). We apply a shared down projection before the routed experts to reduce the width to \(\ell\), then a shared up projection after combining their outputs to restore width \(d\):</p>
+
+            <div class="formula-card">
+                \[
+                z=xW_\downarrow^\top\in\mathbb R^\ell,\qquad
+                \widetilde z=
+                \sum_{e\in\mathcal T(x)}p_eF_e(z),\qquad
+                y=F_{\mathrm{shared}}(x)
+                +\widetilde zW_\uparrow^\top\in\mathbb R^d.
+                \tag{12}
+                \]
+            </div>
+
+            <p>The routed expert matrices now have shapes</p>
+
+            <div class="formula-card">
+                \[
+                W_g^{(e)},W_u^{(e)}\in\mathbb R^{d_f\times\ell},\qquad
+                W_d^{(e)}\in\mathbb R^{\ell\times d_f}.
+                \]
+            </div>
+
+            <p>For a fixed top-k, dispatch and combine move \(\ell\) values per routed branch instead of \(d\), and each active routed expert reads weights whose outer width is \(\ell\). If \(\alpha=d/\ell\), these routed traffic terms fall by roughly \(\alpha\). What happens next depends on which LatentMoE configuration we choose:</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Configuration</th><th>Total experts</th><th>Active top-k</th><th>Effect on routed cost</th></tr></thead>
+                    <tbody>
+                        <tr><td>\(\ell\text{-MoE}_{\mathrm{eff}}\)</td><td>Increase by about \(\alpha\)</td><td>Keep approximately fixed</td><td>Routed communication and active weight traffic decrease.</td></tr>
+                        <tr><td>\(\ell\text{-MoE}_{\mathrm{acc}}\)</td><td>Increase by about \(\alpha\)</td><td>Increase by about \(\alpha\)</td><td>More active experts per token, with routed cost roughly unchanged.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>The efficiency configuration reduces routed communication and active weight traffic by keeping top-k approximately fixed. The accuracy configuration increases top-k, bringing those costs back toward their original levels.</p>
+
+            <figure class="plot-figure latex-figure figure-wide moe-figure">
+                <a href="figures/moe-latent-width.svg" aria-label="Open the full-resolution comparison of standard MoE and LatentMoE">
+                    <picture>
+                        <source media="(max-width: 600px)" srcset="figures/moe-latent-width-mobile.svg" width="480" height="1263">
+                        <img src="figures/moe-latent-width.svg" alt="LatentMoE adds down/up projections around routed experts, whose input and output width shrinks from d to ell. The router and shared expert still read x at model width d. Both branches are added to produce y." width="980" height="622" loading="lazy" decoding="async">
+                    </picture>
+                </a>
+                <figcaption>Both diagrams include a shared expert; only the routed branch becomes narrower. At fixed top-k and intermediate width \(d_f\), each routed input/output shrinks from \(d\) to \(\ell\) values; expert matrices shrink along the same dimension. The router and shared experts remain at width \(d\). Dashed arrows carry routing decisions. Adapted from the <a href="https://arxiv.org/html/2601.18089v1#S3">LatentMoE architecture</a>.</figcaption>
+            </figure>
+
+            <p>The shared down/up projections add computation for every token, and too small a latent space can become an information bottleneck. These projections reuse weights across all tokens, while the routed cost scales with top-k. We therefore compare the added projection cost with the reduction in routed computation and data movement.</p>
+
+            <h2 id="summary">8. Summary</h2>
+
+            <p>Routing determines how many rows each expert receives. We pack those rows into contiguous segments and use grouped GEMM to execute the expert projections. When weights are split across GPUs, dispatch brings the inputs to each expert and combine returns its outputs. Backward follows those exchanges in reverse, while replicas of the same parameters synchronize their gradients separately.</p>
+
+            <p>The workload matters as much as the algorithm. Small-batch decode offers little weight reuse, even with a grouped launch. Finer experts change GEMM widths and route counts; narrower latent activations reduce the bytes carried by each route. We need to account for these changes before expecting fewer active parameters or FLOPs to translate into lower latency.</p>
+
+            <h3 id="code-map">Code and notebooks</h3>
+
+            <p>The single-GPU kernels and multi-GPU example have separate entry points:</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Content</th><th>Entry point</th><th>Environment</th></tr></thead>
+                    <tbody>
+                        <tr><td>GEMM, grouped GEMM, and backward</td><td><a href="code/mixture_of_experts_colab.ipynb">Step-by-step Colab notebook</a></td><td>One GPU</td></tr>
+                        <tr><td>PyTorch all-to-all with the Triton EP reference</td><td><a href="code/moe_ep_hopper.py"><code>moe_ep_hopper.py</code></a></td><td>Multiple GPUs with <code>torchrun</code></td></tr>
+                        <tr><td>Optimized MoE dispatch and combine</td><td><a href="https://github.com/deepseek-ai/DeepEP" target="_blank" rel="noopener">Official DeepEP repository</a></td><td>The supported multi-GPU environment in its current README</td></tr>
+                        <tr><td>Production grouped GEMM</td><td><a href="https://github.com/deepseek-ai/DeepGEMM" target="_blank" rel="noopener">Official DeepGEMM repository</a></td><td>Supported NVIDIA GPUs</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>The notebook compares balanced and skewed loads with the same total row count, then tests a separate small-batch decode workload. It reports wrapper wall time, including schedule preparation, separately from GPU time with prepared schedules and buffers. This separates host-side preparation costs from the execution of the expert GEMMs.</p>
+
+            <section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li>
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html">Matrix Multiplication</a></span>
+                            <span class="reference-meta">Triton contributors. Triton documentation, tutorial 03.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://triton-lang.org/main/getting-started/tutorials/08-grouped-gemm.html">Group GEMM</a></span>
+                            <span class="reference-meta">Triton contributors. Triton documentation, tutorial 08.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://docs.pytorch.org/docs/stable/distributed.html">Distributed Communication Package — torch.distributed</a></span>
+                            <span class="reference-meta">PyTorch contributors. PyTorch documentation.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://github.com/deepseek-ai/DeepGEMM">DeepGEMM: Clean and Efficient BLAS Kernel Library on GPU</a></span>
+                            <span class="reference-meta">DeepSeek-AI. GitHub repository.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[5]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://github.com/deepseek-ai/DeepEP">DeepEP: An Efficient Expert-Parallel Communication Library</a></span>
+                            <span class="reference-meta">DeepSeek-AI. GitHub repository.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[6]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1701.06538">Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer</a></span>
+                            <span class="reference-meta">Noam Shazeer, Azalia Mirhoseini, Krzysztof Maziarz, Andy Davis, Quoc Le, Geoffrey Hinton, and Jeff Dean. ICLR 2017.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[7]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2401.06066">DeepSeekMoE: Towards Ultimate Expert Specialization in Mixture-of-Experts Language Models</a></span>
+                            <span class="reference-meta">Damai Dai, Chengqi Deng, Chenggang Zhao, et al. ACL 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[8]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2408.15664">Auxiliary-Loss-Free Load Balancing Strategy for Mixture-of-Experts</a></span>
+                            <span class="reference-meta">Lean Wang, Huazuo Gao, Chenggang Zhao, Xu Sun, and Damai Dai. arXiv:2408.15664, 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[9]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2412.19437">DeepSeek-V3 Technical Report</a></span>
+                            <span class="reference-meta">DeepSeek-AI. arXiv:2412.19437, 2024.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[10]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://fe-static.deepseek.com/chat/transparency/deepseek-V4-model-card-EN.pdf">DeepSeek V4 — Model Card</a></span>
+                            <span class="reference-meta">DeepSeek AI. Technical documentation, April 27, 2026.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[11]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://qwen.ai/blog?id=qwen3.5">Qwen3.5: Towards Native Multimodal Agents</a></span>
+                            <span class="reference-meta">Qwen Team. Qwen blog, February 16, 2026.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[12]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2601.18089">LatentMoE: Toward Optimal Accuracy per FLOP and Parameter in Mixture of Experts</a></span>
+                            <span class="reference-meta">Venmugil Elango, Nidhi Bhatia, Roger Waleffe, et al. arXiv:2601.18089, 2026.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[13]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://research.nvidia.com/labs/nemotron/files/NVIDIA-Nemotron-3-White-Paper.pdf">NVIDIA Nemotron 3: Efficient and Open Intelligence</a></span>
+                            <span class="reference-meta">NVIDIA. White paper, December 24, 2025.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[14]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://www.jmlr.org/papers/v23/21-0998.html">Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity</a></span>
+                            <span class="reference-meta">William Fedus, Barret Zoph, and Noam Shazeer. JMLR 23, 2022.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[15]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/moe.html">Mixture of Experts — Megatron Core</a></span>
+                            <span class="reference-meta">NVIDIA. Documentation and reference implementation.</span>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <nav class="article-nav" aria-label="Blog navigation">
+                <a href="../index.html#blogs"><i class="fas fa-arrow-left"></i> All posts</a>
+                <a href="code/mixture_of_experts_colab.ipynb">Download the notebook <i class="fas fa-download"></i></a>
+            </nav>
+        </article>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "\\[", right: "\\]", display: true},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "$", right: "$", display: false}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>
