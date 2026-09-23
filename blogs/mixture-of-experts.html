@@ -54,6 +54,7 @@
                         <ul>
                             <li><a href="#deepseek-moe">DeepSeekMoE</a></li>
                             <li><a href="#latent-moe">LatentMoE</a></li>
+                            <li><a href="#stable-latent-moe">Kimi K3: Stable LatentMoE</a></li>
                         </ul>
                     </li>
                     <li><a href="#summary">Summary</a></li>
@@ -1495,6 +1496,67 @@ cols = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)</code></pre>
 
             <p>The shared down/up projections add computation for every token, and too small a latent space can become an information bottleneck. These projections reuse weights across all tokens, while the routed cost scales with top-k. We therefore compare the added projection cost with the reduction in routed computation and data movement.</p>
 
+            <h3 id="stable-latent-moe">Stable LatentMoE: control activation scale and expert load</h3>
+
+            <p>We have reduced the cost of each route. <a href="https://arxiv.org/html/2607.24653v2#S2.SS3">Kimi K3's Stable LatentMoE</a> adds three changes to address two training concerns: large activations in the routed branch and uneven expert loads.</p>
+
+            <p><strong>Normalize the combined expert output.</strong> Keeping our row-vector notation, we replace Equation (12) with</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                z&amp;=xW_\downarrow^\top,\\
+                \widetilde z&amp;=\sum_{e\in\mathcal T(x)}p_eF_e(z),\\
+                y&amp;=F_{\mathrm{shared}}(x)
+                +\operatorname{RMSNorm}(\widetilde z)W_\uparrow^\top.
+                \end{aligned}
+                \tag{13}
+                \]
+            </div>
+
+            <p>RMSNorm rescales the aggregated activation \(\widetilde z\) by its root mean square, <em>after</em> the weighted sum and <em>before</em> the up-projection. This controls the scale entering \(W_\uparrow\); the shared branch still operates at width \(d\).</p>
+
+            <p><strong>Soft-cap both factors in the expert activation.</strong> Let \(g=z(W_g^{(e)})^\top\) and \(v=z(W_u^{(e)})^\top\). SwiGLU forms \(h=[g\odot\sigma(g)]\odot v\), where \(\sigma\) is sigmoid. To limit large products, K3 replaces it with <a href="https://arxiv.org/html/2607.24653v2#S2.SS3.SSS2">Sigmoid Tanh Unit GLU (SiTU-GLU)</a>:</p>
+
+            <div class="formula-card">
+                \[
+                \begin{aligned}
+                \widehat g&amp;=4\tanh(g/4)\odot\sigma(g),\\
+                \widehat v&amp;=25\tanh(v/25),\\
+                h&amp;=\widehat g\odot\widehat v,\qquad
+                F_e(z)=h(W_d^{(e)})^\top.
+                \end{aligned}
+                \tag{14}
+                \]
+            </div>
+
+            <p>For small inputs, \(\beta\tanh(a/\beta)\approx a\), so we approximately recover SwiGLU. For large inputs, both branches saturate smoothly: the gate retains \(\sigma(g)\), but its linear factor and the up branch are capped. Each coordinate of \(h\) is bounded in magnitude by \(4\cdot25=100\), before the expert's output projection.</p>
+
+            <p><strong>Choose balancing biases from score quantiles.</strong> In <a href="#routing-balance">Section 4.4</a>, the bias moves by a fixed step according to whether an expert is over- or underused. K3's <a href="https://arxiv.org/html/2607.24653v2#S2.SS3.SSS3">Quantile Balancing</a> changes how we choose that bias. Its router uses sigmoid scores:</p>
+
+            <div class="formula-card">
+                \[
+                s_t=\sigma(x_tW_r^\top),\qquad
+                \mathcal T_t=\operatorname{TopK}(s_t+b,k),
+                \]
+                \[
+                p_{t,e}=\frac{s_{t,e}}{\sum_{j\in\mathcal T_t}s_{t,j}},
+                \qquad e\in\mathcal T_t.
+                \]
+            </div>
+
+            <p>The bias affects selection; the mixture weights still use the unbiased scores. For \(T\) tokens and \(E\) experts, the target is \(q=Tk/E\) assignments per expert. Let \(\tau_t\) be token \(t\)'s \((k+1)\)-th largest biased score. Holding these cutoffs fixed, expert \(e\) passes token \(t\)'s cutoff when</p>
+
+            <div class="formula-card">
+                \[
+                s_{t,e}+\widehat b_e&gt;\tau_t
+                \quad\Longleftrightarrow\quad
+                s_{t,e}-\tau_t&gt;-\widehat b_e.
+                \]
+            </div>
+
+            <p>We choose \(-\widehat b_e\) at the \((1-k/E)\)-quantile of these margins, targeting a fraction \(k/E\) above the threshold. K3 estimates these quantiles from globally summed histograms, subtracts the mean bias, and applies the update to the <em>next</em> batch. The biases are frozen at inference.</p>
+
             <h2 id="summary">8. Summary</h2>
 
             <p>Routing determines how many rows each expert receives. We pack those rows into contiguous segments and use grouped GEMM to execute the expert projections. When weights are split across GPUs, dispatch brings the inputs to each expert and combine returns its outputs. Backward follows those exchanges in reverse, while replicas of the same parameters synchronize their gradients separately.</p>
@@ -1625,6 +1687,13 @@ cols = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)</code></pre>
                         <div class="reference-body">
                             <span class="reference-title"><a href="https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/moe.html">Mixture of Experts — Megatron Core</a></span>
                             <span class="reference-meta">NVIDIA. Documentation and reference implementation.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="reference-number">[16]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2607.24653">Kimi K3: Open Frontier Intelligence</a></span>
+                            <span class="reference-meta">Kimi Team. arXiv:2607.24653, 2026. Section 2.3 and Appendices B–D.</span>
                         </div>
                     </li>
                 </ol>
