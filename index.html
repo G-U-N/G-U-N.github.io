@@ -1006,6 +1006,22 @@
             line-height: 1.5;
         }
 
+        .latest-post:lang(zh-CN) > div {
+            font-family: 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        .latest-post:lang(zh-CN) h3 {
+            font-weight: 600;
+            line-height: 1.65;
+            letter-spacing: 0.01em;
+            text-wrap: balance;
+            word-break: keep-all;
+        }
+
+        .latest-post:lang(zh-CN) p {
+            line-height: 1.75;
+        }
+
         .latest-post span {
             color: var(--primary-color);
             font-size: 0.82rem;
@@ -1405,10 +1421,10 @@
         <div class="section" id="blogs">
             <h1><i class="fas fa-book-open"></i> Latest Posts</h1>
             <div class="latest-post-list">
-                <a class="latest-post" href="blogs/visual-generation.html">
+                <a class="latest-post" href="blogs/visual-generation.html" lang="zh-CN">
                     <div>
-                        <h3>它看得懂，只是说不出</h3>
-                        <p>为什么让 LLM 画图替代不了视觉生成，以及为什么 LLM 越强，视觉生成反而越有前途。</p>
+                        <h3>LLM 都会画画了，<wbr>还需要训练<wbr>视觉生成模型吗？</h3>
+                        <p>从一只小猫开始讲起。</p>
                     </div>
                     <span>Read <i class="fas fa-arrow-right"></i></span>
                 </a>
