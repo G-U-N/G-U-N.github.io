@@ -1,0 +1,25 @@
+.blog-discussion {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--blog-width, 940px);
+    margin: 36px auto 0;
+    padding: 32px 40px;
+    border: var(--article-border, 1px solid #e8e6df);
+    border-radius: var(--article-radius, 16px);
+    background: var(--article-background, #fff);
+    box-shadow: var(--article-shadow, 0 8px 24px rgba(30, 27, 75, .08));
+    color: var(--text-primary, #1e1b4b);
+}
+
+.blog-discussion h2 {
+    margin: 0 0 22px;
+    font: 400 1.6rem/1.35 var(--blog-font-heading, Georgia, serif);
+}
+
+@media (max-width: 700px) {
+    .blog-discussion { padding: 24px 20px; }
+}
+
+@media print {
+    .blog-discussion { display: none; }
+}
