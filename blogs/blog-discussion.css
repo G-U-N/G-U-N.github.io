@@ -16,6 +16,11 @@
     font: 400 1.6rem/1.35 var(--blog-font-heading, Georgia, serif);
 }
 
+.layout > .blog-discussion {
+    grid-column: 2;
+    max-width: 760px;
+}
+
 @media (max-width: 700px) {
     .blog-discussion { padding: 24px 20px; }
 }
