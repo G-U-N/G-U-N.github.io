@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en" class="blog-page">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Our work on few-step generation without a timestep schedule: the generator refines its own image prediction in data space instead of re-noising it.">
+    <title>Refine, Don't Re-roll — Fu-Yun Wang</title>
+    <script defer src="blog-discussion.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <link rel="stylesheet" href="distributional-distillation.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="blog-common.css">
+    <link rel="stylesheet" href="blog-themes.css">
+    <script src="blog-theme.js"></script>
+</head>
+<body>
+    <main class="container">
+        <header class="blog-header">
+            <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to all posts</a>
+            <div class="eyebrow">Our work · Few-step generation</div>
+            <h1>Refine, Don't Re-roll</h1>
+            <p class="dek">Few-step distillation usually walks through a hand-picked schedule of noise levels. Our paper drops it: the generator simply refines its own image prediction.</p>
+            <div class="blog-meta"><a href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener">Few-Step Generation via Data-Space Iteration</a> &middot; <a href="https://peter-lin.com/" target="_blank" rel="noopener">Shanchuan Lin</a>, <a href="https://scholar.google.com/citations?user=CTidez8AAAAJ" target="_blank" rel="noopener">Yansong Peng</a>, <a href="../index.html">Fu-Yun Wang</a>, <a href="https://haoqifan.github.io/" target="_blank" rel="noopener">Haoqi Fan</a> &middot; ByteDance Seed &middot; 2026</div>
+        </header>
+
+        <article class="blog-content">
+            <div class="toc">
+                <strong>Contents</strong>
+                <ol>
+                    <li><a href="#idea">The idea</a></li>
+                    <li><a href="#schedule">What the schedule costs</a></li>
+                    <li><a href="#training">Training</a></li>
+                    <li><a href="#results">Results</a></li>
+                    <li><a href="#steps">What the steps look like</a></li>
+                    <li><a href="#limits">Limits and related ideas</a></li>
+                </ol>
+            </div>
+
+            <figure class="plot-figure" id="fig-trajectory">
+                <a href="figures/dsi-trajectory.png" aria-label="Open the figure at full size">
+                    <img src="figures/dsi-trajectory.png" alt="Intermediate steps for one shared noise and class. Top row, data-space iteration: the same ostrich is refined from 1 to 4 NFE. Bottom row, flow-renoise: a different ostrich in a different pose and background at every step. At right, the 4-step output of flow-map." width="3000" height="1920" loading="lazy" decoding="async">
+                </a>
+                <figcaption><strong>Figure 1.</strong> One shared noise and class, shown after each step. Data-space iteration (top) keeps the same ostrich and refines it; flow-renoise (bottom) draws a different ostrich, with a different pose and background, at every step. Flow-map (right) produces only its final 4-step output. Images are from Figure 2 of our paper <a class="source-cite" href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener" title="[1] Few-Step Generation via Data-Space Iteration" aria-label="Reference 1: Few-Step Generation via Data-Space Iteration"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[1]</span></a>.</figcaption>
+            </figure>
+
+            <p>Flow-matching image models need tens to hundreds of network evaluations per sample, so we distill them into generators that need only a few, say four. The usual recipe fixes a <strong>timestep schedule</strong>, for example the noise levels 1.0, 0.75, 0.5 and 0.25, and lets each step move the sample from one level to the next. The schedule is hard to justify, and changing it means training a new generator.</p>
+
+            <p>Our paper asks whether it is needed at all. Instead, each step <strong>refines the image prediction directly</strong>, starting from the same noise, with <strong>no schedule</strong>.</p>
+
+            <h2 id="idea">1. The idea</h2>
+
+            <figure class="plot-figure" id="fig-process">
+                <a href="figures/dsi-process.png" aria-label="Open the figure at full size">
+                    <img src="figures/dsi-process.png" alt="Left, flow-space iteration: noise z becomes noisy states at t = 1.0, 0.75, 0.5 and 0.25 with question marks between them, labelled &quot;noisy state, denoise, re-noise&quot; and &quot;hand-picked schedule, fixed before training&quot;. Right, data-space iteration: the same noise z is fed into every step of one shared generator and every step outputs a full bird image, labelled &quot;no schedule&quot;." width="2400" height="1200" loading="lazy" decoding="async">
+                </a>
+                <figcaption><strong>Figure 2.</strong> Flow-space iteration (left) walks through a hand-picked schedule of noisy states, re-noising the image prediction between steps. Data-space iteration (right) feeds the same noise and the current image estimate into one shared generator at every step, with no schedule. Images are from Figure 1 of our paper <a class="source-cite" href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener" title="[1] Few-Step Generation via Data-Space Iteration" aria-label="Reference 1: Few-Step Generation via Data-Space Iteration"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[1]</span></a>.</figcaption>
+            </figure>
+
+            <p>Flow matching <a class="source-cite" href="https://arxiv.org/abs/2210.02747" target="_blank" rel="noopener" title="[6] Flow Matching for Generative Modeling" aria-label="Reference 6: Flow Matching for Generative Modeling"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[6]</span></a> connects data \(x_0\) and noise \(x_1\) by the line \(x_t=(1-t)x_0+t x_1\), and a network predicts its <strong>velocity</strong> \(v=x_1-x_0\). Any velocity prediction gives a <strong>clean-image prediction</strong>:</p>
+
+            <div class="formula-card">
+                \[
+                \hat x_0 = x_t - t\,v.
+                \]
+                <span class="equation-label">(1)</span>
+            </div>
+
+            <p>At \(t=1\) the state is the noise \(z\) itself, so \(\hat x_0=z-v\). Data-space iteration keeps <strong>only this prediction as the state</strong> and refines it with one shared generator:</p>
+
+            <div class="formula-card">
+                \[
+                \hat x_0^{(0)} = 0,\qquad \hat x_0^{(r+1)} = G_\theta\big(\hat x_0^{(r)},\, z,\, r\big) = z - g_\theta\big(\hat x_0^{(r)}, z, r, t=1\big).
+                \]
+                <span class="equation-label">(2)</span>
+            </div>
+
+            <ul>
+                <li><strong>The same noise \(z\) enters every step</strong>, not a fresh draw.</li>
+                <li><strong>The step index \(r\) tells the generator which stage it is at.</strong></li>
+                <li><strong>Nothing is re-noised</strong>, so no state at an intermediate noise level is ever built.</li>
+            </ul>
+
+            <p>The network \(g_\theta\) is the pretrained velocity network with a new input projection for \(\hat x_0^{(r)}\) and an embedding of \(r\), and its flow-time input is fixed to \(t=1\) (for compatibility with the pretrained velocity parameterization).</p>
+
+            <figure class="plot-figure" id="fig-notebook">
+                <a href="figures/dsi-notebook.png" aria-label="Open the figure at full size">
+                    <img src="figures/dsi-notebook.png" alt="A hand-drawn notebook page titled &quot;How Data-Space Iteration Works&quot;: one shared generator with inputs z, the current guess and the step index r; one step computes the estimate as z minus the network output at t equal to 1; repeating R equals 4 times from an empty start; pseudocode for flow-renoise and data-space rollouts; and training with plain DMD." width="2000" height="3240" loading="lazy" decoding="async">
+                </a>
+                <figcaption><strong>Figure 3.</strong> Data-space iteration on one page: the generator's inputs, one step, the rollout from an empty start, and training with plain DMD.</figcaption>
+            </figure>
+
+            <h2 id="schedule">2. What the schedule costs</h2>
+
+            <p>Existing methods pass a noisy image from step to step, so they need a schedule \(1=t_0&gt;t_1&gt;\dots&gt;t_R=0\) of noise levels, fixed before training. They differ in how a step moves from \(t_r\) to \(t_{r+1}\):</p>
+
+            <ul>
+                <li><strong>Flow-renoise</strong> is what multi-step DMD does: predict a clean image \(\hat x_0\), then re-noise it, \(x_{t_{r+1}}=(1-t_{r+1})\hat x_0+t_{r+1}\varepsilon\) with fresh noise \(\varepsilon\). Consistency models follow the same pattern.</li>
+                <li><strong>Flow-map</strong> methods skip the clean prediction and learn the transition \(x_{t_{r+1}}=G_\theta(x_{t_r},t_r,t_{r+1})\) directly. Phased DMD <a class="source-cite" href="https://arxiv.org/abs/2510.27684" target="_blank" rel="noopener" title="[4] Phased DMD: Few-step Distribution Matching Distillation via Score Matching within Subintervals" aria-label="Reference 4: Phased DMD: Few-step Distribution Matching Distillation via Score Matching within Subintervals"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[4]</span></a> is the DMD-based example; like Phased Consistency Models <a class="source-cite" href="https://arxiv.org/abs/2405.18407" target="_blank" rel="noopener" title="[10] Phased Consistency Models" aria-label="Reference 10: Phased Consistency Models"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[10]</span></a> for consistency distillation, it distills phase by phase. Its training target needs a different derivation, which my <a href="distributional-distillation-methods.html">notes on what DMD and Phased DMD estimate</a><a class="source-cite" href="distributional-distillation-methods.html" title="[5] Distributional Distillation II: What the Methods Actually Estimate" aria-label="Reference 5: Distributional Distillation II: What the Methods Actually Estimate"><img src="../assets/icons/source-blog.svg" width="16" height="16" alt=""><span class="source-cite-number">[5]</span></a> cover.</li>
+            </ul>
+
+            <p><strong>No single schedule is best.</strong> We reran both baselines with shifted versions of the uniform grid \([1, 0.75, 0.5, 0.25]\) (Table 2c of our paper <a class="source-cite" href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener" title="[1] Few-Step Generation via Data-Space Iteration" aria-label="Reference 1: Few-Step Generation via Data-Space Iteration"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[1]</span></a>): for flow-renoise at 4 NFE, a shift of \(\gamma=2\) is best without guidance and \(\gamma=1\) with guidance. Each candidate costs a full training run.</p>
+
+            <details class="optional-derivation">
+                <summary>A worked example: what the generator receives</summary>
+                <div class="details-body">
+                    <p>Take a scalar pixel with a good first-step estimate \(\hat x_0=2.0\) and noise \(z=5.0\). Under flow-renoise at \(t=0.75\), the next input is \(0.25\cdot 2.0+0.75\,\varepsilon\), which is \(-0.4\) for \(\varepsilon=-1.2\) and \(1.4\) for \(\varepsilon=+1.2\): <strong>the same estimate arrives as different numbers depending on a random draw</strong>. Under data-space iteration the input is always \((\hat x_0, z)=(2.0, 5.0)\).</p>
+                    <p>Re-noising also shrinks the carried-over estimate. For an estimate of unit variance its signal-to-noise ratio (SNR) is \(((1-t)/t)^2\):</p>
+                    <div class="table-wrap">
+                <table>
+                    <thead><tr><th>schedule point \(t\)</th><th>signal weight \(1-t\)</th><th>noise weight \(t\)</th><th>SNR of the old estimate</th></tr></thead>
+                    <tbody>
+                        <tr><td>0.75</td><td>0.25</td><td>0.75</td><td>0.11</td></tr>
+                        <tr><td>0.50</td><td>0.50</td><td>0.50</td><td>1.00</td></tr>
+                        <tr><td>0.25</td><td>0.75</td><td>0.25</td><td>9.00</td></tr>
+                    </tbody>
+                </table>
+            </div>
+                    <p>So <strong>re-noising can make already-good content hard to keep</strong>. This is a calculation about the generator's input, not evidence that trained generators behave this way; the evidence is in Section 5.</p>
+                </div>
+            </details>
+
+            <h2 id="training">3. Training</h2>
+
+            <p>We train with distribution matching distillation (DMD) <a class="source-cite" href="https://arxiv.org/abs/2311.18828" target="_blank" rel="noopener" title="[2] One-step Diffusion with Distribution Matching Distillation" aria-label="Reference 2: One-step Diffusion with Distribution Matching Distillation"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[2]</span></a><a class="source-cite" href="https://arxiv.org/abs/2405.14867" target="_blank" rel="noopener" title="[3] Improved Distribution Matching Distillation for Fast Image Synthesis" aria-label="Reference 3: Improved Distribution Matching Distillation for Fast Image Synthesis"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[3]</span></a>, replacing only the rollout by (2). DMD matches the <em>distribution</em> of generator outputs to the teacher's using two flow models: a frozen <strong>real model</strong> (the teacher, SiT-XL/2 <a class="source-cite" href="https://arxiv.org/abs/2401.08740" target="_blank" rel="noopener" title="[7] SiT: Exploring Flow and Diffusion-based Generative Models with Scalable Interpolant Transformers" aria-label="Reference 7: SiT: Exploring Flow and Diffusion-based Generative Models with Scalable Interpolant Transformers"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[7]</span></a>) and a <strong>fake model</strong> trained on the generator's own samples. The generator, a DiT-XL/2 network <a class="source-cite" href="https://arxiv.org/abs/2212.09748" target="_blank" rel="noopener" title="[8] Scalable Diffusion Models with Transformers" aria-label="Reference 8: Scalable Diffusion Models with Transformers"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[8]</span></a>, is pushed <strong>towards where the teacher would denoise its output and away from where the fake model would</strong>. Multi-step training also needs <strong>self-rollout</strong>: to train step \(r\), run the first \(r\) steps without gradients, then take step \(r\) with gradients, so the generator trains on its own intermediate states.</p>
+
+            <details class="optional-derivation">
+                <summary>The DMD loss and training code</summary>
+                <div class="details-body">
+                    <p>Noise a generator output \(\hat x\) at a random level \(\tau\), \(\hat x_\tau=(1-\tau)\hat x+\tau\varepsilon\) with \(\varepsilon\sim\mathcal N(0,I)\), and compare the two models there. With weighting \(w(\tau)\) and stop-gradient \(\mathrm{sg}\), the generator loss is</p>
+                    <div class="formula-card">
+                        \[
+                        \mathcal L_{\text{dmd}} = \mathbb E\Big[\, w(\tau)\; \mathrm{sg}\big[v_{\text{real}}(\hat x_\tau,\tau) - v_{\text{fake}}(\hat x_\tau,\tau)\big]^{\top}\hat x \Big].
+                        \]
+                        <span class="equation-label">(4)</span>
+                    </div>
+                    <p>By (1) at level \(\tau\), \(v_{\text{real}} - v_{\text{fake}} = -\tfrac{1}{\tau}(\hat x_0^{\text{real}} - \hat x_0^{\text{fake}})\), which is the direction stated above. The fake model is trained alternately by regressing \(v_{\text{fake}}(\hat x_\tau,\tau)\) onto \(\varepsilon-\hat x\). The code is adapted from Algorithm 1 in the appendix of our paper <a class="source-cite" href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener" title="[1] Few-Step Generation via Data-Space Iteration" aria-label="Reference 1: Few-Step Generation via Data-Space Iteration"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[1]</span></a>; <code>z</code>, <code>x</code> are latent batches of shape <code>(B, 4, 32, 32)</code>, and <code>r</code> is the sampled step index.</p>
+                    <pre><code class="language-python">def rollout_data_space(gen, z, c, r, track_grad):
+    x_hat = torch.zeros_like(z)
+    for i in range(r + 1):
+        with torch.set_grad_enabled(track_grad and i == r):   # gradients only at step r
+            x_hat = z - gen(x_hat, z, c, i)                   # eq. (3)
+    return x_hat
+
+def dmd_step(gen, v_real, v_fake, data, r, rollout_fn, gen_step=True):
+    x, c = data
+    z, eps = torch.randn_like(x), torch.randn_like(x)
+    tau = torch.distributions.Beta(2.5, 1.0).sample((x.shape[0],)).to(x.device)
+    tau4 = tau[:, None, None, None]
+    x_hat = rollout_fn(gen, z, c, r, track_grad=gen_step)
+    x_tau = (1 - tau4) * x_hat + tau4 * eps                   # noise the prediction
+    if not gen_step:                                          # fake-model update
+        return F.mse_loss(v_fake(x_tau, tau, c, r), eps - x_hat)
+    with torch.no_grad():                                     # fixed direction, no gradient
+        direction = v_real(x_tau, tau, c) - v_fake(x_tau, tau, c, r)
+    return (x_hat * direction).mean()                         # eq. (4) with w(tau)=1</code></pre>
+                    <p>In a generator step, gradients flow only through <code>x_hat</code> from the last of the \(r+1\) generator calls, and the direction \(v_{\text{real}}-v_{\text{fake}}\) carries none. The flow-renoise baseline uses the same <code>dmd_step</code> and differs only in the rollout loop: at each schedule point \(t\) it re-noises \(\hat x\) and calls the generator with \(t\) instead of \(r\). Other hyperparameters are in the appendix of our paper.</p>
+                </div>
+            </details>
+
+            <h2 id="results">4. Results</h2>
+
+            <p>We compare all samplers on class-conditional ImageNet 256×256 with the same teacher and DMD recipe, so only the iteration differs. FID (Fréchet Inception Distance) is lower for better samples. Baselines use the uniform schedule, and "oracle" is the best of three schedules for flow-map.</p>
+
+            <figure class="plot-figure" id="fig-performance">
+                <a href="figures/dsi-performance.png" aria-label="Open the figure at full size">
+                    <img src="figures/dsi-performance.png" alt="Line chart of FID against network evaluations (1 to 4) without guidance: data-space iteration goes 3.85, 2.68, 2.47, 2.46; flow-renoise goes 4.45, 3.22, 2.67, 2.75. Flow-map at 4 NFE is 2.55, or 2.48 with the best of three schedules. A side table lists 4-step FID with and without guidance." width="2560" height="1440" loading="lazy" decoding="async">
+                </a>
+                <figcaption><strong>Figure 4.</strong> FID against NFE on ImageNet 256×256 without guidance; the table on the right lists the 4-step FIDs with and without guidance. Numbers are from Table 3 of our paper <a class="source-cite" href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener" title="[1] Few-Step Generation via Data-Space Iteration" aria-label="Reference 1: Few-Step Generation via Data-Space Iteration"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[1]</span></a>; lower is better.</figcaption>
+            </figure>
+
+            <ul>
+                <li><strong>Data-space iteration has the lowest FID at every step count</strong>, with and without guidance, and needs no schedule search. Flow-renoise gets worse from 3 to 4 steps; ours keeps improving or stays level.</li>
+                <li><strong>At 4 NFE it matches or beats the oracle flow-map</strong>: 2.46 against 2.48 without guidance (parity, std &lt; 0.05 over three runs) and 2.29 against 2.37 with guidance.</li>
+                <li><strong>One caveat.</strong> At 1 NFE data-space iteration and flow-renoise compute the same function, so that gap comes from optimization, which we attribute to training dynamics. Perhaps iterating on the image prediction makes different step counts more compatible with each other when they are trained together, but this is a hypothesis we have not tested.</li>
+            </ul>
+
+            <details class="optional-derivation">
+                <summary>Full FID tables</summary>
+                <div class="details-body">
+                    <p><strong>Without classifier-free guidance</strong></p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Method</th><th>1 NFE</th><th>2 NFE</th><th>3 NFE</th><th>4 NFE</th></tr></thead>
+                    <tbody>
+                        <tr><td>Flow matching teacher (250 NFE)</td><td></td><td></td><td></td><td>8.26</td></tr>
+                        <tr><td>DMD, flow-renoise</td><td>4.45</td><td>3.22</td><td>2.67</td><td>2.75</td></tr>
+                        <tr><td>Phased DMD, flow-map</td><td>–</td><td>–</td><td>–</td><td>2.55 (oracle 2.48)</td></tr>
+                        <tr><td><strong>Data-space DMD</strong></td><td><strong>3.85</strong></td><td><strong>2.68</strong></td><td><strong>2.47</strong></td><td><strong>2.46</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+                    <p><strong>With classifier-free guidance</strong></p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Method</th><th>1 NFE</th><th>2 NFE</th><th>3 NFE</th><th>4 NFE</th></tr></thead>
+                    <tbody>
+                        <tr><td>Flow matching teacher (250 × 2 NFE)</td><td></td><td></td><td></td><td>2.06</td></tr>
+                        <tr><td>DMD, flow-renoise</td><td>4.02</td><td>2.89</td><td>2.51</td><td>2.61</td></tr>
+                        <tr><td>Phased DMD, flow-map</td><td>–</td><td>–</td><td>–</td><td>2.86 (oracle 2.37)</td></tr>
+                        <tr><td><strong>Data-space DMD</strong></td><td><strong>3.31</strong></td><td><strong>2.47</strong></td><td><strong>2.33</strong></td><td><strong>2.29</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+                </div>
+            </details>
+
+            <h2 id="steps">5. What the steps look like</h2>
+
+                        <p>FID scores only the final image, so Figure 1 at the top shows the output of every step. Data-space iteration keeps the composition from the first step and sharpens details afterwards; flow-renoise changes pose, background and viewpoint between steps. <strong>The evidence that structure persists is qualitative.</strong> Measured as mean pixel-space L2 change between consecutive steps, data-space iteration changes about 28% less in the first transition but about 20% more in the last, so "changes less everywhere" is not what the numbers say.</p>
+
+            <figure class="plot-figure" id="fig-gallery">
+                <a href="figures/dsi-gallery.png" aria-label="Open the figure at full size">
+                    <img src="figures/dsi-gallery.png" alt="A grid of 4-step samples of a goldfish, an ostrich, a goldfinch and a house finch for data-space iteration, flow-renoise and flow-map, with the same initial noise and class in every column." width="2160" height="1860" loading="lazy" decoding="async">
+                </a>
+                <figcaption><strong>Figure 5.</strong> 4-step samples from the three methods, with the same initial noise and class in each column; four of the samples visualized in Figure 2 of our paper <a class="source-cite" href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener" title="[1] Few-Step Generation via Data-Space Iteration" aria-label="Reference 1: Few-Step Generation via Data-Space Iteration"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[1]</span></a>. 4-step FID without guidance: 2.46 for data-space iteration, 2.55 for flow-map, 2.75 for flow-renoise.</figcaption>
+            </figure>
+
+            <h2 id="limits">6. Limits and related ideas</h2>
+
+            <ul>
+                <li><strong>The saving is in training, not sampling.</strong> All three samplers use up to four evaluations at inference; data-space iteration removes the schedule search. We report no extra computation or memory over a matched DMD baseline and did not measure wall-clock time.</li>
+                <li><strong>Self-rollout training is required.</strong> That is free if the distillation recipe already uses it, and a disadvantage otherwise.</li>
+                <li><strong>The evaluation is narrow.</strong> Our main experiments are class-conditional ImageNet 256×256 with FID. On unconditional CIFAR-10 the method beats DMD at 2–4 NFE but is worse at 1 NFE (12.20 against 11.21). Text-to-image and other modalities are future work, as is efficient training for ODE-based distillation objectives with paired data and noise.</li>
+            </ul>
+
+            <details class="optional-derivation">
+                <summary>Related ideas</summary>
+                <div class="details-body">
+                    <ul>
+                        <li><strong>Self-conditioning</strong> feeds previous predictions into a model to improve its velocity field, but generation still integrates that field along an ODE. In our method the data prediction itself is the iterated state.</li>
+                        <li><strong>Fixed-point and deep equilibrium models</strong> <a class="source-cite" href="https://arxiv.org/abs/1909.01377" target="_blank" rel="noopener" title="[9] Deep Equilibrium Models" aria-label="Reference 9: Deep Equilibrium Models"><img src="../assets/icons/source-arxiv.svg" width="16" height="16" alt=""><span class="source-cite-number">[9]</span></a> apply one function repeatedly. Our generator is conditioned on \(r\), so its update can differ across steps, and we apply the DMD objective at every step without requiring convergence.</li>
+                        <li><strong>Looped transformers</strong> reuse shared blocks to increase effective depth. Recent work trains one end to end with a distribution-matching objective and backpropagates through the whole unrolled loop, which is costly. We backpropagate through only the last step of the rollout, which makes data-space iteration <strong>a drop-in change to existing DMD pipelines</strong>.</li>
+                    </ul>
+                </div>
+            </details>
+
+            <p><strong>If the generator is trained on its own rollouts, nothing requires those rollouts to pass through noisy states.</strong> Dropping the schedule removes one hyperparameter and, in our controlled setting, matches or beats the tuned baselines. Text-to-image models and streaming video generation, where self-rollout is already central, remain to be tested.</p>
+
+            <section class="references" aria-labelledby="references">
+                <h2 id="references">References</h2>
+                <ol class="reference-list" role="list">
+                    <li id="ref-1">
+                        <span class="reference-number">[1]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2610.12102">Few-Step Generation via Data-Space Iteration</a></span>
+                            <span class="reference-meta">Shanchuan Lin, Yansong Peng, Fu-Yun Wang, and Haoqi Fan. arXiv:2610.12102, 2026.</span>
+                        </div>
+                    </li>
+                    <li id="ref-2">
+                        <span class="reference-number">[2]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2311.18828">One-step Diffusion with Distribution Matching Distillation</a></span>
+                            <span class="reference-meta">Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shechtman, Fredo Durand, William T. Freeman, and Taesung Park. CVPR 2024.</span>
+                        </div>
+                    </li>
+                    <li id="ref-3">
+                        <span class="reference-number">[3]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2405.14867">Improved Distribution Matching Distillation for Fast Image Synthesis</a></span>
+                            <span class="reference-meta">Tianwei Yin, Michaël Gharbi, Taesung Park, Richard Zhang, Eli Shechtman, Fredo Durand, and William T. Freeman. NeurIPS 2024.</span>
+                        </div>
+                    </li>
+                    <li id="ref-4">
+                        <span class="reference-number">[4]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2510.27684">Phased DMD: Few-step Distribution Matching Distillation via Score Matching within Subintervals</a></span>
+                            <span class="reference-meta">Xiangyu Fan, Zesong Qiu, Zhuguanyu Wu, Fanzhou Wang, Zhiqian Lin, Tianxiang Ren, Dahua Lin, Ruihao Gong, and Lei Yang. CVPR 2026.</span>
+                        </div>
+                    </li>
+                    <li id="ref-5">
+                        <span class="reference-number">[5]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="distributional-distillation-methods.html">Distributional Distillation II: What the Methods Actually Estimate</a></span>
+                            <span class="reference-meta">Fu-Yun Wang. Blog post, 2026. Derives what DMD and Phased DMD estimate and why a clean-sample target would be biased at an intermediate phase.</span>
+                        </div>
+                    </li>
+                    <li id="ref-6">
+                        <span class="reference-number">[6]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2210.02747">Flow Matching for Generative Modeling</a></span>
+                            <span class="reference-meta">Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel, and Matt Le. ICLR 2023.</span>
+                        </div>
+                    </li>
+                    <li id="ref-7">
+                        <span class="reference-number">[7]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2401.08740">SiT: Exploring Flow and Diffusion-based Generative Models with Scalable Interpolant Transformers</a></span>
+                            <span class="reference-meta">Nanye Ma, Mark Goldstein, Michael S. Albergo, Nicholas M. Boffi, Eric Vanden-Eijnden, and Saining Xie. ECCV 2024.</span>
+                        </div>
+                    </li>
+                    <li id="ref-8">
+                        <span class="reference-number">[8]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2212.09748">Scalable Diffusion Models with Transformers</a></span>
+                            <span class="reference-meta">William Peebles and Saining Xie. ICCV 2023.</span>
+                        </div>
+                    </li>
+                    <li id="ref-9">
+                        <span class="reference-number">[9]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/1909.01377">Deep Equilibrium Models</a></span>
+                            <span class="reference-meta">Shaojie Bai, J. Zico Kolter, and Vladlen Koltun. NeurIPS 2019.</span>
+                        </div>
+                    </li>
+                    <li id="ref-10">
+                        <span class="reference-number">[10]</span>
+                        <div class="reference-body">
+                            <span class="reference-title"><a href="https://arxiv.org/abs/2405.18407">Phased Consistency Models</a></span>
+                            <span class="reference-meta">Fu-Yun Wang, Zhaoyang Huang, Alexander William Bergman, Dazhong Shen, Peng Gao, Michael Lingelbach, Keqiang Sun, Weikang Bian, Guanglu Song, Yu Liu, Xiaogang Wang, and Hongsheng Li. NeurIPS 2024.</span>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="citation" aria-labelledby="citation">
+                <h2 id="citation">Citation</h2>
+                <p>If you find this work useful, please cite our paper (<a href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener">arXiv:2610.12102</a>):</p>
+                <pre><code class="language-bibtex">@article{lin2026fewstep,
+  title   = {Few-Step Generation via Data-Space Iteration},
+  author  = {Lin, Shanchuan and Peng, Yansong and Wang, Fu-Yun and Fan, Haoqi},
+  journal = {arXiv preprint arXiv:2610.12102},
+  year    = {2026}
+}</code></pre>
+            </section>
+
+            <nav class="article-nav" aria-label="Blog navigation">
+                <a href="index.html"><i class="fas fa-arrow-left"></i> All posts</a>
+            </nav>
+        </article>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                throwOnError: false,
+                trust: true
+            });
+        });
+    </script>
+</body>
+</html>

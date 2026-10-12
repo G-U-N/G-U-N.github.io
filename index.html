@@ -1031,6 +1031,17 @@
 
         .latest-post:hover h3 { color: var(--primary-color); }
 
+        .view-all-posts {
+            display: inline-block;
+            margin-top: 1rem;
+            color: var(--primary-color);
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .view-all-posts:hover { text-decoration: underline; }
+
         .latest-post .colab-label {
             display: inline-flex;
             align-items: center;
@@ -1421,6 +1432,13 @@
         <div class="section" id="blogs">
             <h1><i class="fas fa-book-open"></i> Latest Posts</h1>
             <div class="latest-post-list">
+                <a class="latest-post" href="blogs/data-space-iteration.html">
+                    <div>
+                        <h3>Refine, Don’t Re-roll: Few-Step Generation by Iterating in Data Space</h3>
+                        <p>Our work on few-step distillation without a timestep schedule: the generator refines its own image prediction instead of re-noising it.</p>
+                    </div>
+                    <span>Read <i class="fas fa-arrow-right"></i></span>
+                </a>
                 <a class="latest-post" href="blogs/visual-generation.html" lang="zh-CN">
                     <div>
                         <h3>LLM 都会画画了，<wbr>还需要训练<wbr>视觉生成模型吗？</h3>
@@ -1513,6 +1531,7 @@
                     <span>Read <i class="fas fa-arrow-right"></i></span>
                 </a>
             </div>
+            <a class="view-all-posts" href="blogs/index.html">View all posts <i class="fas fa-arrow-right"></i></a>
         </div>
 
         <!-- Research Demo -->

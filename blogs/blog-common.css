@@ -52,6 +52,7 @@
 /* Compact, accessible links to code, papers, and posts beside the citing text. */
 .blog-page .blog-content a.source-cite { display: inline-flex; align-items: center; justify-content: center; gap: .18em; min-width: 1.45em; height: 1.45em; margin: 0 .06em; padding: 0 .14em; vertical-align: -.28em; line-height: 1; white-space: nowrap; border-radius: 4px; text-decoration: none; }
 .blog-page .blog-content a.source-cite:hover { background: #ece8f4; }
+.blog-page .blog-content .plot-figure figcaption a.source-cite { width: auto; }
 .blog-page .source-cite img { display: block; flex: none; width: 1em; height: 1em; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
 .blog-page .source-cite-number { font-size: .8em; font-variant-numeric: tabular-nums; }
 .blog-page .blog-content :not(pre) > code { overflow-wrap: anywhere; }
