@@ -220,14 +220,8 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
-            transition: opacity 0.16s ease, transform 0.16s ease;
-        }
-        .about-photo-wrap img.is-changing {
-            opacity: 0.28;
-            transform: scale(0.98);
         }
         .homepage-content p {
             font-size: 1rem;
@@ -245,7 +239,8 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 0.65rem 1.4rem;
+            justify-content: space-between;
+            gap: 0.65rem 1.2rem;
             margin-top: 1.6rem;
             clear: both;
         }
@@ -618,7 +613,7 @@
         }
 
         @media print {
-            .topbar, .guppy-pet, #nm-panel, .nav-toggle { display: none !important; }
+            .topbar, .nav-toggle { display: none !important; }
             .aside { position: static; }
             details > * { display: block; }
         }
@@ -627,97 +622,6 @@
             * { animation: none !important; transition: none !important; }
         }
 
-        /* ===== GuppyLM fish pet widget ===== */
-        .guppy-pet {
-            position: fixed; bottom: 22px; right: 22px; z-index: 9999;
-            font-family: var(--font-sans);
-        }
-        .guppy-fish-btn {
-            width: 58px; height: 58px; border-radius: 50%;
-            border: 1px solid var(--rule); background: #fff;
-            box-shadow: 0 6px 22px rgba(20, 15, 10, 0.12);
-            cursor: pointer; position: relative; overflow: hidden;
-            transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
-            animation: guppyFloat 3.5s ease-in-out infinite;
-        }
-        .guppy-fish-btn:hover {
-            animation: none; transform: scale(1.06);
-            border-color: var(--link-line); box-shadow: 0 8px 26px rgba(20, 15, 10, 0.18);
-        }
-        .guppy-fish-btn.hidden { display: none; }
-        @keyframes guppyFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-        .guppy-fish-svg { width: 36px; height: 36px; animation: fishSwim 2.4s ease-in-out infinite; }
-        @keyframes fishSwim {
-            0%, 100% { transform: rotate(0deg) translateX(0); }
-            25% { transform: rotate(-5deg) translateX(2px); }
-            75% { transform: rotate(5deg) translateX(-2px); }
-        }
-        .guppy-bubbles { position: absolute; top: 2px; right: 12px; pointer-events: none; }
-        .guppy-bubble {
-            width: 5px; height: 5px; border-radius: 50%;
-            background: var(--accent-light); position: absolute;
-            animation: bubbleUp 2.5s ease-in infinite; opacity: 0;
-        }
-        .guppy-bubble:nth-child(2) { left: 7px; animation-delay: 0.8s; width: 4px; height: 4px; }
-        .guppy-bubble:nth-child(3) { left: -4px; animation-delay: 1.6s; width: 4px; height: 4px; }
-        @keyframes bubbleUp {
-            0% { transform: translateY(0); opacity: 0; }
-            20% { opacity: 0.6; }
-            100% { transform: translateY(-26px); opacity: 0; }
-        }
-
-        .guppy-chat {
-            display: none; flex-direction: column; width: 340px; height: 440px;
-            background: #fff; border-radius: 4px; overflow: hidden;
-            box-shadow: 0 16px 48px rgba(20, 15, 10, 0.18); border: 1px solid var(--rule);
-            position: absolute; bottom: 72px; right: 0;
-            animation: chatSlideUp 0.25s ease-out;
-        }
-        .guppy-chat.open { display: flex; }
-        @keyframes chatSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .guppy-chat-header {
-            display: flex; align-items: center; gap: 8px; padding: 12px 16px;
-            background: var(--ink); color: #fff; font-size: 14px; font-weight: 600;
-        }
-        .guppy-chat-header .status { font-size: 11px; font-weight: 400; opacity: 0.7; margin-left: auto; }
-        .guppy-chat-close {
-            background: none; border: none; color: #fff; font-size: 18px;
-            cursor: pointer; padding: 0 4px; opacity: 0.75; transition: opacity 0.2s;
-        }
-        .guppy-chat-close:hover { opacity: 1; }
-        .guppy-chat-messages {
-            flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px;
-            background: var(--paper-2);
-        }
-        .guppy-chat-messages::-webkit-scrollbar { width: 4px; }
-        .guppy-chat-messages::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
-        .guppy-msg { max-width: 85%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; word-wrap: break-word; }
-        .guppy-msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
-        .guppy-msg.fish { align-self: flex-start; background: #fff; color: var(--ink); border: 1px solid var(--rule-2); border-bottom-left-radius: 3px; }
-        .guppy-msg.system { align-self: center; background: transparent; color: var(--ink-4); font-size: 12px; font-style: italic; }
-        .guppy-chat-input { display: flex; padding: 10px 12px; gap: 8px; border-top: 1px solid var(--rule-2); background: #fff; }
-        .guppy-chat-input input {
-            flex: 1; border: 1px solid var(--rule); border-radius: 4px;
-            padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.2s;
-        }
-        .guppy-chat-input input:focus { border-color: var(--accent); }
-        .guppy-chat-input button {
-            background: var(--ink); color: #fff; border: none; border-radius: 4px;
-            padding: 8px 14px; font-size: 13px; font-family: inherit; cursor: pointer; transition: background 0.2s;
-        }
-        .guppy-chat-input button:hover { background: var(--accent); }
-        .guppy-chat-input button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .guppy-typing { display: inline-flex; gap: 4px; padding: 4px 0; }
-        .guppy-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-4); animation: typingDot 1.2s ease-in-out infinite; }
-        .guppy-typing span:nth-child(2) { animation-delay: 0.2s; }
-        .guppy-typing span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typingDot {
-            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-            30% { transform: translateY(-4px); opacity: 1; }
-        }
-        @media (max-width: 420px) {
-            .guppy-chat { width: calc(100vw - 44px); }
-        }
     </style>
 </head>
 
@@ -747,13 +651,13 @@
             <div class="page">
                 <div class="homepage-content">
                     <div class="about-photo-wrap" id="profile-pic">
-                        <img src="assets/images/profile.jpg" alt="Fu-Yun Wang" title="Hover or tap for another portrait" width="360" height="360" />
+                        <img src="assets/images/profile.jpg" alt="Fu-Yun Wang" width="360" height="360" />
                     </div>
                     <p>
                         I am a final-year Ph.D. candidate at <a href="https://mmlab.ie.cuhk.edu.hk/people.html" target="_blank" rel="noopener">MMLab, CUHK</a>, advised by <a href="https://www.ee.cuhk.edu.hk/~hsli/" target="_blank" rel="noopener">Hongsheng Li</a> and <a href="https://www.ee.cuhk.edu.hk/~xgwang/" target="_blank" rel="noopener">Xiaogang Wang</a>, and currently a Research Intern at <a href="https://seed.bytedance.com/" target="_blank" rel="noopener">ByteDance Seed</a> working with <a href="https://haoqifan.github.io/" target="_blank" rel="noopener">Haoqi Fan</a>. My research focuses on <em>generative model post-training (distillation, fast sampling, and RL alignment)</em>, <em>unified multimodal models</em>, <em>world models</em>, and <em>agentic systems</em>.
                     </p>
                     <p>
-                        Previously, I interned at Reve (with <a href="https://sites.google.com/view/hanzhang" target="_blank" rel="noopener">Han Zhang</a>) and Google DeepMind (with <a href="https://garyzhao.github.io/" target="_blank" rel="noopener">Long Zhao</a>, <a href="https://www.tliu.org/" target="_blank" rel="noopener">Ting Liu</a>, <a href="https://zhhoper.github.io/" target="_blank" rel="noopener">Hao Zhou</a>, and <a href="https://scholar.google.com/citations?user=1H9CkZgAAAAJ" target="_blank" rel="noopener">Liangzhe Yuan</a>), and collaborated with Avolution AI (acquired by MiniMax; with <a href="https://drinkingcoder.github.io/" target="_blank" rel="noopener">Zhaoyang Huang</a>) and Tencent AI Lab. Across these roles, I built post-training and multimodal generation methods including <a href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener">Data-Space Iteration</a>, <a href="https://yuqingwang1029.github.io/RepresentationForcing" target="_blank" rel="noopener">Representation Forcing</a> (<em>NeurIPS 2026</em>), <a href="https://omni-model.com" target="_blank" rel="noopener">Omni</a>, <a href="https://g-u-n.github.io/projects/consolver/" target="_blank" rel="noopener">ConsistencySolver</a> (<em>CVPR 2026 Highlight</em>), <a href="https://g-u-n.github.io/projects/promptrl/" target="_blank" rel="noopener">PromptRL</a> (<em>ICML 2026</em>), <a href="https://arxiv.org/abs/2410.07303" target="_blank" rel="noopener">Rectified Diffusion</a> (<em>ICLR 2025</em>), <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" target="_blank" rel="noopener">Diffusion-NPO</a> (<em>ICLR 2025</em>), <a href="https://g-u-n.github.io/projects/pcm/" target="_blank" rel="noopener">Phased Consistency Model</a> (<em>NeurIPS 2024</em>, adopted in <a href="https://huggingface.co/Qwen/Qwen-Image-2512" target="_blank" rel="noopener">Qwen-Image-2512</a> and <a href="https://github.com/hao-ai-lab/FastVideo" target="_blank" rel="noopener">FastVideo</a>), and <a href="https://huggingface.co/wangfuyun/AnimateLCM" target="_blank" rel="noopener">AnimateLCM</a> (<em>SIGGRAPH Asia 2024</em>, 1M+ Hugging Face downloads), alongside earlier open-source continual learning (<a href="https://github.com/G-U-N/PyCIL" target="_blank" rel="noopener">PyCIL</a>, 1k+ GitHub stars).
+                        Previously, I interned at Reve (with <a href="https://sites.google.com/view/hanzhang" target="_blank" rel="noopener">Han Zhang</a>) and Google DeepMind (with <a href="https://garyzhao.github.io/" target="_blank" rel="noopener">Long Zhao</a>, <a href="https://www.tliu.org/" target="_blank" rel="noopener">Ting Liu</a>, <a href="https://zhhoper.github.io/" target="_blank" rel="noopener">Hao Zhou</a>, and <a href="https://scholar.google.com/citations?user=1H9CkZgAAAAJ" target="_blank" rel="noopener">Liangzhe Yuan</a>), and collaborated with Avolution AI (acquired by MiniMax; with <a href="https://drinkingcoder.github.io/" target="_blank" rel="noopener">Zhaoyang Huang</a>) and Tencent AI Lab. Across these roles, I built post-training and multimodal generation methods including <a href="https://arxiv.org/abs/2610.12102" target="_blank" rel="noopener">Data-Space Iteration</a>, <a href="https://yuqingwang1029.github.io/RepresentationForcing" target="_blank" rel="noopener">Representation Forcing</a>, <a href="https://omni-model.com" target="_blank" rel="noopener">Omni</a>, <a href="https://g-u-n.github.io/projects/consolver/" target="_blank" rel="noopener">ConsistencySolver</a>, <a href="https://g-u-n.github.io/projects/promptrl/" target="_blank" rel="noopener">PromptRL</a>, <a href="https://arxiv.org/abs/2410.07303" target="_blank" rel="noopener">Rectified Diffusion</a>, <a href="https://openreview.net/pdf?id=iJi7nz5Cxc" target="_blank" rel="noopener">Diffusion-NPO</a>, <a href="https://g-u-n.github.io/projects/pcm/" target="_blank" rel="noopener">Phased Consistency Model</a> (adopted in <a href="https://huggingface.co/Qwen/Qwen-Image-2512" target="_blank" rel="noopener">Qwen-Image-2512</a> and <a href="https://github.com/hao-ai-lab/FastVideo" target="_blank" rel="noopener">FastVideo</a>), and <a href="https://huggingface.co/wangfuyun/AnimateLCM" target="_blank" rel="noopener">AnimateLCM</a> (1M+ Hugging Face downloads), alongside earlier open-source continual learning (<a href="https://github.com/G-U-N/PyCIL" target="_blank" rel="noopener">PyCIL</a>, 1k+ GitHub stars).
                     </p>
                     <p>
                         I enjoy unpacking the math and systems behind modern models from first principles—writing deep-dive notes on <a href="blogs/distributional-distillation.html">distributional &amp; trajectory distillation</a>, <a href="blogs/rl-opd-vsd.html">RL / OPD / VSD density ratios</a>, and <a href="blogs/scaling-long-context-attention.html">long-context attention &amp; KV-cache kernels</a>. I want to stay curious, chase what excites me, and live wholeheartedly.
@@ -765,7 +669,9 @@
                         <a href="https://huggingface.co/wangfuyun" target="_blank" rel="noopener">Hugging Face</a>
                         <a href="https://www.xiaohongshu.com/user/profile/6436e0a9000000001400f7e1" target="_blank" rel="noopener">RedNote</a>
                         <a href="https://www.linkedin.com/in/fywang0126" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+                        <!-- Temporarily disabled: nano-me chat
                         <button type="button" id="nm-trigger" onclick="nmToggle()" title="Chat with nano-me, a 9M-parameter model of me running in your browser">nano-me (Chat)</button>
+                        -->
                     </nav>
                 </div>
             </div>
@@ -1374,60 +1280,6 @@
         }
         updateToggleIcon(document.documentElement.getAttribute("data-theme") || "light");
 
-        // Random portrait on page load and every hover.
-        (() => {
-            const portrait = document.querySelector("#profile-pic img");
-            if (!portrait) return;
-
-            const portraits = [
-                "assets/images/profile.jpg",
-                "assets/images/profile_f.png"
-            ];
-
-            portraits.forEach(src => {
-                const image = new Image();
-                image.src = src;
-            });
-
-            let current = Math.floor(Math.random() * portraits.length);
-            let changing = false;
-            portrait.src = portraits[current];
-
-            const pickAnother = () => {
-                let next;
-                do {
-                    next = Math.floor(Math.random() * portraits.length);
-                } while (next === current);
-                return next;
-            };
-
-            const swapPortrait = () => {
-                if (changing) return;
-                const next = pickAnother();
-
-                changing = true;
-                portrait.classList.add("is-changing");
-                window.setTimeout(() => {
-                    current = next;
-                    portrait.src = portraits[current];
-                    portrait.classList.remove("is-changing");
-                    window.setTimeout(() => { changing = false; }, 160);
-                }, 110);
-            };
-
-            if (window.PointerEvent) {
-                portrait.addEventListener("pointerenter", event => {
-                    if (event.pointerType === "mouse") swapPortrait();
-                });
-                portrait.addEventListener("pointerup", event => {
-                    if (event.pointerType !== "mouse") swapPortrait();
-                });
-            } else {
-                portrait.addEventListener("mouseenter", swapPortrait);
-                portrait.addEventListener("touchend", swapPortrait, { passive: true });
-            }
-        })();
-
         // Toggle collaborators
         function toggleCollaborators() {
             const s = document.getElementById('collaborators-short');
@@ -1675,273 +1527,7 @@
         }
     </script>
 
-    <!-- GuppyLM Fish Pet Widget -->
-    <div class="guppy-pet" id="guppyPet">
-        <button class="guppy-fish-btn" id="guppyFishBtn" title="Chat with Guppy 🐠">
-            <div class="guppy-bubbles">
-                <div class="guppy-bubble"></div>
-                <div class="guppy-bubble"></div>
-                <div class="guppy-bubble"></div>
-            </div>
-            <svg class="guppy-fish-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <!-- Body -->
-                <ellipse cx="30" cy="32" rx="16" ry="12" fill="#FFB347" />
-                <ellipse cx="30" cy="32" rx="16" ry="12" fill="url(#fishGrad)" />
-                <!-- Tail -->
-                <path d="M46 32 C54 22, 58 24, 56 32 C58 40, 54 42, 46 32Z" fill="#FF8C42" />
-                <!-- Dorsal fin -->
-                <path d="M24 20 C28 14, 34 14, 34 20" fill="#FF9F43" opacity="0.8"/>
-                <!-- Eye -->
-                <circle cx="22" cy="29" r="3.5" fill="white" />
-                <circle cx="21.5" cy="28.5" r="2" fill="#1e1b4b" />
-                <circle cx="20.8" cy="27.8" r="0.7" fill="white" />
-                <!-- Mouth -->
-                <ellipse cx="15" cy="33" rx="1.5" ry="1" fill="#E07030" />
-                <!-- Scales hint -->
-                <path d="M26 26 Q30 28, 26 30" stroke="#E8943A" stroke-width="0.6" fill="none" opacity="0.5"/>
-                <path d="M30 27 Q34 29, 30 31" stroke="#E8943A" stroke-width="0.6" fill="none" opacity="0.5"/>
-                <path d="M28 31 Q32 33, 28 35" stroke="#E8943A" stroke-width="0.6" fill="none" opacity="0.5"/>
-                <!-- Belly highlight -->
-                <ellipse cx="28" cy="36" rx="8" ry="3" fill="white" opacity="0.15"/>
-                <defs>
-                    <linearGradient id="fishGrad" x1="14" y1="20" x2="46" y2="44">
-                        <stop offset="0%" stop-color="#FFD700" stop-opacity="0.4"/>
-                        <stop offset="100%" stop-color="#FF6B00" stop-opacity="0.2"/>
-                    </linearGradient>
-                </defs>
-            </svg>
-        </button>
-
-        <div class="guppy-chat" id="guppyChat">
-            <div class="guppy-chat-header">
-                🐠 GuppyLM
-                <span class="status" id="guppyStatus">loading...</span>
-                <button class="guppy-chat-close" id="guppyChatClose">&times;</button>
-            </div>
-            <div class="guppy-chat-messages" id="guppyMessages">
-                <div class="guppy-msg system">click to wake up guppy...</div>
-            </div>
-            <div class="guppy-chat-input">
-                <input type="text" id="guppyInput" placeholder="say hi to guppy..." disabled />
-                <button id="guppySend" disabled>Send</button>
-            </div>
-        </div>
-    </div>
-
-    <script type="module">
-    (function() {
-        const MODEL_BASE = "https://arman-bd.github.io/guppylm";
-        const CONFIG = { vocab_size: 4096, max_seq_len: 128, pad_id: 0, bos_id: 1, eos_id: 2 };
-        const GEN = { temperature: 0.7, top_k: 50, max_tokens: 32 };
-
-        let tokenizer = null, session = null, isLoaded = false, isLoading = false;
-
-        // DOM refs
-        const fishBtn = document.getElementById("guppyFishBtn");
-        const chatPanel = document.getElementById("guppyChat");
-        const chatClose = document.getElementById("guppyChatClose");
-        const messagesEl = document.getElementById("guppyMessages");
-        const inputEl = document.getElementById("guppyInput");
-        const sendBtn = document.getElementById("guppySend");
-        const statusEl = document.getElementById("guppyStatus");
-
-        // Toggle chat
-        fishBtn.addEventListener("click", () => {
-            chatPanel.classList.toggle("open");
-            if (chatPanel.classList.contains("open") && !isLoaded && !isLoading) {
-                loadModel();
-            }
-            if (chatPanel.classList.contains("open") && isLoaded) {
-                inputEl.focus();
-            }
-        });
-        chatClose.addEventListener("click", () => chatPanel.classList.remove("open"));
-
-        // Send message
-        sendBtn.addEventListener("click", sendMessage);
-        inputEl.addEventListener("keydown", e => { if (e.key === "Enter" && !sendBtn.disabled) sendMessage(); });
-
-        async function sendMessage() {
-            const text = inputEl.value.trim();
-            if (!text || !isLoaded) return;
-
-            addMsg(text, "user");
-            inputEl.value = "";
-            inputEl.disabled = true;
-            sendBtn.disabled = true;
-
-            const typingEl = addMsg('<div class="guppy-typing"><span></span><span></span><span></span></div>', "fish", true);
-
-            try {
-                const prompt = `<|im_start|>user\n${text}<|im_end|>\n<|im_start|>assistant\n`;
-                const inputIds = tokenizer.encode(prompt);
-                const outputIds = await generate(inputIds);
-                let reply = tokenizer.decode(outputIds)
-                    .replace(/<\|im_end\|>/g, "").replace(/<\|im_start\|>/g, "").trim();
-                if (!reply) reply = "blub.";
-                typingEl.innerHTML = reply;
-            } catch (e) {
-                typingEl.innerHTML = "blub... something went wrong 🫧";
-                console.error("GuppyLM error:", e);
-            }
-
-            inputEl.disabled = false;
-            sendBtn.disabled = false;
-            inputEl.focus();
-        }
-
-        function addMsg(content, type, isHTML = false) {
-            const div = document.createElement("div");
-            div.className = `guppy-msg ${type}`;
-            if (isHTML) div.innerHTML = content; else div.textContent = content;
-            messagesEl.appendChild(div);
-            messagesEl.scrollTop = messagesEl.scrollHeight;
-            return div;
-        }
-
-        // === Tokenizer ===
-        function buildTokenizer(json) {
-            const vocab = json.model.vocab;
-            const merges = json.model.merges;
-            const added = {};
-            for (const t of json.added_tokens) added[t.content] = t.id;
-            const id2token = {};
-            for (const [tok, id] of Object.entries(vocab)) id2token[id] = tok;
-            for (const [tok, id] of Object.entries(added)) id2token[id] = tok;
-
-            const byte2char = {}, char2byte = {};
-            const ranges = [[33,126],[161,172],[174,255]];
-            const direct = new Set();
-            for (const [lo,hi] of ranges) for (let b=lo;b<=hi;b++) direct.add(b);
-            let n = 0;
-            for (let b=0;b<256;b++) {
-                byte2char[b] = direct.has(b) ? String.fromCharCode(b) : String.fromCharCode(256+n++);
-            }
-            for (const [b,c] of Object.entries(byte2char)) char2byte[c] = parseInt(b);
-
-            const mergeRank = {};
-            for (let i=0;i<merges.length;i++) {
-                const key = Array.isArray(merges[i]) ? merges[i].join(" ") : merges[i];
-                mergeRank[key] = i;
-            }
-
-            function bytesToTokenStr(bytes) { return Array.from(bytes).map(b=>byte2char[b]).join(""); }
-            function tokenStrToBytes(s) { return Uint8Array.from([...s].map(c=>char2byte[c]??c.charCodeAt(0))); }
-
-            function bpe(word) {
-                if (word.length<=1) return word;
-                let pieces = word.slice();
-                while (pieces.length>1) {
-                    let bestRank=Infinity, bestIdx=-1;
-                    for (let i=0;i<pieces.length-1;i++) {
-                        const rank = mergeRank[pieces[i]+" "+pieces[i+1]];
-                        if (rank!==undefined && rank<bestRank) { bestRank=rank; bestIdx=i; }
-                    }
-                    if (bestIdx===-1) break;
-                    pieces = [...pieces.slice(0,bestIdx), pieces[bestIdx]+pieces[bestIdx+1], ...pieces.slice(bestIdx+2)];
-                }
-                return pieces;
-            }
-
-            const PAT = /'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu;
-
-            function encode(text) {
-                const specialPattern = Object.keys(added).map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|");
-                const specialRe = new RegExp(`(${specialPattern})`);
-                const segments = text.split(specialRe);
-                const ids = [];
-                for (const seg of segments) {
-                    if (seg==="") continue;
-                    if (added[seg]!==undefined) { ids.push(added[seg]); continue; }
-                    const words = seg.match(PAT) || [seg];
-                    for (const word of words) {
-                        const bytes = new TextEncoder().encode(word);
-                        const byteChars = [...bytesToTokenStr(bytes)];
-                        const tokens = bpe(byteChars);
-                        for (const tok of tokens) { const id=vocab[tok]; if (id!==undefined) ids.push(id); }
-                    }
-                }
-                return ids;
-            }
-
-            function decode(ids) {
-                const parts = [];
-                for (const id of ids) { const tok=id2token[id]; if (!tok||added[tok]!==undefined) continue; parts.push(tok); }
-                return new TextDecoder("utf-8",{fatal:false}).decode(tokenStrToBytes(parts.join("")));
-            }
-
-            return { encode, decode };
-        }
-
-        // === Generation ===
-        async function generate(inputIds) {
-            const ort = window.ort;
-            let ids = inputIds.slice();
-            for (let i=0;i<GEN.max_tokens;i++) {
-                const seq = ids.slice(-CONFIG.max_seq_len);
-                const tensor = new ort.Tensor("int64", BigInt64Array.from(seq.map(BigInt)), [1,seq.length]);
-                const out = await session.run({input_ids:tensor});
-                const logits = out.logits.data;
-                const offset = (seq.length-1)*CONFIG.vocab_size;
-                const lastLogits = new Float32Array(CONFIG.vocab_size);
-                for (let v=0;v<CONFIG.vocab_size;v++) lastLogits[v] = logits[offset+v];
-                if (GEN.temperature!==1.0) for (let v=0;v<CONFIG.vocab_size;v++) lastLogits[v]/=GEN.temperature;
-                if (GEN.top_k>0) {
-                    const sorted = [...lastLogits].sort((a,b)=>b-a);
-                    const cutoff = sorted[Math.min(GEN.top_k,sorted.length)-1];
-                    for (let v=0;v<CONFIG.vocab_size;v++) if (lastLogits[v]<cutoff) lastLogits[v]=-Infinity;
-                }
-                const maxVal = Math.max(...lastLogits.filter(v=>v!==-Infinity));
-                let sumExp=0;
-                const probs = new Float32Array(CONFIG.vocab_size);
-                for (let v=0;v<CONFIG.vocab_size;v++) { probs[v]=Math.exp(lastLogits[v]-maxVal); sumExp+=probs[v]; }
-                for (let v=0;v<CONFIG.vocab_size;v++) probs[v]/=sumExp;
-                let r=Math.random(), acc=0, nextId=0;
-                for (let v=0;v<CONFIG.vocab_size;v++) { acc+=probs[v]; if (acc>=r){nextId=v;break;} }
-                ids.push(nextId);
-                if (nextId===CONFIG.eos_id) break;
-            }
-            return ids.slice(inputIds.length);
-        }
-
-        // === Model Loading ===
-        async function loadModel() {
-            isLoading = true;
-            statusEl.textContent = "loading onnx runtime...";
-            try {
-                const ortModule = await import("https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.min.mjs");
-                window.ort = ortModule;
-
-                statusEl.textContent = "loading tokenizer...";
-                const tokResp = await fetch(`${MODEL_BASE}/tokenizer.json`);
-                const tokJson = await tokResp.json();
-                tokenizer = buildTokenizer(tokJson);
-
-                statusEl.textContent = "loading model (~10 MB)...";
-                const modelResp = await fetch(`${MODEL_BASE}/model.onnx`);
-                const modelBuf = await modelResp.arrayBuffer();
-                session = await ortModule.InferenceSession.create(modelBuf, { executionProviders: ["wasm"] });
-
-                isLoaded = true;
-                statusEl.textContent = "ready 🫧";
-                inputEl.disabled = false;
-                sendBtn.disabled = false;
-
-                // Clear the initial system message
-                messagesEl.innerHTML = "";
-                addMsg("hi! i'm guppy. ask me anything~ 🐠", "fish");
-                inputEl.focus();
-            } catch (e) {
-                statusEl.textContent = "failed to load";
-                addMsg("couldn't wake up... try refreshing 🫧", "system");
-                console.error("GuppyLM load error:", e);
-            }
-            isLoading = false;
-        }
-    })();
-    </script>
-
-<!-- ── nano-me floating chat widget ── -->
+<!-- Temporarily disabled: nano-me floating chat widget
 <style>
 
 #nm-panel {
@@ -2186,6 +1772,8 @@ function buildTokenizer(json) {
   return {encode,decode};
 }
 </script>
+
+-->
 
 </body>
 </html>
