@@ -32,9 +32,9 @@
 .figure-downloads a { padding: 4px 10px; background: #f7f8fc; border: 1px solid #e2e7f1; border-radius: 6px; font-size: .73rem; text-decoration: none; }
 .figure-downloads a:hover { color: #3730a3; border-color: #a5b4fc; }
 .animation-fold[open] { background: #fff; }
-.animation-fold iframe { display: block; width: 100%; height: 680px; border: 0; }
+.animation-fold iframe { display: block; width: 100%; height: 540px; border: 0; }
 .animation-fold iframe:not([src]) { display: none; }
-@media (max-width: 700px) { .animation-fold iframe { height: 1150px; } }
+@media (max-width: 600px) { .animation-fold iframe { height: 1050px; } }
 tbody tr:nth-child(even) { background: #fafbfe; }
 @media (max-width: 700px) {
     .header-insight { flex-direction: column; align-items: flex-start; gap: 4px; padding: 15px 18px; }

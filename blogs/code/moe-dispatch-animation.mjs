@@ -1,18 +1,20 @@
 // A scalar top-2 example. Both the drawing and the combined values use this data.
-export const tokens = [1, 2, 3, 4];
-export const selections = [[[0, .7], [1, .3]], [[0, .4], [2, .6]], [[1, .25], [2, .75]], [[0, .6], [3, .4]]];
-export const experts = [x => x + 1, x => 2 * x + 6, x => 3 * x, x => 5 - x];
-export function dispatch() {
+(() => {
+const tokens = [1, 2, 3, 4];
+const selections = [[[0, .7], [1, .3]], [[0, .4], [2, .6]], [[1, .25], [2, .75]], [[0, .6], [3, .4]]];
+const experts = [x => x + 1, x => 2 * x + 6, x => 3 * x, x => 5 - x];
+function dispatch() {
   return experts.map((fn, expert) => tokens.flatMap((x, token) =>
     selections[token].flatMap(([e, weight], slot) => e === expert
       ? [{ token, slot, expert, weight, source: Math.floor(token / 2), owner: Math.floor(expert / 2), x, value: fn(x) }]
       : [])));
 }
-export function combine(batches) {
+function combine(batches) {
   const output = tokens.map(() => 0);
   for (const batch of batches) for (const row of batch) output[row.token] += row.weight * row.value;
   return output;
 }
+globalThis.moeAnimationData = { tokens, selections, experts, dispatch, combine };
 
 if (typeof document !== 'undefined') {
   const fold = document.getElementById('moe-dispatch');
@@ -149,3 +151,4 @@ function mount(fold) {
   new IntersectionObserver(entries => { if (!entries[0].isIntersecting) pause(); }).observe(root);
   pause(); draw();
 }
+})();

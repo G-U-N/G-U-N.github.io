@@ -1,9 +1,10 @@
 // Deterministic calculations, shared by the preview and numerical verification.
+(() => {
 const normal = (x, mu = 0, sigma = 1) => Math.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * Math.sqrt(2 * Math.PI));
 const sum = xs => xs.reduce((a, b) => a + b, 0);
 const normalize = xs => { const total = sum(xs); return xs.map(x => x / total); };
 const softmax = xs => normalize(xs.map(x => Math.exp(x - Math.max(...xs))));
-export function probabilityFrames(steps = 360) {
+function probabilityFrames(steps = 360) {
   const positions = Array.from({length: 13}, (_, i) => -3 + i * 0.5);
   const target = normalize(positions.map(x => normal(x, 1, 0.85)));
   // A small uniform component keeps every categorical outcome represented initially.
@@ -18,7 +19,7 @@ export function probabilityFrames(steps = 360) {
   }
   return {positions, target, frames};
 }
-export function gaussianSamples(count = 512, seed = 1739) {
+function gaussianSamples(count = 512, seed = 1739) {
   let state = seed >>> 0;
   const uniform = () => {
     state = (state + 0x6D2B79F5) >>> 0;
@@ -35,22 +36,36 @@ export function gaussianSamples(count = 512, seed = 1739) {
     return {epsilon, cost, gradient, average: total / (i + 1)};
   });
 }
+globalThis.probabilityFrames = probabilityFrames;
+globalThis.gaussianSamples = gaussianSamples;
 
 if (typeof document !== 'undefined') {
   let hostVisible = true;
+  const players = [];
   const embedded = window.parent !== window && document.documentElement.classList.contains('embed-views');
+  const targetOrigin = location.origin && location.origin !== 'null' ? location.origin : '*';
   if (embedded) {
     window.addEventListener('message', event => {
-      if (event.origin === location.origin && event.source === window.parent && event.data?.type === 'rl-opd-vsd-visibility') {
+      if (event.source !== window.parent) return;
+      if (location.origin && location.origin !== 'null' && event.origin !== location.origin) return;
+      if (event.data?.type === 'rl-opd-vsd-visibility') {
+        const wasVisible = hostVisible;
         hostVisible = event.data.visible === true;
+        if (hostVisible && !wasVisible) {
+          players.forEach(p => p.onHostShown());
+        }
       }
     });
-    const reportHeight = () => window.parent.postMessage({
-      type: 'rl-opd-vsd-height', height: document.querySelector('main').getBoundingClientRect().height
-    }, location.origin);
+    const reportHeight = () => {
+      const mainEl = document.querySelector('main');
+      if (!mainEl) return;
+      window.parent.postMessage({
+        type: 'rl-opd-vsd-height', height: mainEl.getBoundingClientRect().height
+      }, targetOrigin);
+    };
     new ResizeObserver(reportHeight).observe(document.querySelector('main'));
     window.addEventListener('load', reportHeight);
-    document.fonts.ready.then(reportHeight);
+    document.fonts?.ready?.then(reportHeight);
   }
   const NS = 'http://www.w3.org/2000/svg';
   const colors = {purple:'#7863bb', green:'#258571', coral:'#cd815c', gray:'#737b8d'};
@@ -159,17 +174,32 @@ if (typeof document !== 'undefined') {
 
   class Player {
     constructor(root,draw,duration){
-      this.root=root;this.draw=draw;this.duration=duration;this.progress=0;this.playing=false;this.visible=false;this.started=false;this.last=0;
+      this.root=root;this.draw=draw;this.duration=duration;this.progress=0;this.playing=false;this.visible=embedded;this.started=false;this.last=performance.now();
       this.play=root.querySelector('[data-action=play]');this.replay=root.querySelector('[data-action=replay]');this.slider=root.querySelector('input');this.label=root.querySelector('.progress-label');
-      this.play.addEventListener('click',()=>{this.started=true;if(this.progress===1)this.progress=0;this.playing=!this.playing;this.update();});
-      this.replay.addEventListener('click',()=>{this.started=true;this.progress=0;this.playing=true;this.update();});
+      this.play.addEventListener('click',()=>{this.started=true;if(this.progress===1)this.progress=0;this.playing=!this.playing;this.last=performance.now();this.update();});
+      this.replay.addEventListener('click',()=>{this.started=true;this.progress=0;this.playing=true;this.last=performance.now();this.update();});
       this.slider.addEventListener('input',()=>{this.started=true;this.playing=false;this.progress=Number(this.slider.value)/1000;this.update();});
-      new IntersectionObserver(([entry])=>{this.visible=entry.isIntersecting;if(this.visible&&!this.started){this.started=true;this.playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;this.update();}},{threshold:.1}).observe(root);
+      if (embedded) {
+        this.started=true;
+        this.playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+      }
+      new IntersectionObserver(([entry])=>{this.visible=embedded||entry.isIntersecting;if(this.visible&&!this.started){this.started=true;this.playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;this.last=performance.now();this.update();}},{threshold:.1}).observe(root);
       this.update();requestAnimationFrame(t=>this.tick(t));
     }
+    onHostShown(){
+      this.visible=true;
+      this.last=performance.now();
+      if(!this.started||this.progress===1){
+        this.started=true;
+        if(this.progress===1)this.progress=0;
+        this.playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.update();
+      }
+    }
     update(){this.draw(this.progress);this.slider.value=Math.round(this.progress*1000);this.label.textContent=`${Math.round(this.progress*100)}%`;this.play.textContent=this.playing?'Pause':this.progress===1?'Play again':'Play';this.play.setAttribute('aria-label',`${this.playing?'Pause':'Play'} ${this.root.dataset.animation==='views'?'probability and motion':'Gaussian gradient'} animation`);}
-    tick(t){const dt=Math.min(100,t-this.last);this.last=t;if(this.playing&&this.visible&&hostVisible&&!document.hidden){this.progress=Math.min(1,this.progress+dt/this.duration);if(this.progress===1)this.playing=false;this.update();}requestAnimationFrame(t=>this.tick(t));}
+    tick(t){const dt=Math.min(100,Math.max(0,t-this.last));this.last=t;if(this.playing&&this.visible&&hostVisible&&!document.hidden){this.progress=Math.min(1,this.progress+dt/this.duration);if(this.progress===1)this.playing=false;this.update();}requestAnimationFrame(t=>this.tick(t));}
   }
-  new Player(document.querySelector('[data-animation=views]'),drawViews,18000);
-  new Player(document.querySelector('[data-animation=gaussian]'),drawGaussian,28000);
+  players.push(new Player(document.querySelector('[data-animation=views]'),drawViews,18000));
+  players.push(new Player(document.querySelector('[data-animation=gaussian]'),drawGaussian,28000));
 }
+})();

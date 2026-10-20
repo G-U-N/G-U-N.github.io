@@ -1,17 +1,22 @@
 // Load the animation only when its disclosure is opened.
-const disclosure = document.getElementById('watch-updates');
-if (disclosure) {
+(() => {
+  const disclosure = document.getElementById('watch-updates');
+  if (!disclosure) return;
   const frame = disclosure.querySelector('iframe');
+  const targetOrigin = location.origin && location.origin !== 'null' ? location.origin : '*';
   const syncVisibility = () => {
     if (disclosure.open && !frame.hasAttribute('src')) frame.src = frame.dataset.src;
-    if (frame.hasAttribute('src')) frame.contentWindow?.postMessage({
-      type: 'rl-opd-vsd-visibility', visible: disclosure.open
-    }, location.origin);
+    if (frame.hasAttribute('src')) {
+      frame.contentWindow?.postMessage({
+        type: 'rl-opd-vsd-visibility', visible: disclosure.open
+      }, targetOrigin);
+    }
   };
   disclosure.addEventListener('toggle', syncVisibility);
   frame.addEventListener('load', syncVisibility);
   window.addEventListener('message', event => {
-    if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
+    if (event.source !== frame.contentWindow) return;
+    if (location.origin && location.origin !== 'null' && event.origin !== location.origin) return;
     if (event.data?.type !== 'rl-opd-vsd-height') return;
     const height = event.data.height;
     if (Number.isFinite(height) && height >= 200 && height <= 2400) {
@@ -19,4 +24,4 @@ if (disclosure) {
     }
   });
   syncVisibility();
-}
+})();

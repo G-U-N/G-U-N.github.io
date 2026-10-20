@@ -141,15 +141,45 @@
     function indexEquations(content) {
         const eqMap = new Map();
         const cards = [...content.querySelectorAll('.formula-card')];
-        cards.forEach((card, idx) => {
-            const labelEl = card.querySelector('.equation-label');
+
+        const classifyCard = (card, idx) => {
+            const labelEl = card.querySelector(':scope > .equation-label, .equation-label');
             if (!labelEl) return;
-            const match = labelEl.textContent.trim().match(/^\(([^)]+)\)$/);
-            if (!match) return;
-            const key = match[1].trim();
-            if (!card.id) card.id = `eq-auto-${key.replace(/\W+/g, '-')}-${idx}`;
-            eqMap.set(key, { id: card.id, html: card.innerHTML });
-        });
+            const cleanText = extractCleanText(labelEl);
+            // Match either pure short label "(1)" / "(12a)" or descriptive label starting with "(1) ..."
+            const exactShort = cleanText.match(/^\(([0-9a-zA-Z.-]{1,6})\)$/);
+            const leadingNum = cleanText.match(/^\(([0-9a-zA-Z.-]{1,6})\)/);
+            if (leadingNum) {
+                const key = leadingNum[1].trim();
+                if (!card.id) card.id = `eq-auto-${key.replace(/\W+/g, '-')}-${idx}`;
+                eqMap.set(key, { id: card.id, html: card.innerHTML });
+            }
+            if (exactShort) {
+                // Only place short (1) label on the right if the rendered math doesn't collide with the right gutter
+                card.classList.add('has-short-label');
+                const base = card.querySelector('.katex-display > .katex > .katex-html') || card.querySelector('.katex-html');
+                if (base) {
+                    let minL = Infinity, maxR = -Infinity;
+                    [...base.children].forEach(c => {
+                        const r = c.getBoundingClientRect();
+                        if (r.width > 0) {
+                            minL = Math.min(minL, r.left);
+                            maxR = Math.max(maxR, r.right);
+                        }
+                    });
+                    const lRect = labelEl.getBoundingClientRect();
+                    if (maxR > -Infinity && lRect.width > 0 && maxR > lRect.left - 12) {
+                        card.classList.remove('has-short-label');
+                    }
+                }
+            } else {
+                card.classList.remove('has-short-label');
+            }
+        };
+
+        cards.forEach(classifyCard);
+        // Re-check after KaTeX deferred auto-render completes
+        window.addEventListener('load', () => cards.forEach(classifyCard), { once: true });
         return eqMap;
     }
 

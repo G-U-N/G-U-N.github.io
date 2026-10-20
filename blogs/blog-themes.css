@@ -39,6 +39,16 @@
 /* ============================================================
    1. Outer Page & Sheet-of-Paper Container (800px card, 80px side padding -> 640px measure)
    ============================================================ */
+html.blog-page,
+html.blog-page *,
+html.blog-page *::before,
+html.blog-page *::after,
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 html.blog-page body,
 body {
     background: #e8e8e8 !important;
@@ -443,22 +453,46 @@ a.source-cite img {
 .formula-card,
 .formula-card.hero-equation {
     position: relative;
-    padding: 2px 36px 2px 0 !important;
-    margin: 16px 0 !important;
+    padding: 4px 0 !important;
+    margin: 18px 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
 }
+/* Default: descriptive equation labels (like in rl-opd-vsd & jev-implementation) sit cleanly below the formula */
 .blog-page .formula-card .equation-label,
 .formula-card .equation-label {
+    position: static;
+    transform: none;
+    display: block;
+    text-align: right;
+    margin: 4px 0 0 !important;
+    color: #666666 !important;
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+}
+/* Short equation numbers like (1) or (12a) that fit beside the equation without overlapping */
+.blog-page .formula-card.has-short-label,
+.formula-card.has-short-label {
+    padding: 2px 42px 2px 0 !important;
+}
+.blog-page .formula-card.has-short-label > .equation-label,
+.formula-card.has-short-label > .equation-label {
     position: absolute;
     right: 0;
     top: 50%;
     transform: translateY(-50%);
     margin: 0 !important;
-    color: #666666 !important;
     font-size: 0.85rem !important;
+    white-space: nowrap;
+}
+.blog-page .katex-display,
+.katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px 0;
+    margin: 10px 0;
 }
 
 .blog-page .plot-figure,
@@ -472,6 +506,24 @@ a.source-cite img {
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+}
+.blog-page .ratio-route h3,
+.blog-page .blog-content .ratio-route h3 {
+    margin: 8px 0 0 !important;
+    font-size: 1.03rem !important;
+    line-height: 1.4 !important;
+}
+.blog-page .blog-content .route-example p {
+    margin: 4px 0 0 !important;
+    font-size: 0.78rem !important;
+    line-height: 1.5 !important;
+    text-align: left !important;
+    hyphens: none !important;
+}
+.blog-page .blog-content .ratio-origin p {
+    margin: 9px 0 0 !important;
+    font-size: 0.82rem !important;
+    text-align: center !important;
 }
 .blog-page .plot-figure a img,
 .plot-figure a img {
@@ -826,7 +878,7 @@ tbody tr:nth-child(even) {
         left: 10px;
     }
 }
-@media (max-width: 600px) {
+    @media (max-width: 600px) {
     .blog-page .blog-header,
     .blog-header {
         margin: 32px auto 22px !important;
@@ -849,11 +901,15 @@ tbody tr:nth-child(even) {
         text-align: left;
     }
     .blog-page .formula-card,
-    .formula-card {
+    .formula-card,
+    .blog-page .formula-card.has-short-label,
+    .formula-card.has-short-label {
         padding-right: 0 !important;
     }
     .blog-page .formula-card .equation-label,
-    .formula-card .equation-label {
+    .formula-card .equation-label,
+    .blog-page .formula-card.has-short-label > .equation-label,
+    .formula-card.has-short-label > .equation-label {
         position: static;
         transform: none;
         display: block;
