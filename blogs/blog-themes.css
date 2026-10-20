@@ -1,91 +1,867 @@
-/* SHARED BLOG THEMES
- * Edit the two presets here to update every article at once.
- * Main controls: --page-background, --article-background, --article-border,
- * --article-shadow, --article-radius, and the three --primary-* colors.
- * Typography, spacing, code, and diagram colors belong to the article styles.
+/* SANDER.AI-INSPIRED EDITORIAL BLOG THEME
+ * Philosophy: Zero decorative clutter.
+ * - Soft #e8e8e8 page background
+ * - Centered title & metadata header above the sheet
+ * - Crisp 800px white sheet (#ffffff) with 50px 80px padding (640px reading measure)
+ * - Lato humanist sans-serif for both headings and prose, #222 charcoal ink
+ * - 1.25rem lead paragraph, dotted understated links, borderless equations & figures
  */
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap');
+
 :root {
-    /* Classic — the original blog appearance; also the no-JavaScript default. */
-    --page-background: linear-gradient(135deg, #f8f7f4 0%, #eef2ff 50%, #faf5ff 100%);
-    --article-background: #fff;
-    --article-border: 1px solid #e8e6df;
-    --article-shadow: 0 8px 24px rgba(30, 27, 75, .08);
-    --article-radius: 16px;
-    --primary-color: #6366f1;
-    --primary-light: #818cf8;
-    --primary-dark: #4f46e5;
-    --text-primary: #1e1b4b;
-    --text-secondary: #64748b;
-    --border-color: #e8e6df;
-    --theme-control-bg: #fff;
+    --blog-font-body: 'Lato', Calibri, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    --blog-font-heading: 'Lato', Calibri, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    --blog-font-code: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --page-background: #e8e8e8;
+    --article-background: #ffffff;
+    --primary-color: #222222;
+    --primary-light: #777777;
+    --primary-dark: #000000;
+    --text-primary: #222222;
+    --text-secondary: #555555;
+    --text-muted: #888888;
+    --border-color: #e2e2e2;
+
+    --blog-surface: #f5f5f5;
+    --blog-surface-subtle: #fafafa;
+    --blog-surface-alt: #f2f2f2;
+    --blog-surface-border: #e2e2e2;
+    --blog-code-inline-bg: #f2f2f2;
 }
 
-:root[data-blog-theme="paper"] {
-    /* Paper — a quiet background, an unframed article, and muted purple. */
-    --page-background: #fafaf8;
-    --article-background: transparent;
-    --article-border: 1px solid transparent;
-    --article-shadow: none;
-    --article-radius: 0;
-    --primary-color: #6c5791;
-    --primary-light: #9b83b4;
-    --primary-dark: #564374;
-    --text-primary: #283044;
-    --text-secondary: #697184;
-    --border-color: #e1e3e8;
-    --theme-control-bg: #fff;
+::selection {
+    background-color: rgb(200, 200, 200);
+    color: rgb(34, 34, 34);
+    text-shadow: none;
 }
 
-/* Apply the selected preset. Load this stylesheet after article styles. */
-body { background: var(--page-background); background-attachment: fixed; color: var(--text-primary); }
+/* ============================================================
+   1. Outer Page & Sheet-of-Paper Container (800px card, 80px side padding -> 640px measure)
+   ============================================================ */
+html.blog-page body,
+body {
+    background: #e8e8e8 !important;
+    color: #222222 !important;
+    font-family: var(--blog-font-body) !important;
+    font-size: 16px !important;
+    line-height: 1.625 !important;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0;
+}
+
+.blog-page .container,
+.container {
+    max-width: 800px !important;
+    margin: 0 auto 60px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Centered Title Banner above the white sheet (like sander.ai .entry-header) */
+.blog-page .blog-header,
+.blog-header {
+    text-align: center;
+    max-width: 800px;
+    margin: 46px auto 34px !important;
+    padding: 0 24px !important;
+    border: 0 !important;
+    background: transparent !important;
+}
+
+.blog-page .blog-header .back-link,
+.blog-header .back-link {
+    display: none !important;
+}
+
+.blog-page .eyebrow,
+.eyebrow {
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: #777777 !important;
+    margin-bottom: 8px !important;
+}
+
+.blog-page .blog-header h1,
+.blog-header h1 {
+    font-family: var(--blog-font-heading) !important;
+    font-size: 2.55rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.01em !important;
+    color: #333333 !important;
+    margin: 6px 0 14px !important;
+}
+
+.blog-page .blog-header .title-second,
+.blog-page .blog-header .title-subtitle {
+    display: block;
+    font-size: 0.68em !important;
+    font-weight: 400 !important;
+    color: #666666 !important;
+    margin-top: 6px !important;
+    line-height: 1.3 !important;
+}
+
+.blog-page .blog-meta,
+.blog-meta {
+    font-size: 0.78rem !important;
+    line-height: 1.6 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #777777 !important;
+    margin-top: 10px !important;
+}
+.blog-page .blog-meta a,
+.blog-meta a {
+    color: #555555 !important;
+    border-bottom: 1px dotted #999999 !important;
+    text-decoration: none !important;
+}
+.blog-page .blog-meta a:hover,
+.blog-meta a:hover {
+    color: #000000 !important;
+    border-bottom-style: solid !important;
+}
+
+/* The 800px White Sheet (#main .entry-content on sander.ai) */
+.blog-page .blog-content,
 .blog-content {
-    background: var(--article-background);
-    border: var(--article-border);
-    border-radius: var(--article-radius);
-    box-shadow: var(--article-shadow);
+    max-width: 800px !important;
+    margin: 0 auto 36px !important;
+    padding: 50px 80px !important;
+    background: #ffffff !important;
+    border: 0 !important;
+    border-radius: 3px !important;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1) !important;
 }
-.blog-header .dek a { color: var(--primary-dark); text-underline-offset: 3px; }
-.blog-header h1, .blog-content h2 { color: var(--text-primary); }
 
-/* One unobtrusive control beside the existing back link, on every article. */
-.blog-header .blog-tools {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 18px;
+/* ============================================================
+   2. Lead Paragraph (.dek), Quiet Series & Colab Links Inside Sheet
+   ============================================================ */
+.blog-page .dek,
+.dek,
+.blog-content > p.dek {
+    font-size: 1.25rem !important;
+    line-height: 1.38 !important;
+    font-weight: 400 !important;
+    color: #222222 !important;
+    margin: 0 0 1.5rem !important;
+    max-width: none !important;
+    text-align: justify;
 }
-.blog-header .blog-tools .back-link { margin: 0; }
-.blog-theme-toggle {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    gap: 7px;
-    padding: 7px 11px;
-    border: 1px solid var(--border-color);
-    border-radius: 999px;
-    background: var(--theme-control-bg);
-    color: var(--text-secondary);
-    font: 500 12px/1.4 var(--blog-font-body, sans-serif);
+
+/* Quiet 1-line Colab link (no loud box or button) */
+.blog-page .colab-callout,
+.colab-callout {
+    display: block !important;
+    margin: 0 0 16px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: #555555 !important;
+    font-size: 0.92rem !important;
+    line-height: 1.5 !important;
+}
+.blog-page .colab-label {
+    display: inline !important;
+    background: transparent !important;
+    color: #222222 !important;
+    font-weight: 700 !important;
+    font-size: inherit !important;
+    padding: 0 !important;
+}
+.blog-page .colab-label::after {
+    content: ": ";
+    font-weight: 400;
+}
+.blog-page .colab-callout strong {
+    display: inline !important;
+    font-size: inherit !important;
+    font-weight: 400 !important;
+    border-bottom: 1px dotted rgb(162, 162, 162);
+}
+.blog-page .colab-callout:hover strong {
+    color: #000000 !important;
+    border-bottom-style: solid;
+}
+.blog-page .colab-callout small,
+.blog-page .colab-callout > i {
+    display: none !important;
+}
+
+/* Quiet Header Insight (borderless math) */
+.header-insight {
+    margin: 0 0 20px !important;
+    padding: 4px 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    justify-content: center;
+}
+.insight-label {
+    display: none !important;
+}
+
+/* Quiet inline Series Navigation (no 3-column card boxes) */
+.blog-page .series-nav,
+.series-nav {
+    display: block !important;
+    margin: 0 0 20px !important;
+    padding: 0 0 14px !important;
+    border-bottom: 1px solid #eeeeee !important;
+    font-size: 0.9rem !important;
+    line-height: 1.55 !important;
+    color: #666666 !important;
+}
+.blog-page .series-nav::before,
+.series-nav::before {
+    content: "Series: ";
+    font-weight: 700;
+    color: #222222;
+}
+.blog-page .series-nav a,
+.series-nav a {
+    display: inline !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    font-size: 0 !important; /* hide verbose subtitle text, show only strong */
+    color: #555555 !important;
+}
+.blog-page .series-nav a + a::before,
+.series-nav a + a::before {
+    content: "  ·  ";
+    font-size: 0.9rem;
+    color: #999999;
+}
+.blog-page .series-nav a strong,
+.series-nav a strong {
+    display: inline !important;
+    font-size: 0.9rem !important;
+    font-weight: 400 !important;
+    color: #555555 !important;
+    border-bottom: 1px dotted rgb(162, 162, 162);
+}
+.blog-page .series-nav a[aria-current="page"] strong,
+.series-nav a[aria-current="page"] strong {
+    font-weight: 700 !important;
+    color: #222222 !important;
+    border-bottom: 0 !important;
+}
+.blog-page .series-nav a:hover strong,
+.series-nav a:hover strong {
+    color: #000000 !important;
+    border-bottom-style: solid;
+}
+
+/* ============================================================
+   3. Body Typography, Headings, Links & Citations (Sander style)
+   ============================================================ */
+.blog-page .blog-content p,
+.blog-content p {
+    font-size: 16px !important;
+    line-height: 1.625 !important;
+    color: #222222 !important;
+    margin: 16px 0 !important;
+    text-align: justify;
+    hyphens: auto;
+}
+
+.blog-page .blog-content > p.dek:first-child {
+    font-size: 1.25rem !important;
+    line-height: 1.38 !important;
+    margin: 0 0 1.5rem !important;
+}
+
+.blog-page .blog-content ul,
+.blog-page .blog-content ol,
+.blog-content ul,
+.blog-content ol {
+    padding-left: 36px !important;
+    margin: 16px 0 !important;
+}
+
+.blog-page .blog-content li,
+.blog-content li {
+    font-size: 16px !important;
+    line-height: 1.625 !important;
+    color: #222222 !important;
+    margin-bottom: 7px !important;
+}
+
+.blog-page .blog-content h2,
+.blog-content h2 {
+    font-family: var(--blog-font-heading) !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0 !important;
+    color: #222222 !important;
+    margin: 36px 0 16px !important;
+    padding: 0 !important;
+    border-bottom: 0 !important;
+}
+
+.blog-page .blog-content h3,
+.blog-content h3 {
+    font-family: var(--blog-font-heading) !important;
+    font-size: 18.72px !important;
+    font-weight: 700 !important;
+    line-height: 1.5 !important;
+    color: #222222 !important;
+    margin: 24px 0 12px !important;
+}
+
+.blog-page .blog-content h4,
+.blog-content h4 {
+    font-family: var(--blog-font-heading) !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.5 !important;
+    color: #222222 !important;
+    margin: 18px 0 8px !important;
+}
+
+/* Understated dotted links in prose */
+.blog-page .blog-content p a:not(.source-cite),
+.blog-page .blog-content li a:not(.source-cite),
+.blog-page .blog-content figcaption a:not(.source-cite),
+.blog-content p a:not(.source-cite),
+.blog-content li a:not(.source-cite) {
+    color: #222222 !important;
+    text-decoration: none !important;
+    border-bottom: 1px dotted rgb(162, 162, 162) !important;
+}
+.blog-page .blog-content p a:not(.source-cite):hover,
+.blog-page .blog-content li a:not(.source-cite):hover,
+.blog-page .blog-content figcaption a:not(.source-cite):hover,
+.blog-content p a:not(.source-cite):hover,
+.blog-content li a:not(.source-cite):hover {
+    color: #000000 !important;
+    border-bottom: 1px solid #222222 !important;
+}
+
+/* Clean footnote-style citations: hide the noisy arXiv/GitHub SVG icon inline! */
+.blog-page .blog-content a.source-cite,
+a.source-cite {
+    display: inline !important;
+    min-width: 0 !important;
+    height: auto !important;
+    margin: 0 1px !important;
+    padding: 0 !important;
+    vertical-align: super !important;
+    font-size: 0.75em !important;
+    line-height: 0 !important;
+    background: transparent !important;
+    color: #222222 !important;
+    text-decoration: none !important;
+    border-bottom: 1px dotted #a2a2a2 !important;
+}
+.blog-page .blog-content a.source-cite:hover,
+a.source-cite:hover {
+    color: #000000 !important;
+    background: transparent !important;
+    border-bottom: 1px solid #222222 !important;
+}
+.blog-page .source-cite img,
+a.source-cite img {
+    display: none !important;
+}
+.blog-page .source-cite-number,
+.source-cite-number {
+    font-size: 1em !important;
+    color: inherit !important;
+}
+
+/* ============================================================
+   4. Table of Contents (.toc) — Simple Italic List, No Card Box
+   ============================================================ */
+.blog-page .toc,
+.toc {
+    padding: 0 !important;
+    margin: 18px 0 26px !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+.blog-page .toc > strong,
+.blog-page .toc > .toc-title,
+.toc > strong,
+.toc > .toc-title {
+    display: none !important;
+}
+.blog-page .toc > ol,
+.toc > ol {
+    columns: 1 !important;
+    list-style-type: decimal !important;
+    padding-left: 36px !important;
+    margin: 0 !important;
+}
+.blog-page .toc > ol > li,
+.toc > ol > li {
+    margin: 0 0 7px !important;
+    padding: 0 !important;
+    font-size: 16px !important;
+    line-height: 1.625 !important;
+    color: #222222 !important;
+}
+.blog-page .toc > ol > li::marker,
+.toc > ol > li::marker {
+    color: #222222 !important;
+    font-size: 16px !important;
+    font-weight: 400 !important;
+}
+.blog-page .toc a,
+.toc a {
+    font-style: italic !important;
+    color: #222222 !important;
+    text-decoration: none !important;
+    border-bottom: 1px dotted rgb(162, 162, 162) !important;
+}
+.blog-page .toc a:hover,
+.toc a:hover {
+    color: #000000 !important;
+    border-bottom-style: solid !important;
+    text-decoration: none !important;
+}
+
+/* ============================================================
+   5. Borderless Equations (.formula-card) & Clean Figures
+   ============================================================ */
+.blog-page .formula-card,
+.formula-card,
+.formula-card.hero-equation {
+    position: relative;
+    padding: 2px 36px 2px 0 !important;
+    margin: 16px 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.blog-page .formula-card .equation-label,
+.formula-card .equation-label {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0 !important;
+    color: #666666 !important;
+    font-size: 0.85rem !important;
+}
+
+.blog-page .plot-figure,
+.plot-figure,
+.blog-page .concept-figure,
+.concept-figure,
+.bridge-figure {
+    margin: 22px 0 !important;
+    padding: 8px 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+.blog-page .plot-figure a img,
+.plot-figure a img {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.blog-page .plot-figure a img:hover,
+.plot-figure a img:hover {
+    transform: translateY(-4px);
+    box-shadow: rgba(34, 34, 34, 0.18) 0 0 10px;
+}
+.blog-page .plot-figure figcaption,
+.plot-figure figcaption,
+.concept-figure figcaption,
+.bridge-figure figcaption {
+    border-top: 0 !important;
+    margin-top: 8px !important;
+    padding: 0 !important;
+    font-size: 0.875rem !important;
+    line-height: 1.42 !important;
+    color: rgb(60, 60, 60) !important;
+    text-align: left;
+}
+
+/* ============================================================
+   6. Callouts, Blockquotes, Steps, Code, and Tables
+   ============================================================ */
+.callout,
+.derivation,
+.pitfall,
+.plain-summary,
+.blog-content blockquote,
+.blog-content .opening-question {
+    margin: 20px 0 !important;
+    padding: 2px 0 2px 20px !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-left: 6px solid rgb(187, 187, 187) !important;
+    border-radius: 0 !important;
+    color: #222222 !important;
+    font-family: var(--blog-font-body) !important;
+    font-size: 16px !important;
+    line-height: 1.625 !important;
+}
+.callout > strong,
+.derivation > strong,
+.pitfall > strong,
+.plain-summary > strong {
+    color: #222222 !important;
+    font-weight: 700 !important;
+}
+
+.step {
+    display: grid;
+    grid-template-columns: 26px 1fr !important;
+    gap: 8px !important;
+    margin: 20px 0 !important;
+}
+.step-number {
+    width: auto !important;
+    height: auto !important;
+    background: transparent !important;
+    color: #222222 !important;
+    border-radius: 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    justify-content: flex-start !important;
+    align-items: baseline !important;
+    padding-top: 2px;
+}
+.step-number::after {
+    content: ".";
+}
+
+.contract-card {
+    background: #fafafa !important;
+    border: 1px solid #e2e2e2 !important;
+    border-radius: 3px !important;
+}
+
+/* Inline code & code blocks matching sander.ai */
+.blog-page .blog-content :not(pre) > code,
+.blog-content :not(pre) > code {
+    margin: 0 2px;
+    padding: 0 5px !important;
+    font-size: 0.78rem !important;
+    line-height: 1.5;
+    border: 1px solid rgb(230, 230, 230);
+    background-color: rgb(242, 242, 242) !important;
+    border-radius: 3px;
+    color: #222222 !important;
+}
+
+.blog-page .blog-content pre,
+.blog-content > pre,
+.code-fold pre {
+    background-color: rgb(39, 40, 34) !important;
+    color: rgb(248, 248, 242) !important;
+    border: 1px solid rgb(219, 219, 219) !important;
+    border-radius: 3px !important;
+    padding: 14px 16px !important;
+    font-size: 0.78rem !important;
+    line-height: 1.55 !important;
+}
+
+.blog-page .code-fold,
+.blog-page .optional-derivation,
+.code-fold,
+.optional-derivation {
+    margin: 18px 0 22px !important;
+    background: #fafafa !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 3px !important;
+}
+.blog-page .code-fold summary,
+.blog-page .optional-derivation summary,
+.code-fold summary,
+.optional-derivation summary {
+    padding: 10px 14px !important;
+    background: #f2f2f2 !important;
+    color: #222222 !important;
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+}
+.blog-page .code-fold[open] summary,
+.blog-page .optional-derivation[open] summary {
+    border-bottom: 1px solid #e0e0e0 !important;
+}
+
+/* Clean booktabs tables without colored headers or cards */
+.blog-page .table-wrap,
+.table-wrap {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    margin: 20px 0 !important;
+}
+.blog-page .blog-content table,
+.blog-content table {
+    border-top: 2px solid #222222;
+    border-bottom: 2px solid #222222;
+    font-size: 0.88rem !important;
+}
+.blog-page .blog-content th,
+.blog-content th {
+    background: transparent !important;
+    color: #222222 !important;
+    font-weight: 700 !important;
+    border-bottom: 1px solid #888888 !important;
+    padding: 8px 10px !important;
+}
+.blog-page .blog-content td,
+.blog-content td {
+    padding: 8px 10px !important;
+    border-bottom: 1px solid #eeeeee !important;
+}
+.blog-page .table-wrap tbody tr:nth-child(even),
+tbody tr:nth-child(even) {
+    background: transparent !important;
+}
+
+/* References & Footnotes */
+.blog-page .references .reference-list > li {
+    padding: 8px 0 !important;
+    border-bottom: 0 !important;
+    font-size: 0.875rem !important;
+    line-height: 1.65 !important;
+}
+.blog-page .reference-title {
+    font-weight: 700 !important;
+    color: #222222 !important;
+}
+.blog-page .references a {
+    border-bottom: 1px dotted rgb(162, 162, 162);
+}
+.blog-page .references a:hover {
+    color: #000000 !important;
+    border-bottom-style: solid;
+    text-decoration: none !important;
+}
+
+/* Separate white sheet for Giscus discussion below article (just like sander.ai #disqus_thread) */
+.blog-discussion {
+    max-width: 800px !important;
+    margin: 0 auto 40px !important;
+    padding: 40px 80px !important;
+    background: #ffffff !important;
+    border: 0 !important;
+    border-radius: 3px !important;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ============================================================
+   7. Sander-Style Top-Left Corner Menu & Quiet Hover Popover
+   ============================================================ */
+.sander-corner-nav {
+    position: fixed;
+    top: 25px;
+    left: 25px;
+    z-index: 1000;
+    font-family: var(--blog-font-body);
+}
+.sander-menu-btn {
+    width: 48px;
+    height: 45px;
+    background: #222222;
+    border: 0;
+    border-radius: 3px;
     cursor: pointer;
+    opacity: 0.6;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+    transition: opacity 0.3s ease-in-out;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.blog-theme-toggle::before {
-    content: '';
-    width: 12px;
-    height: 12px;
-    border: 1px solid var(--primary-color);
-    border-radius: 50%;
-    background: linear-gradient(90deg, var(--primary-color) 50%, transparent 50%);
+.sander-menu-btn:hover,
+.sander-corner-nav.is-open .sander-menu-btn {
+    opacity: 1;
 }
-.blog-theme-toggle:hover { color: var(--primary-dark); border-color: var(--primary-light); }
-.blog-theme-toggle:focus-visible { outline: 3px solid var(--primary-light); outline-offset: 3px; }
-@media (max-width: 420px) {
-    .blog-header .blog-tools { gap: 8px; }
-    .blog-header .blog-tools .back-link { font-size: 12px; }
-    .blog-theme-toggle { font-size: 11px; padding: 7px 9px; }
+.sander-menu-bars {
+    width: 68%;
+    height: 5px;
+    background: #ffffff;
+    box-shadow: 0 -10px 0 #ffffff, 0 10px 0 #ffffff;
+}
+.sander-menu-panel {
+    margin-top: 5px;
+    width: 240px;
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+    background: #222222;
+    border-radius: 3px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+    padding: 6px 0;
+    display: none;
+}
+.sander-corner-nav.is-open .sander-menu-panel {
+    display: block;
+}
+.sander-menu-panel a {
+    display: block;
+    padding: 12px 20px;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 14px;
+    line-height: 1.4;
+    text-decoration: none;
+    border-bottom: 0 !important;
+}
+.sander-menu-panel a:hover {
+    background: rgba(255, 248, 213, 0.1);
+    color: #ffffff;
+}
+.sander-menu-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.14);
+    margin: 4px 0;
+}
+.sander-menu-heading {
+    padding: 8px 20px 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.48);
+}
+
+/* Quiet citation & equation preview card on hover */
+.blog-hover-popover {
+    position: fixed;
+    z-index: 200;
+    max-width: 420px;
+    padding: 12px 15px;
+    background: #ffffff;
+    border: 1px solid #d8d8d8;
+    border-radius: 3px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    color: #222222;
+    font: 400 13.5px/1.55 var(--blog-font-body);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.blog-hover-popover.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.blog-hover-popover .reference-number {
+    font-weight: 700;
+    color: #222222;
+    margin-right: 6px;
+}
+.blog-hover-popover .reference-title {
+    font-weight: 700;
+    color: #222222;
+}
+.blog-hover-popover .reference-meta {
+    display: block;
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: #555555;
+}
+
+/* Magnific-Popup style image zoom lightbox */
+.plot-figure img {
+    cursor: zoom-in;
+}
+.blog-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.82);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    cursor: zoom-out;
+}
+.blog-lightbox.is-open {
+    display: flex;
+}
+.blog-lightbox-img {
+    max-width: min(94vw, 1280px);
+    max-height: 80vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    background: #ffffff;
+    padding: 8px;
+    border-radius: 2px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+.blog-lightbox-caption {
+    margin-top: 12px;
+    max-width: 720px;
+    color: #f3f3f3;
+    font: 400 13px/1.5 var(--blog-font-body);
+    text-align: center;
+}
+
+@media (max-width: 860px) {
+    .blog-page .blog-content,
+    .blog-content,
+    .blog-discussion {
+        margin: 0 12px 30px !important;
+        padding: 32px 32px 40px !important;
+    }
+    .sander-corner-nav {
+        top: 10px;
+        left: 10px;
+    }
+}
+@media (max-width: 600px) {
+    .blog-page .blog-header,
+    .blog-header {
+        margin: 32px auto 22px !important;
+        padding: 0 16px !important;
+    }
+    .blog-page .blog-header h1,
+    .blog-header h1 {
+        font-size: 1.75rem !important;
+    }
+    .blog-page .blog-content,
+    .blog-content,
+    .blog-discussion {
+        margin: 0 6px 24px !important;
+        padding: 20px 18px 28px !important;
+    }
+    .blog-page .blog-content p,
+    .blog-content p,
+    .blog-page .dek,
+    .dek {
+        text-align: left;
+    }
+    .blog-page .formula-card,
+    .formula-card {
+        padding-right: 0 !important;
+    }
+    .blog-page .formula-card .equation-label,
+    .formula-card .equation-label {
+        position: static;
+        transform: none;
+        display: block;
+        text-align: right;
+    }
 }
 @media print {
-    body { background: white; }
-    .blog-content { background: white; border: 0; box-shadow: none; }
-    .blog-header .blog-tools { display: none; }
+    html.blog-page body, body { background: #ffffff !important; }
+    .blog-page .blog-content, .blog-content { box-shadow: none !important; padding: 0 !important; margin: 0 !important; max-width: none !important; }
+    .sander-corner-nav, .blog-hover-popover, .blog-lightbox { display: none !important; }
 }

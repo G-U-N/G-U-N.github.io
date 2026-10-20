@@ -16,6 +16,10 @@
     list-style-position: inside;
 }
 
+.toc ul {
+    margin: 4px 0 2px 18px;
+}
+
 .code-fold[open] summary { border-bottom: 1px solid #334155; }
 
 .code-fold pre {
@@ -29,6 +33,28 @@
 }
 
 .code-fold code {
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border-radius: 0;
+    font-size: inherit;
+}
+
+/* Short code and layout examples use the same block treatment as folded kernels. */
+.blog-content > pre {
+    margin: 20px 0 26px;
+    padding: 17px 18px 20px;
+    overflow-x: auto;
+    color: #dbeafe;
+    background: #111827;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.78rem;
+    line-height: 1.62;
+    tab-size: 4;
+}
+
+.blog-content > pre code {
     padding: 0;
     color: inherit;
     background: transparent;
@@ -97,7 +123,8 @@
 
 @media (max-width: 700px) {
     .contract-grid { grid-template-columns: 1fr; }
-    .code-fold pre { font-size: 0.7rem; }
+    .code-fold pre,
+    .blog-content > pre { font-size: 0.7rem; }
 
 .latex-figure.figure-wide { max-width: 100%; }
 }

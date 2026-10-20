@@ -42,6 +42,14 @@ Do not add per-page font imports or override common components in article CSS.
 
 ## References and navigation
 
+Every citation in running prose and figure captions must include a reference
+number such as `[1]`, alongside its compact source icon. Use `.source-cite` with
+a descriptive `title` and `aria-label` that include the number; keep the icon
+image decorative (`alt=""`) and put the number in `.source-cite-number`.
+Match each number to the existing reference list, including when several links
+cite the same entry. Link directly to the source, and retain full bibliographic
+details in the reference list below.
+
 Use one flat, numbered list in every article, including Markdown-rendered articles.
 Keep existing citation numbers, order, IDs, links, and explanatory notes. Put the
 full paper title first and author/source/year below it. Every entry needs a primary
